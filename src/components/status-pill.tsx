@@ -1,9 +1,9 @@
 import type { Status } from "@/lib/types";
 
 const statusStyles: Record<Status, string> = {
-  active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  active: "border-blue-200 bg-blue-50 text-blue-700",
   inactive: "border-slate-200 bg-slate-50 text-slate-600",
-  draft: "border-amber-200 bg-amber-50 text-amber-700",
+  draft: "border-slate-200 bg-white text-slate-700",
   archived: "border-rose-200 bg-rose-50 text-rose-700",
 };
 

@@ -1,3 +1,17 @@
+# Velora ERP v1.2.0 Release Notes
+
+Version 1.2.0 redesigns Velora ERP as a modern business operating system for Indian MSMEs.
+
+## What Changed
+
+- Simple left sidebar with clear labels and fast navigation.
+- White default theme with minimal colors and blue-only accent.
+- Dashboard focused on what owners need now: overview, pending work, alerts, quick actions, and recent activity.
+- Fewer distracting visuals and no unnecessary charts.
+- Larger readable typography, softer cards, cleaner spacing, and better tablet/mobile behavior.
+
+---
+
 # Velora ERP v1.1.0 Release Notes
 
 Version 1.1.0 improves the Core Platform experience for Indian MSME founders and operators.

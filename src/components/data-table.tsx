@@ -35,7 +35,7 @@ export function DataTable<T extends { id: string; status?: string }>({
           <button className="grid size-10 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50" title="Sort" aria-label="Sort">
             <ArrowDownUp size={16} />
           </button>
-          <button className="grid size-10 place-items-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm transition hover:bg-emerald-100" title="Export" aria-label="Export">
+          <button className="grid size-10 place-items-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 shadow-sm transition hover:bg-blue-100" title="Export" aria-label="Export">
             <Download size={16} />
           </button>
         </div>
@@ -80,7 +80,7 @@ function StatusValue({ status }: { status: string }) {
   }
 
   const styles: Record<string, string> = {
-    completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    completed: "border-blue-200 bg-blue-50 text-blue-700",
     queued: "border-blue-200 bg-blue-50 text-blue-700",
     failed: "border-rose-200 bg-rose-50 text-rose-700",
   };

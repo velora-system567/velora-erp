@@ -10,7 +10,7 @@ export function FormDraftPanel() {
             Owners and staff can save work, correct mistakes, and see who changed what without needing technical training.
           </p>
         </div>
-        <ShieldCheck className="text-emerald-600" size={22} />
+        <ShieldCheck className="text-blue-600" size={22} />
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {[
