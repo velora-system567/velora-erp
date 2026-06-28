@@ -26,7 +26,8 @@ export function getPlatformSnapshot() {
   const activeUsers = users.filter((user) => user.status === "active").length;
   const activeBranches = branches.filter((branch) => branch.status === "active").length;
   const unreadNotifications = notifications.filter((notification) => notification.unread).length;
-  const storagePercent = Math.round((company.storageUsedGb / company.storageLimitGb) * 100);
+  const storagePercent = company ? Math.round((company.storageUsedGb / company.storageLimitGb) * 100) : 0;
+  const healthScore = company ? company.healthScore : 0;
 
   return {
     company,
@@ -43,7 +44,7 @@ export function getPlatformSnapshot() {
       activeBranches,
       unreadNotifications,
       storagePercent,
-      healthScore: company.healthScore,
+      healthScore,
     },
   };
 }

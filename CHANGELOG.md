@@ -2,6 +2,15 @@
 
 All notable changes to Velora ERP will be documented in this file.
 
+## [1.3.0] - 2026-06-28
+
+### Changed
+- Removed all demo company, branch, employee, product, notification, audit, import, and role seed data.
+- Updated the Core Platform to behave like a freshly installed commercial ERP with zero customer data.
+- Added professional empty states for company setup, branches, employees, products, roles, imports, notifications, and audit history.
+- Reworded the UI to represent the customer's own business rather than Velora administration.
+- Preserved configurable Core Platform modules while ensuring every record must be created manually after installation.
+
 ## [1.2.0] - 2026-06-28
 
 ### Changed

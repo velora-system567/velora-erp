@@ -1,9 +1,7 @@
 import {
   Activity,
   AlertCircle,
-  Bell,
   Building2,
-  CheckCircle2,
   ClipboardCheck,
   FileSpreadsheet,
   GitBranch,
@@ -32,26 +30,20 @@ const navigation = [
 export default function Home() {
   const snapshot = getPlatformSnapshot();
   const { company, metrics } = snapshot;
+  const companyName = company?.name ?? "Your Company";
 
   const overviewCards = [
-    { label: "Employees", value: "50-100", detail: `${metrics.activeUsers} active users set up`, icon: Users },
-    { label: "Products", value: metrics.products, detail: "Items and services ready", icon: Package },
-    { label: "Branches", value: metrics.activeBranches, detail: "Operating locations active", icon: GitBranch },
-    { label: "Notifications", value: metrics.unreadNotifications, detail: "Need owner attention", icon: Bell },
+    { label: "Company", value: company ? "Created" : "Not set", detail: company ? "Business profile is ready" : "Create your company profile first", icon: Building2 },
+    { label: "Employees", value: metrics.activeUsers, detail: "Users added by the owner", icon: Users },
+    { label: "Products", value: metrics.products, detail: "Items and services created", icon: Package },
+    { label: "Branches", value: metrics.activeBranches, detail: "Locations created", icon: GitBranch },
   ];
 
-  const pendingTasks = [
-    "Approve Bengaluru branch activation",
-    "Review product import results",
-    "Invite accountant and store manager",
-    "Complete company GST and address details",
-  ];
-
-  const quickActions = [
-    { label: "Add employee", icon: Users },
-    { label: "Add product", icon: Package },
-    { label: "Import Excel", icon: FileSpreadsheet },
-    { label: "Create branch", icon: GitBranch },
+  const setupSteps = [
+    { title: "Create Company", description: "Add legal name, GSTIN, address, and basic business details.", action: "Create Company" },
+    { title: "Create Branch", description: "Add factory, office, warehouse, depot, or shop locations.", action: "Create Branch" },
+    { title: "Add Employees", description: "Invite owners, managers, accountants, auditors, and staff.", action: "Add Employee" },
+    { title: "Add Products", description: "Create item master with HSN, GST, units, and categories.", action: "Add Product" },
   ];
 
   return (
@@ -64,8 +56,8 @@ export default function Home() {
                 <Building2 size={20} />
               </div>
               <div>
-                <p className="text-base font-semibold text-slate-950">Velora ERP</p>
-                <p className="text-xs text-slate-500">Core Platform</p>
+                <p className="text-base font-semibold text-slate-950">{companyName}</p>
+                <p className="text-xs text-slate-500">Velora ERP</p>
               </div>
             </div>
 
@@ -83,8 +75,8 @@ export default function Home() {
             </nav>
 
             <div className="mt-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-950">Built for MSMEs</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600">For owners managing 2-50 Cr turnover, teams, branches, and daily operations.</p>
+              <p className="text-sm font-semibold text-slate-950">Fresh Installation</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Enter your own business data to start using the ERP.</p>
             </div>
           </div>
         </aside>
@@ -94,12 +86,12 @@ export default function Home() {
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center justify-between gap-3">
                 <div className="lg:hidden">
-                  <p className="text-base font-semibold text-slate-950">Velora ERP</p>
-                  <p className="text-xs text-slate-500">Simple business system</p>
+                  <p className="text-base font-semibold text-slate-950">{companyName}</p>
+                  <p className="text-xs text-slate-500">Velora ERP</p>
                 </div>
                 <div className="hidden lg:block">
-                  <p className="text-sm text-slate-500">Today</p>
-                  <h1 className="text-2xl font-semibold text-slate-950">Business Overview</h1>
+                  <p className="text-sm text-slate-500">Dashboard</p>
+                  <h1 className="text-2xl font-semibold text-slate-950">{companyName}</h1>
                 </div>
                 <button className="grid size-11 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm lg:hidden" aria-label="Search">
                   <Search size={18} />
@@ -131,30 +123,23 @@ export default function Home() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-700">Business operating system for Indian MSMEs</p>
+                      <p className="text-sm font-medium text-blue-700">Fresh ERP setup</p>
                       <h2 className="mt-2 text-3xl font-semibold leading-tight text-slate-950 md:text-4xl">
-                        Know what is happening, what is pending, and what needs action.
+                        Start by creating your company profile.
                       </h2>
                       <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                        Velora keeps company, employees, branches, products, imports, alerts, and activity history in one simple place for owners and managers.
+                        This ERP is empty by design. Add your own company, branches, employees, products, and settings to build the system around your business.
                       </p>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:w-56">
-                      <p className="text-sm text-slate-500">Company health</p>
-                      <p className="mt-2 text-3xl font-semibold text-slate-950">{metrics.healthScore}%</p>
-                      <div className="mt-3 h-2 rounded-full bg-slate-200">
-                        <div className="h-2 rounded-full bg-blue-600" style={{ width: `${metrics.healthScore}%` }} />
-                      </div>
-                    </div>
+                    <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                      <Building2 size={17} /> Create Company
+                    </button>
                   </div>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {overviewCards.map((card) => (
                       <div key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <card.icon className="text-blue-600" size={20} />
-                          <CheckCircle2 className="text-slate-300" size={18} />
-                        </div>
+                        <card.icon className="text-blue-600" size={20} />
                         <p className="mt-5 text-3xl font-semibold text-slate-950">{card.value}</p>
                         <p className="mt-1 text-sm font-semibold text-slate-800">{card.label}</p>
                         <p className="mt-1 text-xs leading-5 text-slate-500">{card.detail}</p>
@@ -163,72 +148,44 @@ export default function Home() {
                   </div>
                 </div>
 
-                <section className="grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-slate-950">Pending Work</h2>
-                      <ClipboardCheck className="text-blue-600" size={20} />
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-950">Setup Checklist</h2>
+                      <p className="mt-1 text-sm text-slate-600">Complete these steps to make the ERP ready for daily use.</p>
                     </div>
-                    <div className="mt-4 space-y-3">
-                      {pendingTasks.map((task, index) => (
-                        <div key={task} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">{index + 1}</span>
-                          <p className="text-sm font-medium text-slate-800">{task}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <ClipboardCheck className="text-blue-600" size={20} />
                   </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-slate-950">Quick Actions</h2>
-                      <Plus className="text-blue-600" size={20} />
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {quickActions.map((action) => (
-                        <button key={action.label} className="flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
-                          <action.icon size={18} />
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {setupSteps.map((step, index) => (
+                      <div key={step.title} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700">{index + 1}</span>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950">{step.title}</p>
+                            <p className="mt-1 text-sm leading-6 text-slate-600">{step.description}</p>
+                            <button className="mt-3 text-sm font-semibold text-blue-700">{step.action}</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </section>
               </div>
 
               <aside className="space-y-6">
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-950">Alerts</h2>
-                    <AlertCircle className="text-blue-600" size={20} />
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {snapshot.notifications.slice(0, 4).map((notification) => (
-                      <div key={notification.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-slate-950">{notification.title}</p>
-                          <span className="text-xs text-slate-500">{notification.createdAt}</span>
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-slate-600">{notification.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-slate-950">Recent Activity</h2>
-                    <Activity className="text-blue-600" size={20} />
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {snapshot.auditLogs.slice(0, 4).map((log) => (
-                      <div key={log.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                        <p className="text-sm font-medium text-slate-900">{log.summary}</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">{log.actor} · {log.createdAt}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                <EmptyPanel
+                  icon={AlertCircle}
+                  title="No Notifications"
+                  description="System notifications will appear here after records, approvals, imports, or other actions are created."
+                  action="View Settings"
+                />
+                <EmptyPanel
+                  icon={Activity}
+                  title="No Recent Activity"
+                  description="Audit logs will appear after users create, update, import, export, or approve records."
+                  action="Open Audit Logs"
+                />
               </aside>
             </section>
 
@@ -237,15 +194,25 @@ export default function Home() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-950">Company Overview</h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">The basic business profile every module depends on.</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">Create the customer&apos;s legal entity before adding branches, employees, and products.</p>
                   </div>
                   <Building2 className="text-blue-600" size={22} />
                 </div>
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                  <InfoCard label="Company" value={company.legalName} />
-                  <InfoCard label="GSTIN" value={company.gstin} />
-                  <InfoCard label="Storage used" value={`${metrics.storagePercent}%`} />
-                </div>
+                {company ? (
+                  <div className="mt-5 grid gap-4 md:grid-cols-3">
+                    <InfoCard label="Company" value={company.legalName} />
+                    <InfoCard label="GSTIN" value={company.gstin} />
+                    <InfoCard label="Storage used" value={`${metrics.storagePercent}%`} />
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                    <p className="text-base font-semibold text-slate-950">No Company Created</p>
+                    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Add the business legal name, GSTIN, address, and primary contact to begin using Velora ERP.</p>
+                    <button className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                      Create Company
+                    </button>
+                  </div>
+                )}
               </div>
               <FormDraftPanel />
             </section>
@@ -262,6 +229,9 @@ export default function Home() {
                   { key: "manager", label: "Manager" },
                   { key: "users", label: "Employees" },
                 ]}
+                emptyTitle="No Branches Created"
+                emptyDescription="Create the first factory, office, warehouse, depot, or shop location for this business."
+                emptyActionLabel="Create Branch"
               />
             </div>
 
@@ -277,6 +247,9 @@ export default function Home() {
                   { key: "branchId", label: "Branch" },
                   { key: "lastActive", label: "Last active" },
                 ]}
+                emptyTitle="No Employees Added"
+                emptyDescription="Invite the owner, managers, accountants, auditors, and staff who will use the ERP."
+                emptyActionLabel="Add Employee"
               />
             </div>
 
@@ -284,21 +257,19 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">Access Control</h2>
-                  <p className="mt-1 text-sm text-slate-600">Keep business data protected without making permissions hard to understand.</p>
+                  <p className="mt-1 text-sm text-slate-600">Roles and permissions will be configured by the business owner.</p>
                 </div>
                 <Shield className="text-blue-600" size={22} />
               </div>
-              <div className="mt-5 grid gap-3 lg:grid-cols-3">
-                {snapshot.roles.map((role) => (
-                  <div key={role.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-950">{role.name}</h3>
-                      <span className="text-xs text-slate-500">{role.users} people</span>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{role.description}</p>
-                  </div>
-                ))}
-              </div>
+              {snapshot.roles.length === 0 ? (
+                <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                  <p className="text-base font-semibold text-slate-950">No Roles Configured</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Create roles such as Owner, Manager, Accountant, Auditor, or Staff based on this business&apos;s needs.</p>
+                  <button className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                    Create Role
+                  </button>
+                </div>
+              ) : null}
             </section>
 
             <div id="products">
@@ -314,6 +285,9 @@ export default function Home() {
                   { key: "hsn", label: "HSN" },
                   { key: "taxRate", label: "GST %" },
                 ]}
+                emptyTitle="No Products Found"
+                emptyDescription="Add products, raw materials, services, HSN codes, GST rates, and units as per this business."
+                emptyActionLabel="Add Product"
               />
             </div>
 
@@ -329,6 +303,9 @@ export default function Home() {
                   { key: "rows", label: "Rows" },
                   { key: "createdAt", label: "Time" },
                 ]}
+                emptyTitle="No Imports or Exports"
+                emptyDescription="Import company data from Excel or CSV after selecting the module and mapping columns."
+                emptyActionLabel="Import Excel"
               />
             </div>
 
@@ -340,20 +317,42 @@ export default function Home() {
                 </div>
                 <Activity className="text-blue-600" size={22} />
               </div>
-              <div className="mt-5 space-y-3">
-                {snapshot.auditLogs.map((log) => (
-                  <div key={log.id} className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm md:grid-cols-[160px_1fr_160px]">
-                    <span className="font-mono text-xs text-slate-500">{log.createdAt}</span>
-                    <span className="text-slate-700"><strong className="text-slate-950">{log.actor}</strong> · {log.summary} · {log.module}</span>
-                    <span className="font-mono text-xs text-slate-500 md:text-right">{log.ipAddress}</span>
-                  </div>
-                ))}
-              </div>
+              {snapshot.auditLogs.length === 0 ? (
+                <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                  <p className="text-base font-semibold text-slate-950">No Activity Yet</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Audit history will begin after users create, update, import, export, approve, login, or logout.</p>
+                </div>
+              ) : null}
             </section>
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+function EmptyPanel({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: typeof AlertCircle;
+  title: string;
+  description: string;
+  action: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+        <Icon className="text-blue-600" size={20} />
+      </div>
+      <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+        <p className="text-sm leading-6 text-slate-600">{description}</p>
+        <button className="mt-4 text-sm font-semibold text-blue-700">{action}</button>
+      </div>
+    </section>
   );
 }
 

@@ -12,11 +12,17 @@ export function DataTable<T extends { id: string; status?: string }>({
   description,
   rows,
   columns,
+  emptyTitle,
+  emptyDescription,
+  emptyActionLabel,
 }: {
   title: string;
   description: string;
   rows: T[];
   columns: Column<T>[];
+  emptyTitle: string;
+  emptyDescription: string;
+  emptyActionLabel: string;
 }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -40,36 +46,48 @@ export function DataTable<T extends { id: string; status?: string }>({
           </button>
         </div>
       </div>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase text-slate-500">
-              {columns.map((column) => (
-                <th key={String(column.key)} className="border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold">
-                  {column.label}
-                </th>
-              ))}
-              <th className="border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} className="text-slate-700">
-                {columns.map((column) => (
-                  <td key={String(column.key)} className="border-b border-slate-100 px-3 py-3">
-                    {column.render ? column.render(row) : String(row[column.key as keyof T] ?? "")}
-                  </td>
+      {rows.length === 0 ? (
+        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+          <p className="text-base font-semibold text-slate-950">{emptyTitle}</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">{emptyDescription}</p>
+          <button className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+            {emptyActionLabel}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-slate-500">
+                  {columns.map((column) => (
+                    <th key={String(column.key)} className="border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold">
+                      {column.label}
+                    </th>
+                  ))}
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="text-slate-700">
+                    {columns.map((column) => (
+                      <td key={String(column.key)} className="border-b border-slate-100 px-3 py-3">
+                        {column.render ? column.render(row) : String(row[column.key as keyof T] ?? "")}
+                      </td>
+                    ))}
+                    <td className="border-b border-slate-100 px-3 py-3">{row.status ? <StatusValue status={row.status} /> : null}</td>
+                  </tr>
                 ))}
-                <td className="border-b border-slate-100 px-3 py-3">{row.status ? <StatusValue status={row.status} /> : null}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-        <span>{rows.length} records</span>
-        <span>Ready for Excel and CSV</span>
-      </div>
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>{rows.length} records</span>
+            <span>Ready for Excel and CSV</span>
+          </div>
+        </>
+      )}
     </section>
   );
 }
