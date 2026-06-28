@@ -1,0 +1,681 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRoleName {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  SALES_MANAGER
+  SALESMAN
+  STORE_KEEPER
+  PURCHASE_MANAGER
+  PRODUCTION_OPERATOR
+  HR_MANAGER
+}
+
+enum ItemType {
+  RAW_MATERIAL
+  FINISHED_GOOD
+  SEMI_FINISHED
+  SERVICE
+  CONSUMABLE
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  NEFT
+  RTGS
+  UPI
+  CARD
+}
+
+enum StockTransactionType {
+  PURCHASE
+  SALE
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  OPENING
+  PRODUCTION_IN
+  PRODUCTION_OUT
+}
+
+enum DocumentStatus {
+  DRAFT
+  APPROVED
+  CANCELLED
+  CLOSED
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  LOST
+  CONVERTED
+}
+
+enum GstTreatment {
+  INTRA_STATE
+  INTER_STATE
+}
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  companies Company[]
+  users     User[]
+  roles     Role[]
+
+  @@map("tenants")
+}
+
+model Company {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  legalName String   @map("legal_name")
+  gstin     String?
+  panNumber String?  @map("pan_number")
+  address   Json?
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, isDeleted])
+  @@map("companies")
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  code      String?
+  address   Json?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, companyId, isDeleted])
+  @@map("branches")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  branchId     String?  @map("branch_id") @db.Uuid
+  name         String
+  email        String
+  phone        String?
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  userRoles    UserRole[]
+  userBranches UserBranch[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, isDeleted])
+  @@map("users")
+}
+
+model UserBranch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, userId, branchId])
+  @@map("user_branches")
+}
+
+model Role {
+  id          String       @id @default(uuid()) @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  companyId   String       @map("company_id") @db.Uuid
+  branchId    String?      @map("branch_id") @db.Uuid
+  name        UserRoleName
+  description String?
+  createdBy   String?      @map("created_by") @db.Uuid
+  updatedBy   String?      @map("updated_by") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  isDeleted   Boolean      @default(false) @map("is_deleted")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, companyId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  key         String
+  description String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, key])
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([tenantId, userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  branchId     String?  @map("branch_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([tenantId, roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  tableName String   @map("table_name")
+  recordId  String   @map("record_id") @db.Uuid
+  action    String
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, tableName, recordId])
+  @@map("audit_logs")
+}
+
+model ItemCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  items Item[]
+
+  @@unique([tenantId, companyId, name])
+  @@map("item_categories")
+}
+
+model UnitOfMeasure {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  symbol    String
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  items Item[]
+
+  @@unique([tenantId, companyId, symbol])
+  @@map("units_of_measure")
+}
+
+model Item {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  branchId        String?  @map("branch_id") @db.Uuid
+  itemCode        String   @map("item_code")
+  name            String
+  description     String?
+  itemType        ItemType @map("item_type")
+  hsnCode         String?  @map("hsn_code")
+  unitOfMeasureId String?  @map("unit_of_measure_id") @db.Uuid
+  itemCategoryId  String?  @map("item_category_id") @db.Uuid
+  purchasePrice   Int      @default(0) @map("purchase_price")
+  sellingPrice    Int      @default(0) @map("selling_price")
+  gstRate         Int      @default(18) @map("gst_rate")
+  reorderLevel    Decimal? @map("reorder_level") @db.Decimal(18, 3)
+  reorderQuantity Decimal? @map("reorder_quantity") @db.Decimal(18, 3)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  isDeleted       Boolean  @default(false) @map("is_deleted")
+
+  unitOfMeasure UnitOfMeasure? @relation(fields: [unitOfMeasureId], references: [id])
+  category      ItemCategory?  @relation(fields: [itemCategoryId], references: [id])
+
+  @@unique([tenantId, itemCode])
+  @@index([tenantId, companyId, isDeleted])
+  @@map("items")
+}
+
+model Customer {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  branchId       String?  @map("branch_id") @db.Uuid
+  name           String
+  gstin          String?
+  panNumber      String?  @map("pan_number")
+  billingAddress Json?    @map("billing_address")
+  shippingAddress Json?   @map("shipping_address")
+  creditLimit    Int      @default(0) @map("credit_limit")
+  creditDays     Int      @default(0) @map("credit_days")
+  paymentTerms   String?  @map("payment_terms")
+  openingBalance Int      @default(0) @map("opening_balance")
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedBy      String?  @map("updated_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, companyId, isDeleted])
+  @@map("customers")
+}
+
+model Vendor {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  branchId       String?  @map("branch_id") @db.Uuid
+  name           String
+  gstin          String?
+  panNumber      String?  @map("pan_number")
+  billingAddress Json?    @map("billing_address")
+  shippingAddress Json?   @map("shipping_address")
+  creditLimit    Int      @default(0) @map("credit_limit")
+  creditDays     Int      @default(0) @map("credit_days")
+  paymentTerms   String?  @map("payment_terms")
+  openingBalance Int      @default(0) @map("opening_balance")
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedBy      String?  @map("updated_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, companyId, isDeleted])
+  @@map("vendors")
+}
+
+model ChartOfAccount {
+  id        String      @id @default(uuid()) @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  companyId String      @map("company_id") @db.Uuid
+  branchId  String?     @map("branch_id") @db.Uuid
+  code      String
+  name      String
+  type      AccountType
+  createdBy String?     @map("created_by") @db.Uuid
+  updatedBy String?     @map("updated_by") @db.Uuid
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  isDeleted Boolean     @default(false) @map("is_deleted")
+
+  @@unique([tenantId, companyId, code])
+  @@map("chart_of_accounts")
+}
+
+model TaxRate {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  rate      Int
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  @@unique([tenantId, companyId, rate])
+  @@map("tax_rates")
+}
+
+model Warehouse {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  address   Json?
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, companyId, isDeleted])
+  @@map("warehouses")
+}
+
+model PriceList {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  currency  String   @default("INR")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+
+  @@map("price_lists")
+}
+
+model BusinessDocument {
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  companyId     String         @map("company_id") @db.Uuid
+  branchId      String?        @map("branch_id") @db.Uuid
+  documentType  String         @map("document_type")
+  documentNo    String?        @map("document_no")
+  partyId       String?        @map("party_id") @db.Uuid
+  status        DocumentStatus @default(DRAFT)
+  documentDate  DateTime       @default(now()) @map("document_date")
+  subtotal      Int            @default(0)
+  discount      Int            @default(0)
+  taxableAmount Int            @default(0) @map("taxable_amount")
+  cgstAmount    Int            @default(0) @map("cgst_amount")
+  sgstAmount    Int            @default(0) @map("sgst_amount")
+  igstAmount    Int            @default(0) @map("igst_amount")
+  roundOff      Int            @default(0) @map("round_off")
+  totalAmount   Int            @default(0) @map("total_amount")
+  terms         String?
+  irnNumber     String?        @map("irn_number")
+  createdBy     String?        @map("created_by") @db.Uuid
+  updatedBy     String?        @map("updated_by") @db.Uuid
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  isDeleted     Boolean        @default(false) @map("is_deleted")
+
+  lines BusinessDocumentLine[]
+
+  @@index([tenantId, companyId, documentType, isDeleted])
+  @@map("business_documents")
+}
+
+model BusinessDocumentLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  itemId      String?  @map("item_id") @db.Uuid
+  description String?
+  quantity    Decimal  @default(0) @db.Decimal(18, 3)
+  rate        Int      @default(0)
+  discount    Int      @default(0)
+  gstRate     Int      @default(18) @map("gst_rate")
+  lineTotal   Int      @default(0) @map("line_total")
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  document BusinessDocument @relation(fields: [documentId], references: [id])
+
+  @@map("business_document_lines")
+}
+
+model Lead {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @map("tenant_id") @db.Uuid
+  companyId String     @map("company_id") @db.Uuid
+  branchId  String?    @map("branch_id") @db.Uuid
+  name      String
+  phone     String?
+  email     String?
+  status    LeadStatus @default(NEW)
+  createdBy String?    @map("created_by") @db.Uuid
+  updatedBy String?    @map("updated_by") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  isDeleted Boolean    @default(false) @map("is_deleted")
+
+  @@map("leads")
+}
+
+model Payment {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @map("tenant_id") @db.Uuid
+  companyId   String      @map("company_id") @db.Uuid
+  branchId    String?     @map("branch_id") @db.Uuid
+  paymentType String      @map("payment_type")
+  partyId     String?     @map("party_id") @db.Uuid
+  amount      Int
+  mode        PaymentMode
+  referenceNo String?     @map("reference_no")
+  paymentDate DateTime    @default(now()) @map("payment_date")
+  createdBy   String?     @map("created_by") @db.Uuid
+  updatedBy   String?     @map("updated_by") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  isDeleted   Boolean     @default(false) @map("is_deleted")
+
+  allocations PaymentAllocation[]
+
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  branchId   String?  @map("branch_id") @db.Uuid
+  paymentId  String   @map("payment_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  amount     Int
+  createdBy  String?  @map("created_by") @db.Uuid
+  updatedBy  String?  @map("updated_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@map("payment_allocations")
+}
+
+model StockLedger {
+  id              String               @id @default(uuid()) @db.Uuid
+  tenantId        String               @map("tenant_id") @db.Uuid
+  companyId       String               @map("company_id") @db.Uuid
+  branchId        String?              @map("branch_id") @db.Uuid
+  itemId          String               @map("item_id") @db.Uuid
+  warehouseId     String               @map("warehouse_id") @db.Uuid
+  transactionType StockTransactionType @map("transaction_type")
+  quantity        Decimal              @db.Decimal(18, 3)
+  rate            Int
+  value           Int
+  referenceId     String?              @map("reference_id") @db.Uuid
+  referenceType   String?              @map("reference_type")
+  createdBy       String?              @map("created_by") @db.Uuid
+  updatedBy       String?              @map("updated_by") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  isDeleted       Boolean              @default(false) @map("is_deleted")
+
+  @@index([tenantId, itemId, warehouseId])
+  @@map("stock_ledger")
+}
+
+model StockTransfer {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  companyId       String         @map("company_id") @db.Uuid
+  branchId        String?        @map("branch_id") @db.Uuid
+  itemId          String         @map("item_id") @db.Uuid
+  fromWarehouseId String         @map("from_warehouse_id") @db.Uuid
+  toWarehouseId   String         @map("to_warehouse_id") @db.Uuid
+  quantity        Decimal        @db.Decimal(18, 3)
+  status          DocumentStatus @default(DRAFT)
+  createdBy       String?        @map("created_by") @db.Uuid
+  updatedBy       String?        @map("updated_by") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  isDeleted       Boolean        @default(false) @map("is_deleted")
+
+  @@map("stock_transfers")
+}
+
+model StockAdjustment {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  itemId      String   @map("item_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  quantity    Decimal  @db.Decimal(18, 3)
+  reason      String
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@map("stock_adjustments")
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  entryNo     String   @map("entry_no")
+  entryDate   DateTime @map("entry_date")
+  narration   String?
+  referenceId String?  @map("reference_id") @db.Uuid
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  lines JournalEntryLine[]
+
+  @@unique([tenantId, entryNo])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  branchId       String?  @map("branch_id") @db.Uuid
+  journalEntryId String   @map("journal_entry_id") @db.Uuid
+  accountId      String   @map("account_id") @db.Uuid
+  debit          Int      @default(0)
+  credit         Int      @default(0)
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedBy      String?  @map("updated_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+
+  @@map("journal_entry_lines")
+}

@@ -1,3 +1,18 @@
+# Velora ERP v1.4.0 Release Notes
+
+Version 1.4.0 updates Velora ERP to the requested multi-tenant ERP architecture foundation.
+
+## What Changed
+
+- Added `backend/` Express API and `frontend/` React/Vite app structure.
+- Added Docker Compose for local PostgreSQL and Redis.
+- Added Prisma schema foundation for tenants, companies, branches, users, roles, permissions, master data, sales/purchase documents, inventory, payments, journal entries, and audit logs.
+- Added Auth module scaffolding for tenant onboarding, login, token refresh, logout, password reset flow, and `/auth/me`.
+- Added tenant-authenticated API route surfaces for master data, sales, purchase, inventory, accounts, and dashboard KPIs.
+- Added frontend login and dashboard shell with empty states for a fresh ERP install.
+
+---
+
 # Velora ERP v1.3.0 Release Notes
 
 Version 1.3.0 converts the Core Platform into a true fresh-install ERP baseline.

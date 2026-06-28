@@ -2,6 +2,21 @@
 
 All notable changes to Velora ERP will be documented in this file.
 
+## [1.4.0] - 2026-06-28
+
+### Added
+- Introduced the requested ERP monorepo structure with `backend/` and `frontend/`.
+- Added Express.js API foundation with centralized responses, validation, auth middleware, tenant context, and error handling.
+- Added Docker Compose for PostgreSQL and Redis.
+- Added Prisma schema foundation covering multi-tenant auth, master data, sales/purchase document primitives, inventory ledger, payments, accounts, and audit logs.
+- Added Auth module endpoints for register, login, refresh token, logout, forgot password, reset password, and current user.
+- Added Master Data CRUD route foundation with tenant and company filtering.
+- Added dashboard KPI route with Redis caching.
+- Added React 18 + Vite frontend shell with login, dashboard, navigation, empty states, and module placeholders.
+
+### Changed
+- Repositioned the repository from a single Next.js UI prototype into an ERP application architecture foundation for customer tenant data.
+
 ## [1.3.0] - 2026-06-28
 
 ### Changed
