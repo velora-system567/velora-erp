@@ -1,3 +1,16 @@
+# Velora ERP v1.4.3 Release Notes
+
+Version 1.4.3 improves mobile and cross-device layout quality.
+
+## What Changed
+
+- Added mobile header and bottom navigation.
+- Fixed typography so Android/browser custom fonts do not make ERP text look unprofessional.
+- Improved mobile card spacing, button sizing, dashboard grids, and safe-area padding.
+- Kept desktop sidebar productivity layout intact.
+
+---
+
 # Velora ERP v1.4.2 Release Notes
 
 Version 1.4.2 fixes the blank hosted frontend by removing legacy React/Next dependencies from the root workspace.

@@ -20,20 +20,20 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
-      <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
+      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-blue-700">Business Overview</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-950">Start with your company data</h1>
+            <h1 className="mt-2 text-2xl font-semibold leading-tight text-slate-950 sm:text-3xl">Start with your company data</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
               This ERP starts empty. Add company, branches, employees, items, customers, vendors, and opening stock to activate live KPIs.
             </p>
           </div>
-          <Building2 className="text-blue-600" size={24} />
+          <Building2 className="hidden shrink-0 text-blue-600 sm:block" size={24} />
         </div>
       </header>
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(([label, value, Icon]) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <Icon className="text-blue-600" size={20} />

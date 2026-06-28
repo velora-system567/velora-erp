@@ -2,6 +2,13 @@
 
 All notable changes to Velora ERP will be documented in this file.
 
+## [1.4.3] - 2026-06-28
+
+### Fixed
+- Added mobile app chrome with sticky header and bottom navigation.
+- Hardened typography with a professional font stack so device-level custom fonts do not affect ERP readability.
+- Improved responsive spacing, card padding, bottom safe area, and mobile dashboard grids.
+
 ## [1.4.2] - 2026-06-28
 
 ### Fixed
