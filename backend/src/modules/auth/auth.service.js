@@ -71,7 +71,7 @@ export async function registerTenant(input) {
         companyId: crypto.randomUUID(),
         name: input.companyName,
         legalName: input.legalName,
-        gstin: input.gstin,
+        gstin: input.gstin || null,
       },
     });
 

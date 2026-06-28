@@ -6,7 +6,7 @@ export const registerSchema = z.object({
     tenantName: z.string().min(2),
     companyName: z.string().min(2),
     legalName: z.string().min(2),
-    gstin: z.string().regex(gstinRegex).optional(),
+    gstin: z.string().regex(gstinRegex).optional().or(z.literal("")),
     ownerName: z.string().min(2),
     ownerEmail: z.string().email(),
     ownerPhone: z.string().min(8).optional(),

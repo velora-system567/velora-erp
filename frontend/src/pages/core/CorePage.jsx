@@ -74,7 +74,11 @@ export function CorePage({ resource }) {
   const isEditing = Boolean(editing);
 
   const saveMutation = useMutation({
-    mutationFn: () => (isEditing ? coreApi.update(resource, editing.id, form) : coreApi.create(resource, form)),
+    mutationFn: () => {
+      const payload = { ...form };
+      if (resource === "users" && isEditing && !payload.password) delete payload.password;
+      return isEditing ? coreApi.update(resource, editing.id, payload) : coreApi.create(resource, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [resource] });
       setEditing(null);
