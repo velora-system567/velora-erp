@@ -14,7 +14,11 @@ export async function apiRequest(path, options = {}) {
 
   const payload = await response.json();
   if (!response.ok || !payload.success) {
-    throw new Error(payload.message || "Request failed");
+    const issues = payload.data?.issues;
+    const issueText = Array.isArray(issues)
+      ? issues.map((issue) => `${issue.path?.slice(1).join(".") || "Field"}: ${issue.message}`).join("\n")
+      : "";
+    throw new Error(issueText || payload.message || "Request failed");
   }
   return payload;
 }

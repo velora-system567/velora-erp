@@ -5,6 +5,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerTenant } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
+const fieldConfig = [
+  ["tenantName", "Workspace Name", "text", "ABC Industries ERP"],
+  ["companyName", "Company Name", "text", "ABC Industries"],
+  ["legalName", "Legal Name", "text", "ABC Industries Private Limited"],
+  ["gstin", "GSTIN", "text", "Optional, example: 27ABCDE1234F1Z5"],
+  ["ownerName", "Owner Name", "text", "Owner or admin name"],
+  ["ownerEmail", "Owner Email", "email", "owner@company.com"],
+  ["ownerPhone", "Owner Phone", "tel", "Mobile number"],
+  ["password", "Password", "password", "Minimum 8 characters"],
+];
+
 export function Register() {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
@@ -30,9 +41,14 @@ export function Register() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function submit(event) {
+    event.preventDefault();
+    mutation.mutate({ ...form, gstin: form.gstin.trim(), ownerPhone: form.ownerPhone.trim() });
+  }
+
   return (
     <div className="grid min-h-screen place-items-center bg-slate-50 p-4">
-      <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(form); }} className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <form onSubmit={submit} className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white"><Building2 size={22} /></div>
           <div>
@@ -41,23 +57,15 @@ export function Register() {
           </div>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {[
-            ["tenantName", "Workspace Name"],
-            ["companyName", "Company Name"],
-            ["legalName", "Legal Name"],
-            ["gstin", "GSTIN"],
-            ["ownerName", "Owner Name"],
-            ["ownerEmail", "Owner Email"],
-            ["ownerPhone", "Owner Phone"],
-            ["password", "Password"],
-          ].map(([key, label]) => (
+          {fieldConfig.map(([key, label, type, placeholder]) => (
             <label key={key} className="block text-sm font-medium text-slate-700">
               {label}
-              <input type={key === "password" ? "password" : "text"} value={form[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              <input type={type} placeholder={placeholder} value={form[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              {key === "gstin" ? <span className="mt-1 block text-xs leading-5 text-slate-500">Leave blank if GST registration is not available yet.</span> : null}
             </label>
           ))}
         </div>
-        {mutation.error ? <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
+        {mutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
         <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={mutation.isPending}>
           Create Workspace
         </button>
