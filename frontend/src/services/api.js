@@ -23,6 +23,22 @@ export function login(input) {
   return apiRequest("/auth/login", { method: "POST", body: JSON.stringify(input) });
 }
 
+export function registerTenant(input) {
+  return apiRequest("/auth/register", { method: "POST", body: JSON.stringify(input) });
+}
+
 export function getDashboardKpis() {
   return apiRequest("/dashboard/kpis");
 }
+
+export const coreApi = {
+  company: () => apiRequest("/company"),
+  updateCompany: (input) => apiRequest("/company", { method: "PATCH", body: JSON.stringify(input) }),
+  list: (resource) => apiRequest(`/${resource}`),
+  create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
+  update: (resource, id, input) => apiRequest(`/${resource}/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  remove: (resource, id) => apiRequest(`/${resource}/${id}`, { method: "DELETE" }),
+  resetPassword: (id, password) => apiRequest(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ password }) }),
+  disableUser: (id) => apiRequest(`/users/${id}/disable`, { method: "POST" }),
+  auditLogs: () => apiRequest("/audit-logs"),
+};

@@ -3,20 +3,35 @@ import jwt from "jsonwebtoken";
 import { getPrisma } from "../../config/db.js";
 import { env } from "../../config/env.js";
 
-const DEFAULT_OWNER_PERMISSIONS = ["*"];
+const ROLE_PERMISSIONS = {
+  OWNER: ["*"],
+  ADMIN: ["company:read", "company:update", "branches:read", "branches:create", "branches:update", "branches:delete", "users:read", "users:create", "users:update", "users:delete", "products:read", "products:create", "products:update", "products:delete", "audit:read"],
+  STORE_KEEPER: ["company:read", "branches:read", "products:read", "products:create", "products:update", "audit:read"],
+  ACCOUNTANT: ["company:read", "branches:read", "products:read", "audit:read"],
+  SALES_MANAGER: ["company:read", "branches:read", "products:read", "audit:read"],
+  SALESMAN: ["company:read", "branches:read", "products:read"],
+  PURCHASE_MANAGER: ["company:read", "branches:read", "products:read", "audit:read"],
+  PRODUCTION_OPERATOR: ["company:read", "branches:read", "products:read"],
+  HR_MANAGER: ["company:read", "branches:read", "users:read", "users:create", "users:update", "audit:read"],
+};
 
 function slugify(value) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function signAccessToken(user, permissions = DEFAULT_OWNER_PERMISSIONS) {
+function permissionsFor(user) {
+  const names = user.userRoles?.map((userRole) => userRole.role?.name).filter(Boolean) || ["OWNER"];
+  return [...new Set(names.flatMap((name) => ROLE_PERMISSIONS[name] || []))];
+}
+
+function signAccessToken(user) {
   return jwt.sign(
     {
       sub: user.id,
       tenantId: user.tenantId,
       companyId: user.companyId,
       email: user.email,
-      permissions,
+      permissions: permissionsFor(user),
     },
     env.JWT_ACCESS_SECRET,
     { expiresIn: env.ACCESS_TOKEN_EXPIRES_IN },
@@ -93,11 +108,16 @@ export async function registerTenant(input) {
       },
     });
 
+    const userWithRoles = await tx.user.findUnique({
+      where: { id: owner.id },
+      include: { userRoles: { include: { role: true } } },
+    });
+
     return {
       tenant,
       company,
-      user: owner,
-      accessToken: signAccessToken(owner),
+      user: userWithRoles,
+      accessToken: signAccessToken(userWithRoles),
       refreshToken: signRefreshToken(owner),
     };
   });
@@ -131,7 +151,7 @@ export function refreshAccessToken(refreshToken) {
       tenantId: payload.tenantId,
       companyId: payload.companyId,
       email: payload.email,
-      permissions: DEFAULT_OWNER_PERMISSIONS,
+      permissions: payload.permissions || [],
     },
     env.JWT_ACCESS_SECRET,
     { expiresIn: env.ACCESS_TOKEN_EXPIRES_IN },

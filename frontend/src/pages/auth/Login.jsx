@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { z } from "zod";
 import { hasApiBaseUrl, login } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
@@ -49,6 +50,7 @@ export function Login() {
         <button disabled={!hasApiBaseUrl} className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300">
           Login
         </button>
+        <p className="mt-4 text-center text-sm text-slate-600">First company setup? <Link className="font-semibold text-blue-700" to="/register">Create workspace</Link></p>
       </form>
     </div>
   );

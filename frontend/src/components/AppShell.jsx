@@ -1,17 +1,28 @@
-import { Activity, BarChart3, Boxes, Building2, FileText, Home, Package, ShoppingCart } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Activity, BarChart3, Building2, FileText, Home, LogOut, MapPin, Package, ShoppingCart, Users } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/auth";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: Home },
-  { to: "/master", label: "Master Data", icon: Boxes },
+  { to: "/company", label: "Company", icon: Building2 },
+  { to: "/branches", label: "Branches", icon: MapPin },
+  { to: "/users", label: "Users", icon: Users },
+  { to: "/products", label: "Products", icon: Package },
+  { to: "/activity", label: "Audit Log", icon: Activity },
   { to: "/sales", label: "Sales", icon: ShoppingCart },
   { to: "/purchase", label: "Purchase", icon: FileText },
-  { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/accounts", label: "Accounts", icon: BarChart3 },
-  { to: "/activity", label: "Activity", icon: Activity },
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clearSession);
+  function logout() {
+    clearSession();
+    navigate("/login");
+  }
+
   return (
     <div className="min-h-dvh bg-slate-50 lg:grid lg:grid-cols-[272px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-white lg:block">
@@ -21,8 +32,8 @@ export function AppShell() {
               <Building2 size={20} />
             </div>
             <div>
-              <p className="font-semibold text-slate-950">Your Company</p>
-              <p className="text-xs text-slate-500">Velora ERP</p>
+              <p className="font-semibold text-slate-950">{user?.name || "Your Company"}</p>
+              <p className="text-xs text-slate-500">{user?.email || "Velora ERP"}</p>
             </div>
           </div>
           <nav className="mt-8 space-y-1">
@@ -41,9 +52,12 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <div className="mt-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-auto space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-950">Fresh ERP</p>
             <p className="mt-1 text-xs leading-5 text-slate-600">Enter customer business data to begin operations.</p>
+            <button onClick={logout} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <LogOut size={16} /> Logout
+            </button>
           </div>
         </div>
       </aside>
@@ -54,9 +68,10 @@ export function AppShell() {
               <Building2 size={20} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-base font-semibold text-slate-950">Your Company</p>
-              <p className="text-xs text-slate-500">Velora ERP</p>
+              <p className="truncate text-base font-semibold text-slate-950">{user?.name || "Your Company"}</p>
+              <p className="text-xs text-slate-500">{user?.email || "Velora ERP"}</p>
             </div>
+            <button onClick={logout} className="ml-auto rounded-lg border border-slate-200 p-2 text-slate-600"><LogOut size={18} /></button>
           </div>
         </header>
         <main className="min-w-0 pb-24 lg:pb-0">
@@ -75,7 +90,7 @@ export function AppShell() {
                 }
               >
                 <item.icon size={20} />
-                <span className="max-w-full truncate">{item.label === "Master Data" ? "Master" : item.label}</span>
+                <span className="max-w-full truncate">{item.label}</span>
               </NavLink>
             ))}
           </div>
