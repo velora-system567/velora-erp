@@ -11,6 +11,7 @@
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
+    "postinstall": "npm run prisma:generate",
     "start": "npm run start --workspace backend",
     "lint": "eslint",
     "prisma:generate": "npm run prisma:generate --workspace backend"
