@@ -1,3 +1,16 @@
+# Velora ERP v1.4.2 Release Notes
+
+Version 1.4.2 fixes the blank hosted frontend by removing legacy React/Next dependencies from the root workspace.
+
+## What Changed
+
+- Removed old root Next.js and React 19 dependencies.
+- Kept the frontend on React 18 as required by the ERP prompt.
+- Changed routing to a standard layout route with `Outlet`.
+- Improved build consistency and frontend load reliability on Vercel.
+
+---
+
 # Velora ERP v1.4.1 Release Notes
 
 Version 1.4.1 fixes the hosted frontend behavior when the backend API has not yet been deployed.

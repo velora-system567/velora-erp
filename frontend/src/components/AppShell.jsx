@@ -1,5 +1,5 @@
 import { Activity, BarChart3, Boxes, Building2, FileText, Home, Package, ShoppingCart } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -11,7 +11,7 @@ const navItems = [
   { to: "/activity", label: "Activity", icon: Activity },
 ];
 
-export function AppShell({ children }) {
+export function AppShell() {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[272px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-white lg:block">
@@ -47,7 +47,9 @@ export function AppShell({ children }) {
           </div>
         </div>
       </aside>
-      <main className="min-w-0">{children}</main>
+      <main className="min-w-0">
+        <Outlet />
+      </main>
     </div>
   );
 }
