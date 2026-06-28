@@ -4,7 +4,7 @@ import { Building2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { login } from "../../services/api";
+import { hasApiBaseUrl, login } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
 const schema = z.object({
@@ -41,7 +41,12 @@ export function Login() {
         <label className="mt-4 block text-sm font-medium text-slate-700">Password</label>
         <input type="password" className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" {...form.register("password")} />
         {mutation.error ? <p className="mt-3 text-sm text-rose-600">{mutation.error.message}</p> : null}
-        <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
+        {!hasApiBaseUrl ? (
+          <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm leading-6 text-blue-900">
+            Backend API is not connected on this deployment yet. Configure <span className="font-mono font-semibold">VITE_API_BASE_URL</span> after deploying the Express API.
+          </p>
+        ) : null}
+        <button disabled={!hasApiBaseUrl} className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300">
           Login
         </button>
       </form>

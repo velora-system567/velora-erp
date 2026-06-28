@@ -2,6 +2,13 @@
 
 All notable changes to Velora ERP will be documented in this file.
 
+## [1.4.1] - 2026-06-28
+
+### Fixed
+- Prevented the hosted Vercel frontend from calling `localhost:4000` in customer browsers when no production API URL is configured.
+- Added clear backend connection messaging for Login and Dashboard.
+- Added frontend environment example for `VITE_API_BASE_URL`.
+
 ## [1.4.0] - 2026-06-28
 
 ### Added

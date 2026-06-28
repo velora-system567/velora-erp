@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Building2, ClipboardCheck, Package, ReceiptText, WalletCards } from "lucide-react";
 import { EmptyState } from "../../components/EmptyState";
-import { getDashboardKpis } from "../../services/api";
+import { getDashboardKpis, hasApiBaseUrl } from "../../services/api";
 
 export function Dashboard() {
-  const { data } = useQuery({ queryKey: ["dashboard-kpis"], queryFn: getDashboardKpis, retry: false });
+  const { data } = useQuery({
+    queryKey: ["dashboard-kpis"],
+    queryFn: getDashboardKpis,
+    retry: false,
+    enabled: hasApiBaseUrl,
+  });
   const kpis = data?.data;
 
   const cards = [
@@ -41,6 +46,11 @@ export function Dashboard() {
         <EmptyState title="No Sales Yet" description="Raise the first quotation, sales order, or GST invoice to begin tracking revenue." action="Create Quotation" />
         <EmptyState title="No Stock Data" description="Add warehouses, items, and opening stock to start inventory tracking." action="Add Opening Stock" />
       </section>
+      {!hasApiBaseUrl ? (
+        <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          This hosted frontend is running without a connected backend API. Set <span className="font-mono font-semibold">VITE_API_BASE_URL</span> in Vercel after deploying the Express API.
+        </section>
+      ) : null}
     </div>
   );
 }

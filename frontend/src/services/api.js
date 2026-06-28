@@ -1,6 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+export const hasApiBaseUrl = Boolean(API_BASE_URL);
 
 export async function apiRequest(path, options = {}) {
+  if (!API_BASE_URL) {
+    throw new Error("Backend API is not connected for this deployment.");
+  }
+
   const token = localStorage.getItem("velora_access_token");
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,

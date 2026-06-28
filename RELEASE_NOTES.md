@@ -1,3 +1,15 @@
+# Velora ERP v1.4.1 Release Notes
+
+Version 1.4.1 fixes the hosted frontend behavior when the backend API has not yet been deployed.
+
+## What Changed
+
+- The public Vercel frontend no longer attempts to call `http://localhost:4000/api`.
+- Login and Dashboard now show a clear backend connection message until `VITE_API_BASE_URL` is configured.
+- Added `frontend/.env.example`.
+
+---
+
 # Velora ERP v1.4.0 Release Notes
 
 Version 1.4.0 updates Velora ERP to the requested multi-tenant ERP architecture foundation.
