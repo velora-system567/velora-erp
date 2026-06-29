@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Building2 } from "lucide-react";
+import { Building2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerTenant } from "../../services/api";
@@ -11,7 +11,6 @@ const fieldConfig = [
   ["ownerName", "Owner Name", "text", "Owner or admin name"],
   ["ownerEmail", "Owner Email", "email", "owner@company.com"],
   ["ownerPhone", "Owner Phone", "tel", "Mobile number"],
-  ["password", "Password", "password", "Minimum 8 characters"],
 ];
 
 export function Register() {
@@ -24,7 +23,12 @@ export function Register() {
     ownerEmail: "",
     ownerPhone: "",
     password: "",
+    confirmPassword: "",
+    phoneOtp: "",
+    emailOtp: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [sentOtp, setSentOtp] = useState({ phone: false, email: false });
   const mutation = useMutation({
     mutationFn: registerTenant,
     onSuccess: (payload) => {
@@ -40,6 +44,10 @@ export function Register() {
   function submit(event) {
     event.preventDefault();
     mutation.mutate({ ...form, gstin: form.gstin.trim(), ownerPhone: form.ownerPhone.trim() });
+  }
+
+  function sendOtp(type) {
+    setSentOtp((current) => ({ ...current, [type]: true }));
   }
 
   return (
@@ -60,6 +68,35 @@ export function Register() {
               {key === "gstin" ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing phase: fake GSTIN values are allowed. Leave blank if not needed.</span> : null}
             </label>
           ))}
+          <label className="block text-sm font-medium text-slate-700">
+            Password
+            <div className="mt-2 flex h-11 rounded-lg border border-slate-200 focus-within:border-blue-500">
+              <input type={showPassword ? "text" : "password"} placeholder="Minimum 8 characters" value={form.password} onChange={(event) => update("password", event.target.value)} className="min-w-0 flex-1 rounded-l-lg px-3 outline-none" />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} className="grid w-11 place-items-center text-slate-500">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Confirm Password
+            <input type={showPassword ? "text" : "password"} placeholder="Repeat password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Phone OTP
+            <div className="mt-2 flex gap-2">
+              <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              <button type="button" onClick={() => sendOtp("phone")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
+            </div>
+            {sentOtp.phone ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing OTP sent. Use 123456.</span> : null}
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Email OTP
+            <div className="mt-2 flex gap-2">
+              <input inputMode="numeric" placeholder="123456" value={form.emailOtp} onChange={(event) => update("emailOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              <button type="button" onClick={() => sendOtp("email")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
+            </div>
+            {sentOtp.email ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing OTP sent. Use 123456.</span> : null}
+          </label>
         </div>
         {mutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
         <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={mutation.isPending}>

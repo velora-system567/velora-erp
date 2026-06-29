@@ -9,7 +9,22 @@ export const registerSchema = z.object({
     ownerEmail: z.string().email(),
     ownerPhone: z.string().min(8).optional(),
     password: z.string().min(8),
-  }),
+    confirmPassword: z.string().min(8),
+    phoneOtp: z.string().length(6),
+    emailOtp: z.string().length(6),
+  })
+    .refine((value) => value.password === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: "Passwords do not match",
+    })
+    .refine((value) => value.phoneOtp === "123456", {
+      path: ["phoneOtp"],
+      message: "Invalid phone OTP. Use 123456 during testing.",
+    })
+    .refine((value) => value.emailOtp === "123456", {
+      path: ["emailOtp"],
+      message: "Invalid email OTP. Use 123456 during testing.",
+    }),
 });
 
 export const loginSchema = z.object({
