@@ -8,7 +8,7 @@ import { validate } from "../../middleware/validate.js";
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { writeAudit } from "../../utils/audit.js";
-import { gstinRegex, panRegex } from "../../utils/validators.js";
+import { panRegex } from "../../utils/validators.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
@@ -32,7 +32,7 @@ const companySchema = z.object({
   body: z.object({
     name: z.string().min(2),
     legalName: z.string().min(2),
-    gstin: z.string().regex(gstinRegex).optional().or(z.literal("")),
+    gstin: z.string().trim().min(1).max(32).optional().or(z.literal("")),
     panNumber: z.string().regex(panRegex).optional().or(z.literal("")),
     address: addressSchema,
   }),

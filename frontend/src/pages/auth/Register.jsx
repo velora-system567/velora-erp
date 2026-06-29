@@ -9,7 +9,7 @@ const fieldConfig = [
   ["tenantName", "Workspace Name", "text", "ABC Industries ERP"],
   ["companyName", "Company Name", "text", "ABC Industries"],
   ["legalName", "Legal Name", "text", "ABC Industries Private Limited"],
-  ["gstin", "GSTIN", "text", "Optional, example: 27ABCDE1234F1Z5"],
+  ["gstin", "GSTIN", "text", "Testing value allowed"],
   ["ownerName", "Owner Name", "text", "Owner or admin name"],
   ["ownerEmail", "Owner Email", "email", "owner@company.com"],
   ["ownerPhone", "Owner Phone", "tel", "Mobile number"],
@@ -61,7 +61,7 @@ export function Register() {
             <label key={key} className="block text-sm font-medium text-slate-700">
               {label}
               <input type={type} placeholder={placeholder} value={form[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              {key === "gstin" ? <span className="mt-1 block text-xs leading-5 text-slate-500">Leave blank if GST registration is not available yet.</span> : null}
+              {key === "gstin" ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing phase: fake GSTIN values are allowed. Leave blank if not needed.</span> : null}
             </label>
           ))}
         </div>
