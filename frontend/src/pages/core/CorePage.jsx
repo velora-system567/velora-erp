@@ -51,6 +51,27 @@ const configs = {
   },
 };
 
+const selectOptions = {
+  role: [
+    ["OWNER", "Owner"],
+    ["ADMIN", "Admin"],
+    ["ACCOUNTANT", "Accountant"],
+    ["SALES_MANAGER", "Sales Manager"],
+    ["SALESMAN", "Salesman"],
+    ["STORE_KEEPER", "Store Keeper"],
+    ["PURCHASE_MANAGER", "Purchase Manager"],
+    ["PRODUCTION_OPERATOR", "Production Operator"],
+    ["HR_MANAGER", "HR Manager"],
+  ],
+  itemType: [
+    ["RAW_MATERIAL", "Raw Material"],
+    ["FINISHED_GOOD", "Finished Good"],
+    ["SEMI_FINISHED", "Semi Finished"],
+    ["SERVICE", "Service"],
+    ["CONSUMABLE", "Consumable"],
+  ],
+};
+
 const placeholders = {
   name: "Rajesh Patil",
   code: "CUST-0018",
@@ -156,7 +177,15 @@ export function CorePage({ resource }) {
             {config.fields.map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? formValues[key.split(".")[0]]?.[key.split(".")[1]] || "" : formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                {selectOptions[key] ? (
+                  <select value={formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
+                    {selectOptions[key].map(([value, optionLabel]) => (
+                      <option key={value} value={value}>{optionLabel}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? formValues[key.split(".")[0]]?.[key.split(".")[1]] || "" : formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                )}
               </label>
             ))}
           </div>

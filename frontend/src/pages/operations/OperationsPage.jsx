@@ -12,6 +12,13 @@ const labels = {
 
 const blank = { documentNo: "", partyName: "", amount: "", status: "DRAFT", documentDate: "", notes: "" };
 
+const statusOptions = [
+  ["DRAFT", "Draft"],
+  ["APPROVED", "Approved"],
+  ["CANCELLED", "Cancelled"],
+  ["CLOSED", "Closed"],
+];
+
 const placeholders = {
   documentNo: "VEL/2024-25/0031",
   partyName: "Mahindra Auto Parts Pvt Ltd",
@@ -72,11 +79,18 @@ export function OperationsPage({ resource, embedded = false }) {
               ["partyName", config.party],
               ["amount", "Amount"],
               ["documentDate", "Date"],
+              ["status", "Status"],
               ["notes", "Notes"],
             ].map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input placeholder={key === "documentDate" ? undefined : placeholders[key]} type={key === "documentDate" ? "date" : key === "amount" ? "number" : "text"} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                {key === "status" ? (
+                  <select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
+                    {statusOptions.map(([value, optionLabel]) => <option key={value} value={value}>{optionLabel}</option>)}
+                  </select>
+                ) : (
+                  <input placeholder={key === "documentDate" ? undefined : placeholders[key]} type={key === "documentDate" ? "date" : key === "amount" ? "number" : "text"} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                )}
               </label>
             ))}
           </div>

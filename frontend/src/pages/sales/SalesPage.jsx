@@ -27,6 +27,15 @@ const statusLabels = {
   LOST: "Lost",
 };
 
+const sourceOptions = [
+  ["REFERENCE", "Reference"],
+  ["COLD_CALL", "Cold Call"],
+  ["WEBSITE", "Website"],
+  ["EXHIBITION", "Exhibition"],
+  ["SOCIAL_MEDIA", "Social Media"],
+  ["OTHER", "Other"],
+];
+
 const leadPlaceholders = {
   name: "Mahindra Auto Parts Pvt Ltd",
   contactPerson: "Rajesh Patil",
@@ -84,13 +93,53 @@ export function SalesPage() {
             ].map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input placeholder={key === "nextFollowUp" ? undefined : leadPlaceholders[key]} type={key === "nextFollowUp" ? "date" : key === "value" ? "number" : "text"} value={leadForm[key]} onChange={(event) => setLeadForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                <input
+                  placeholder={key === "nextFollowUp" ? undefined : leadPlaceholders[key]}
+                  type={key === "nextFollowUp" ? "date" : key === "value" ? "number" : "text"}
+                  value={leadForm[key]}
+                  onChange={(event) => setLeadForm((current) => ({ ...current, [key]: event.target.value }))}
+                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500"
+                />
               </label>
             ))}
+
+            <label className="block text-sm font-medium text-slate-700">
+              Priority
+              <select
+                value={leadForm.priority}
+                onChange={(event) => setLeadForm((current) => ({ ...current, priority: event.target.value }))}
+                className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500"
+              >
+                {[
+                  "LOW",
+                  "MEDIUM",
+                  "HIGH",
+                ].map((value) => (
+                  <option key={value} value={value}>
+                    {value.charAt(0) + value.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-slate-700">
+              Status
+              <select
+                value={leadForm.status}
+                onChange={(event) => setLeadForm((current) => ({ ...current, status: event.target.value }))}
+                className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500"
+              >
+                {Object.entries(statusLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block text-sm font-medium text-slate-700">
               Source
               <select value={leadForm.source} onChange={(event) => setLeadForm((current) => ({ ...current, source: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
-                {["REFERENCE", "COLD_CALL", "WEBSITE", "EXHIBITION", "SOCIAL_MEDIA", "OTHER"].map((value) => <option key={value}>{value}</option>)}
+                {sourceOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
           </div>
