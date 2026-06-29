@@ -9,6 +9,7 @@ import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { OperationsPage } from "./pages/operations/OperationsPage";
+import { SalesPage } from "./pages/sales/SalesPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 
 const queryClient = new QueryClient({
@@ -39,7 +40,7 @@ export default function App() {
             <Route path="/branches" element={<CorePage resource="branches" />} />
             <Route path="/users" element={<CorePage resource="users" />} />
             <Route path="/products" element={<CorePage resource="products" />} />
-            <Route path="/sales" element={<OperationsPage resource="sales" />} />
+            <Route path="/sales" element={<SalesPage />} />
             <Route path="/purchase" element={<OperationsPage resource="purchase" />} />
             <Route path="/inventory" element={<PlaceholderPage title="Inventory" description="Track stock ledger, stock transfers, adjustments, low-stock alerts, and valuation." action="Add Opening Stock" />} />
             <Route path="/accounts" element={<OperationsPage resource="accounts" />} />

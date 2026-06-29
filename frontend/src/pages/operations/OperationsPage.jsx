@@ -12,7 +12,7 @@ const labels = {
 
 const blank = { documentNo: "", partyName: "", amount: "", status: "DRAFT", documentDate: "", notes: "" };
 
-export function OperationsPage({ resource }) {
+export function OperationsPage({ resource, embedded = false }) {
   const config = labels[resource];
   const queryClient = useQueryClient();
   const [form, setForm] = useState(blank);
@@ -39,7 +39,7 @@ export function OperationsPage({ resource }) {
   });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
+    <div className={embedded ? "space-y-4" : "mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8"}>
       <header className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:p-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">{config.title}</h1>

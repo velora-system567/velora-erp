@@ -105,3 +105,10 @@ export const operationsApi = {
   create: (resource, input) => apiRequest(`/${resource}/records`, { method: "POST", body: JSON.stringify(input) }),
   remove: (resource, id) => apiRequest(`/${resource}/records/${id}`, { method: "DELETE" }),
 };
+
+export const leadsApi = {
+  list: () => apiRequest("/leads"),
+  create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
+  update: (id, input) => apiRequest(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  remove: (id) => apiRequest(`/leads/${id}`, { method: "DELETE" }),
+};

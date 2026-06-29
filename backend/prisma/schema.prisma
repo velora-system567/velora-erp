@@ -521,20 +521,29 @@ model BusinessDocumentLine {
 }
 
 model Lead {
-  id        String     @id @default(uuid()) @db.Uuid
-  tenantId  String     @map("tenant_id") @db.Uuid
-  companyId String     @map("company_id") @db.Uuid
-  branchId  String?    @map("branch_id") @db.Uuid
-  name      String
-  phone     String?
-  email     String?
-  status    LeadStatus @default(NEW)
-  createdBy String?    @map("created_by") @db.Uuid
-  updatedBy String?    @map("updated_by") @db.Uuid
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  isDeleted Boolean    @default(false) @map("is_deleted")
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @map("tenant_id") @db.Uuid
+  companyId     String     @map("company_id") @db.Uuid
+  branchId      String?    @map("branch_id") @db.Uuid
+  name          String
+  contactPerson String?    @map("contact_person")
+  phone         String?
+  email         String?
+  city          String?
+  source        String?
+  priority      String     @default("MEDIUM")
+  status        LeadStatus @default(NEW)
+  value         Int        @default(0)
+  notes         String?
+  requirement   String?
+  nextFollowUp  DateTime?  @map("next_follow_up")
+  createdBy     String?    @map("created_by") @db.Uuid
+  updatedBy     String?    @map("updated_by") @db.Uuid
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  isDeleted     Boolean    @default(false) @map("is_deleted")
 
+  @@index([tenantId, companyId, status, isDeleted])
   @@map("leads")
 }
 
