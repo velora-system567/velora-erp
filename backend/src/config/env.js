@@ -10,7 +10,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_ACCESS_SECRET: z.string().min(24),
   JWT_REFRESH_SECRET: z.string().min(24),
-  ACCESS_TOKEN_EXPIRES_IN: z.string().default("15m"),
+  ACCESS_TOKEN_EXPIRES_IN: z.string().default("8h"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   RESEND_API_KEY: z.string().optional(),

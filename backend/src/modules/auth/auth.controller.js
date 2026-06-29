@@ -48,7 +48,7 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
-  return ok(res, { accessToken: refreshAccessToken(req.validated.body.refreshToken) }, "Token refreshed");
+  return ok(res, await refreshAccessToken(req.validated.body.refreshToken), "Token refreshed");
 });
 
 export const logout = asyncHandler(async (req, res) => {

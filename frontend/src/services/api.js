@@ -1,7 +1,46 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const hasApiBaseUrl = Boolean(API_BASE_URL);
 
-export async function apiRequest(path, options = {}) {
+function clearStoredSession() {
+  localStorage.removeItem("velora_access_token");
+  localStorage.removeItem("velora_refresh_token");
+  localStorage.removeItem("velora_user");
+}
+
+function storeRefreshedSession(payload) {
+  if (payload.accessToken) localStorage.setItem("velora_access_token", payload.accessToken);
+  if (payload.user) localStorage.setItem("velora_user", JSON.stringify(payload.user));
+}
+
+async function parsePayload(response) {
+  const text = await response.text();
+  return text ? JSON.parse(text) : {};
+}
+
+function errorFromPayload(payload, fallback = "Request failed") {
+  const issues = payload.data?.issues;
+  const issueText = Array.isArray(issues)
+    ? issues.map((issue) => `${issue.path?.slice(1).join(".") || "Field"}: ${issue.message}`).join("\n")
+    : "";
+  return new Error(issueText || payload.message || fallback);
+}
+
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem("velora_refresh_token");
+  if (!refreshToken) return null;
+
+  const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+  const payload = await parsePayload(response);
+  if (!response.ok || !payload.success) return null;
+  storeRefreshedSession(payload.data);
+  return payload.data.accessToken;
+}
+
+export async function apiRequest(path, options = {}, retry = true) {
   const token = localStorage.getItem("velora_access_token");
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -12,13 +51,19 @@ export async function apiRequest(path, options = {}) {
     },
   });
 
-  const payload = await response.json();
+  const payload = await parsePayload(response);
+  if (response.status === 401 && retry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return apiRequest(path, options, false);
+    clearStoredSession();
+    if (!["/login", "/register"].includes(window.location.pathname)) {
+      window.location.href = "/login";
+    }
+    throw new Error("Your session expired. Please login again.");
+  }
+
   if (!response.ok || !payload.success) {
-    const issues = payload.data?.issues;
-    const issueText = Array.isArray(issues)
-      ? issues.map((issue) => `${issue.path?.slice(1).join(".") || "Field"}: ${issue.message}`).join("\n")
-      : "";
-    throw new Error(issueText || payload.message || "Request failed");
+    throw errorFromPayload(payload);
   }
   return payload;
 }

@@ -144,17 +144,27 @@ export async function loginUser(email, password) {
   };
 }
 
-export function refreshAccessToken(refreshToken) {
+export async function refreshAccessToken(refreshToken) {
   const payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
-  return jwt.sign(
-    {
-      sub: payload.sub,
-      tenantId: payload.tenantId,
-      companyId: payload.companyId,
-      email: payload.email,
-      permissions: payload.permissions || [],
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: payload.sub, tenantId: payload.tenantId, isDeleted: false, isActive: true },
+    include: { userRoles: { include: { role: true } } },
+  });
+  if (!user) {
+    const error = new Error("User not found or inactive");
+    error.statusCode = 401;
+    throw error;
+  }
+  return {
+    accessToken: signAccessToken(user),
+    user: {
+      id: user.id,
+      tenantId: user.tenantId,
+      companyId: user.companyId,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
     },
-    env.JWT_ACCESS_SECRET,
-    { expiresIn: env.ACCESS_TOKEN_EXPIRES_IN },
-  );
+  };
 }
