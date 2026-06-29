@@ -3,9 +3,7 @@ const testingGstinSchema = z.string().trim().min(1).max(32).optional().or(z.lite
 
 export const registerSchema = z.object({
   body: z.object({
-    tenantName: z.string().min(2),
     companyName: z.string().min(2),
-    legalName: z.string().min(2),
     gstin: testingGstinSchema,
     ownerName: z.string().min(2),
     ownerEmail: z.string().email(),

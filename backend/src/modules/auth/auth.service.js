@@ -54,13 +54,14 @@ function signRefreshToken(user) {
 export async function registerTenant(input) {
   const prisma = getPrisma();
   const passwordHash = await bcrypt.hash(input.password, 12);
-  const tenantSlug = `${slugify(input.tenantName)}-${Date.now()}`;
+  const companyName = input.companyName.trim();
+  const tenantSlug = `${slugify(companyName)}-${Date.now()}`;
 
   return prisma.$transaction(async (tx) => {
     const tenant = await tx.tenant.create({
       data: {
         tenantId: crypto.randomUUID(),
-        name: input.tenantName,
+        name: companyName,
         slug: tenantSlug,
       },
     });
@@ -69,8 +70,8 @@ export async function registerTenant(input) {
       data: {
         tenantId: tenant.id,
         companyId: crypto.randomUUID(),
-        name: input.companyName,
-        legalName: input.legalName,
+        name: companyName,
+        legalName: companyName,
         gstin: input.gstin || null,
       },
     });

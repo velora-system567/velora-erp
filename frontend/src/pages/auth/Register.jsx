@@ -6,9 +6,7 @@ import { registerTenant } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
 const fieldConfig = [
-  ["tenantName", "Workspace Name", "text", "ABC Industries ERP"],
   ["companyName", "Company Name", "text", "ABC Industries"],
-  ["legalName", "Legal Name", "text", "ABC Industries Private Limited"],
   ["gstin", "GSTIN", "text", "Testing value allowed"],
   ["ownerName", "Owner Name", "text", "Owner or admin name"],
   ["ownerEmail", "Owner Email", "email", "owner@company.com"],
@@ -20,9 +18,7 @@ export function Register() {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
   const [form, setForm] = useState({
-    tenantName: "",
     companyName: "",
-    legalName: "",
     gstin: "",
     ownerName: "",
     ownerEmail: "",
