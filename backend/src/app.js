@@ -24,12 +24,12 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.get("/api/health", (req, res) => ok(res, { status: "ok" }, "Velora ERP API is running"));
 app.use("/api/auth", authRoutes);
 app.use("/api", coreRoutes);
-app.use("/api", masterRoutes);
 app.use("/api", salesRoutes);
 app.use("/api", purchaseRoutes);
 app.use("/api", inventoryRoutes);
 app.use("/api", accountsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api", masterRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
