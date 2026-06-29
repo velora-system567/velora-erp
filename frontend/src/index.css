@@ -18,6 +18,14 @@ select {
   font: inherit;
 }
 
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: #c0c0c0;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
 #root {
   min-height: 100vh;
   min-height: 100dvh;

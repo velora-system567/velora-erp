@@ -12,6 +12,13 @@ const labels = {
 
 const blank = { documentNo: "", partyName: "", amount: "", status: "DRAFT", documentDate: "", notes: "" };
 
+const placeholders = {
+  documentNo: "VEL/2024-25/0031",
+  partyName: "Mahindra Auto Parts Pvt Ltd",
+  amount: "12500",
+  notes: "Delivery before month end",
+};
+
 export function OperationsPage({ resource, embedded = false }) {
   const config = labels[resource];
   const queryClient = useQueryClient();
@@ -69,7 +76,7 @@ export function OperationsPage({ resource, embedded = false }) {
             ].map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input type={key === "documentDate" ? "date" : key === "amount" ? "number" : "text"} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                <input placeholder={key === "documentDate" ? undefined : placeholders[key]} type={key === "documentDate" ? "date" : key === "amount" ? "number" : "text"} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               </label>
             ))}
           </div>

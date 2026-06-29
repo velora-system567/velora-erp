@@ -27,6 +27,16 @@ const statusLabels = {
   LOST: "Lost",
 };
 
+const leadPlaceholders = {
+  name: "Mahindra Auto Parts Pvt Ltd",
+  contactPerson: "Rajesh Patil",
+  phone: "9823456710",
+  email: "rajesh@mahindra.com",
+  city: "Pune",
+  value: "12500",
+  requirement: "Delivery before month end",
+};
+
 export function SalesPage() {
   const queryClient = useQueryClient();
   const [leadForm, setLeadForm] = useState(blankLead);
@@ -74,7 +84,7 @@ export function SalesPage() {
             ].map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input type={key === "nextFollowUp" ? "date" : key === "value" ? "number" : "text"} value={leadForm[key]} onChange={(event) => setLeadForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                <input placeholder={key === "nextFollowUp" ? undefined : leadPlaceholders[key]} type={key === "nextFollowUp" ? "date" : key === "value" ? "number" : "text"} value={leadForm[key]} onChange={(event) => setLeadForm((current) => ({ ...current, [key]: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               </label>
             ))}
             <label className="block text-sm font-medium text-slate-700">

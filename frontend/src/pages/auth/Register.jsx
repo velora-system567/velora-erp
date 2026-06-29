@@ -6,11 +6,11 @@ import { registerTenant, requestOtp } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
 const fieldConfig = [
-  ["companyName", "Company Name", "text", "ABC Industries"],
-  ["gstin", "GSTIN", "text", "Testing value allowed"],
-  ["ownerName", "Owner Name", "text", "Owner or admin name"],
-  ["ownerEmail", "Owner Email", "email", "owner@company.com"],
-  ["ownerPhone", "Owner Phone", "tel", "Mobile number"],
+  ["companyName", "Company Name", "text", "Mahindra Auto Parts Pvt Ltd"],
+  ["gstin", "GSTIN", "text", "27AABCM1234A1Z5"],
+  ["ownerName", "Owner Name", "text", "Rajesh Patil"],
+  ["ownerEmail", "Owner Email", "email", "rajesh@mahindra.com"],
+  ["ownerPhone", "Owner Phone", "tel", "9823456710"],
 ];
 
 export function Register() {
@@ -28,7 +28,6 @@ export function Register() {
     emailOtp: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [sentOtp, setSentOtp] = useState({ phone: false, email: false });
   const otpMutation = useMutation({ mutationFn: requestOtp });
   const mutation = useMutation({
     mutationFn: registerTenant,
@@ -51,7 +50,6 @@ export function Register() {
     const target = type === "phone" ? form.ownerPhone.trim() : form.ownerEmail.trim();
     otpMutation.mutate(
       { channel: type, target },
-      { onSuccess: () => setSentOtp((current) => ({ ...current, [type]: true })) },
     );
   }
 
@@ -70,13 +68,12 @@ export function Register() {
             <label key={key} className="block text-sm font-medium text-slate-700">
               {label}
               <input type={type} placeholder={placeholder} value={form[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              {key === "gstin" ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing phase: fake GSTIN values are allowed. Leave blank if not needed.</span> : null}
             </label>
           ))}
           <label className="block text-sm font-medium text-slate-700">
             Password
             <div className="mt-2 flex h-11 rounded-lg border border-slate-200 focus-within:border-blue-500">
-              <input type={showPassword ? "text" : "password"} placeholder="Minimum 8 characters" value={form.password} onChange={(event) => update("password", event.target.value)} className="min-w-0 flex-1 rounded-l-lg px-3 outline-none" />
+              <input type={showPassword ? "text" : "password"} placeholder="Rajesh@123" value={form.password} onChange={(event) => update("password", event.target.value)} className="min-w-0 flex-1 rounded-l-lg px-3 outline-none" />
               <button type="button" onClick={() => setShowPassword((value) => !value)} className="grid w-11 place-items-center text-slate-500">
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -84,7 +81,7 @@ export function Register() {
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Confirm Password
-            <input type={showPassword ? "text" : "password"} placeholder="Repeat password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+            <input type={showPassword ? "text" : "password"} placeholder="Rajesh@123" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Phone OTP
@@ -92,7 +89,6 @@ export function Register() {
               <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               <button type="button" onClick={() => sendOtp("phone")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
             </div>
-            {sentOtp.phone ? <span className="mt-1 block text-xs leading-5 text-slate-500">Phone OTP sent. Enter the code received by SMS.</span> : null}
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Email OTP
@@ -100,7 +96,6 @@ export function Register() {
               <input inputMode="numeric" placeholder="123456" value={form.emailOtp} onChange={(event) => update("emailOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               <button type="button" onClick={() => sendOtp("email")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
             </div>
-            {sentOtp.email ? <span className="mt-1 block text-xs leading-5 text-slate-500">Email OTP sent. Enter the code received by email.</span> : null}
           </label>
         </div>
         {otpMutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{otpMutation.error.message}</p> : null}

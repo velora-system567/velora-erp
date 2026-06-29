@@ -38,9 +38,9 @@ export function Login() {
           </div>
         </div>
         <label className="mt-6 block text-sm font-medium text-slate-700">Email</label>
-        <input className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" {...form.register("email")} />
+        <input placeholder="rajesh@mahindra.com" className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" {...form.register("email")} />
         <label className="mt-4 block text-sm font-medium text-slate-700">Password</label>
-        <input type="password" className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" {...form.register("password")} />
+        <input type="password" placeholder="Rajesh@123" className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" {...form.register("password")} />
         {mutation.error ? <p className="mt-3 text-sm text-rose-600">{mutation.error.message}</p> : null}
         {!hasApiBaseUrl ? (
           <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm leading-6 text-blue-900">

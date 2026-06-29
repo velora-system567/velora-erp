@@ -51,6 +51,29 @@ const configs = {
   },
 };
 
+const placeholders = {
+  name: "Rajesh Patil",
+  code: "CUST-0018",
+  "address.city": "Pune",
+  "address.state": "Maharashtra",
+  "address.pincode": "411026",
+  email: "rajesh@mahindra.com",
+  phone: "9823456710",
+  password: "Rajesh@123",
+  role: "ADMIN",
+  itemCode: "ITEM-0042",
+  hsnCode: "8708",
+  gstRate: "18",
+  purchasePrice: "12500",
+  sellingPrice: "12500",
+};
+
+function placeholderFor(resource, key) {
+  if (resource === "branches" && key === "name") return "Mahindra Auto Parts Pvt Ltd";
+  if (resource === "products" && key === "name") return "Brake Disc Assembly";
+  return placeholders[key] || "Search...";
+}
+
 function getValue(row, key) {
   if (key === "city") return row.address?.city || "-";
   if (key === "state") return row.address?.state || "-";
@@ -133,7 +156,7 @@ export function CorePage({ resource }) {
             {config.fields.map(([key, label]) => (
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
-                <input value={key.includes(".") ? formValues[key.split(".")[0]]?.[key.split(".")[1]] || "" : formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? formValues[key.split(".")[0]]?.[key.split(".")[1]] || "" : formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               </label>
             ))}
           </div>

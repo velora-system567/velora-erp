@@ -3,6 +3,16 @@ import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { coreApi } from "../../services/api";
 
+const placeholders = {
+  name: "Mahindra Auto Parts Pvt Ltd",
+  legalName: "Mahindra Auto Parts Pvt Ltd",
+  gstin: "27AABCM1234A1Z5",
+  panNumber: "AABCM1234A",
+  "address.city": "Pune",
+  "address.state": "Maharashtra",
+  "address.pincode": "411026",
+};
+
 export function CompanyPage() {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ["company"], queryFn: coreApi.company });
@@ -43,7 +53,7 @@ export function CompanyPage() {
           ].map(([key, label]) => (
             <label key={key} className="block text-sm font-medium text-slate-700">
               {label}
-              <input value={key.startsWith("address.") ? form.address?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              <input placeholder={placeholders[key]} value={key.startsWith("address.") ? form.address?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
             </label>
           ))}
         </div>
