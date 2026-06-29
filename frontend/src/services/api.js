@@ -31,8 +31,16 @@ export function registerTenant(input) {
   return apiRequest("/auth/register", { method: "POST", body: JSON.stringify(input) });
 }
 
+export function requestOtp(input) {
+  return apiRequest("/auth/request-otp", { method: "POST", body: JSON.stringify(input) });
+}
+
 export function getDashboardKpis() {
   return apiRequest("/dashboard/kpis");
+}
+
+export function getSalesChart() {
+  return apiRequest("/dashboard/sales-chart");
 }
 
 export const coreApi = {
@@ -45,4 +53,10 @@ export const coreApi = {
   resetPassword: (id, password) => apiRequest(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ password }) }),
   disableUser: (id) => apiRequest(`/users/${id}/disable`, { method: "POST" }),
   auditLogs: () => apiRequest("/audit-logs"),
+};
+
+export const operationsApi = {
+  list: (resource) => apiRequest(`/${resource}/records`),
+  create: (resource, input) => apiRequest(`/${resource}/records`, { method: "POST", body: JSON.stringify(input) }),
+  remove: (resource, id) => apiRequest(`/${resource}/records/${id}`, { method: "DELETE" }),
 };

@@ -90,6 +90,14 @@ export function CorePage({ resource }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [resource] }),
   });
   const resetMutation = useMutation({ mutationFn: (id) => coreApi.resetPassword(id, "ChangeMe@123") });
+  const importMutation = useMutation({
+    mutationFn: async (records) => {
+      for (const record of records) {
+        await coreApi.create(resource, { ...config.blank, ...record });
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [resource] }),
+  });
 
   const formValues = useMemo(() => form, [form]);
 
@@ -100,9 +108,22 @@ export function CorePage({ resource }) {
           <h1 className="text-2xl font-semibold text-slate-950">{config.title}</h1>
           <p className="mt-1 text-sm leading-6 text-slate-600">Create and maintain records used by your company operations.</p>
         </div>
-        <button onClick={() => { setEditing(null); setForm(config.blank); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-          <Plus size={18} /> {config.action}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            Import Excel
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const XLSX = await import("xlsx");
+              const workbook = XLSX.read(await file.arrayBuffer());
+              const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+              importMutation.mutate(rows);
+            }} />
+          </label>
+          <button onClick={() => { setEditing(null); setForm(config.blank); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
+            <Plus size={18} /> {config.action}
+          </button>
+        </div>
       </header>
 
       <section className="grid gap-4 lg:grid-cols-[380px_1fr]">

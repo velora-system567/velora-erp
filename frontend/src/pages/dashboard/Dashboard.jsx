@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Building2, ClipboardCheck, Package, ReceiptText, WalletCards } from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyState } from "../../components/EmptyState";
-import { getDashboardKpis, hasApiBaseUrl } from "../../services/api";
+import { getDashboardKpis, getSalesChart, hasApiBaseUrl } from "../../services/api";
 
 export function Dashboard() {
   const { data } = useQuery({
@@ -10,7 +11,14 @@ export function Dashboard() {
     retry: false,
     enabled: hasApiBaseUrl,
   });
+  const chartQuery = useQuery({
+    queryKey: ["dashboard-sales-chart"],
+    queryFn: getSalesChart,
+    retry: false,
+    enabled: hasApiBaseUrl,
+  });
   const kpis = data?.data;
+  const salesRows = chartQuery.data?.data?.rows || [];
 
   const cards = [
     ["Today's Sales", kpis?.todaysSalesPaise ?? 0, ReceiptText],
@@ -43,7 +51,36 @@ export function Dashboard() {
         ))}
       </section>
       <section className="grid gap-6 lg:grid-cols-2">
-        <EmptyState title="No Sales Yet" description="Raise the first quotation, sales order, or GST invoice to begin tracking revenue." action="Create Quotation" />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Today's Sales</p>
+              <p className="mt-1 text-3xl font-semibold text-slate-950">₹{((kpis?.todaysSalesPaise || 0) / 100).toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-xs text-slate-500">Last 7 days from saved sales records</p>
+            </div>
+            <ReceiptText className="text-blue-600" size={22} />
+          </div>
+          <div className="mt-5 h-56">
+            {salesRows.some((row) => row.sales > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesRows} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="salesFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.18} />
+                      <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={34} />
+                  <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Sales"]} />
+                  <Area type="monotone" dataKey="sales" stroke="#2563eb" strokeWidth={2} fill="url(#salesFill)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No Sales Yet" description="Add a sales record to see the sales trend." action="" />
+            )}
+          </div>
+        </div>
         <EmptyState title="No Stock Data" description="Add warehouses, items, and opening stock to start inventory tracking." action="Add Opening Stock" />
       </section>
       {!hasApiBaseUrl ? (

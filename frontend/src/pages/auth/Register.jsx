@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Building2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerTenant } from "../../services/api";
+import { registerTenant, requestOtp } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
 const fieldConfig = [
@@ -29,6 +29,7 @@ export function Register() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [sentOtp, setSentOtp] = useState({ phone: false, email: false });
+  const otpMutation = useMutation({ mutationFn: requestOtp });
   const mutation = useMutation({
     mutationFn: registerTenant,
     onSuccess: (payload) => {
@@ -47,7 +48,11 @@ export function Register() {
   }
 
   function sendOtp(type) {
-    setSentOtp((current) => ({ ...current, [type]: true }));
+    const target = type === "phone" ? form.ownerPhone.trim() : form.ownerEmail.trim();
+    otpMutation.mutate(
+      { channel: type, target },
+      { onSuccess: () => setSentOtp((current) => ({ ...current, [type]: true })) },
+    );
   }
 
   return (
@@ -87,7 +92,7 @@ export function Register() {
               <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               <button type="button" onClick={() => sendOtp("phone")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
             </div>
-            {sentOtp.phone ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing OTP sent. Use 123456.</span> : null}
+            {sentOtp.phone ? <span className="mt-1 block text-xs leading-5 text-slate-500">Phone OTP sent. Enter the code received by SMS.</span> : null}
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Email OTP
@@ -95,9 +100,10 @@ export function Register() {
               <input inputMode="numeric" placeholder="123456" value={form.emailOtp} onChange={(event) => update("emailOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
               <button type="button" onClick={() => sendOtp("email")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
             </div>
-            {sentOtp.email ? <span className="mt-1 block text-xs leading-5 text-slate-500">Testing OTP sent. Use 123456.</span> : null}
+            {sentOtp.email ? <span className="mt-1 block text-xs leading-5 text-slate-500">Email OTP sent. Enter the code received by email.</span> : null}
           </label>
         </div>
+        {otpMutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{otpMutation.error.message}</p> : null}
         {mutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
         <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={mutation.isPending}>
           Create Workspace

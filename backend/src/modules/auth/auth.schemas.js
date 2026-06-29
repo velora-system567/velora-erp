@@ -1,6 +1,13 @@
 import { z } from "zod";
 const testingGstinSchema = z.string().trim().min(1).max(32).optional().or(z.literal(""));
 
+export const requestOtpSchema = z.object({
+  body: z.object({
+    channel: z.enum(["email", "phone"]),
+    target: z.string().min(5),
+  }),
+});
+
 export const registerSchema = z.object({
   body: z.object({
     companyName: z.string().min(2),
@@ -17,14 +24,6 @@ export const registerSchema = z.object({
       path: ["confirmPassword"],
       message: "Passwords do not match",
     })
-    .refine((value) => value.phoneOtp === "123456", {
-      path: ["phoneOtp"],
-      message: "Invalid phone OTP. Use 123456 during testing.",
-    })
-    .refine((value) => value.emailOtp === "123456", {
-      path: ["emailOtp"],
-      message: "Invalid email OTP. Use 123456 during testing.",
-    }),
 });
 
 export const loginSchema = z.object({

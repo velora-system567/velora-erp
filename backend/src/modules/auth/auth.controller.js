@@ -1,6 +1,7 @@
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { loginUser, refreshAccessToken, registerTenant } from "./auth.service.js";
+import { requestOtp as requestOtpCode, verifyOtp } from "./otp.service.js";
 
 function publicUser(user) {
   return {
@@ -14,6 +15,10 @@ function publicUser(user) {
 }
 
 export const register = asyncHandler(async (req, res) => {
+  await verifyOtp({ channel: "email", target: req.validated.body.ownerEmail, code: req.validated.body.emailOtp });
+  if (req.validated.body.ownerPhone) {
+    await verifyOtp({ channel: "phone", target: req.validated.body.ownerPhone, code: req.validated.body.phoneOtp });
+  }
   const result = await registerTenant(req.validated.body);
   return created(
     res,
@@ -26,6 +31,11 @@ export const register = asyncHandler(async (req, res) => {
     },
     "Tenant registered successfully",
   );
+});
+
+export const requestOtp = asyncHandler(async (req, res) => {
+  await requestOtpCode(req.validated.body);
+  return ok(res, {}, "Verification code sent");
 });
 
 export const login = asyncHandler(async (req, res) => {

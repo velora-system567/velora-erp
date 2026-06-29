@@ -9,18 +9,21 @@ import {
   refreshToken,
   register,
   resetPassword,
+  requestOtp,
 } from "./auth.controller.js";
 import {
   forgotPasswordSchema,
   loginSchema,
   refreshTokenSchema,
   registerSchema,
+  requestOtpSchema,
   resetPasswordSchema,
 } from "./auth.schemas.js";
 
 const router = Router();
 
 router.post("/register", validate(registerSchema), register);
+router.post("/request-otp", validate(requestOtpSchema), requestOtp);
 router.post("/login", validate(loginSchema), login);
 router.post("/refresh-token", validate(refreshTokenSchema), refreshToken);
 router.post("/logout", requireAuth, logout);

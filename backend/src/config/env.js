@@ -13,6 +13,11 @@ const envSchema = z.object({
   ACCESS_TOKEN_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+  RESEND_API_KEY: z.string().optional(),
+  OTP_FROM_EMAIL: z.string().email().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_PHONE: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

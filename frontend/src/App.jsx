@@ -8,6 +8,7 @@ import { AuditLogPage } from "./pages/core/AuditLogPage";
 import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
+import { OperationsPage } from "./pages/operations/OperationsPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 
 const queryClient = new QueryClient();
@@ -26,10 +27,10 @@ export default function App() {
             <Route path="/branches" element={<CorePage resource="branches" />} />
             <Route path="/users" element={<CorePage resource="users" />} />
             <Route path="/products" element={<CorePage resource="products" />} />
-            <Route path="/sales" element={<PlaceholderPage title="Sales" description="Create leads, quotations, sales orders, delivery challans, GST invoices, and payment receipts." action="Create Quotation" />} />
-            <Route path="/purchase" element={<PlaceholderPage title="Purchase" description="Create purchase enquiries, purchase orders, GRNs, vendor bills, and payment records." action="Create Purchase Order" />} />
+            <Route path="/sales" element={<OperationsPage resource="sales" />} />
+            <Route path="/purchase" element={<OperationsPage resource="purchase" />} />
             <Route path="/inventory" element={<PlaceholderPage title="Inventory" description="Track stock ledger, stock transfers, adjustments, low-stock alerts, and valuation." action="Add Opening Stock" />} />
-            <Route path="/accounts" element={<PlaceholderPage title="Accounts" description="View trial balance, profit and loss, balance sheet, GST summaries, ledgers, and aging reports." action="Open Reports" />} />
+            <Route path="/accounts" element={<OperationsPage resource="accounts" />} />
             <Route path="/activity" element={<AuditLogPage />} />
           </Route>
           </Route>
