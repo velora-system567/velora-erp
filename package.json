@@ -12,14 +12,23 @@
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
-    "postinstall": "npm run prisma:generate",
+    "build:backend": "npm run build --workspace backend",
+    "postinstall": "node -e \"try { require('child_process').execSync('npm run prisma:generate', { stdio: 'inherit' }) } catch(e) { console.log('Skipping prisma:generate (not available in this context)') }\"",
     "start": "npm run start --workspace backend",
-    "lint": "eslint",
+    "lint": "eslint --ext .ts,.tsx,.js,.jsx,.mjs .",
     "prisma:generate": "npm run prisma:generate --workspace backend"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "next": "^16.2.10"
+  },
   "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/react": "19.2.17",
     "eslint": "^9",
-    "typescript": "^5"
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript": "^5",
+    "typescript-eslint": "^8.62.1"
   }
 }
+>>>>>>> e996678 (Trial 1)
