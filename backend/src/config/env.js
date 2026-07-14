@@ -18,6 +18,11 @@ const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_PHONE: z.string().optional(),
+  SMS_API_KEY: z.string().optional(),
+  SMS_SECRET: z.string().optional(),
+  SMS_ENDPOINT: z.string().optional(),
+  SENDER_ID: z.string().optional(),
+  AUTH_TOKENS: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

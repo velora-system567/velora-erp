@@ -28,6 +28,10 @@ export function Register() {
     emailOtp: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [sendingChannel, setSendingChannel] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [validationError, setValidationError] = useState("");
+
   const otpMutation = useMutation({ mutationFn: requestOtp });
   const mutation = useMutation({
     mutationFn: registerTenant,
@@ -39,6 +43,10 @@ export function Register() {
 
   function update(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (key === "ownerPhone" || key === "ownerEmail") {
+      setValidationError("");
+      setSuccessMessage("");
+    }
   }
 
   function submit(event) {
@@ -48,8 +56,46 @@ export function Register() {
 
   function sendOtp(type) {
     const target = type === "phone" ? form.ownerPhone.trim() : form.ownerEmail.trim();
+    
+    // Reset feedback states
+    setValidationError("");
+    setSuccessMessage("");
+
+    // Client-side validations
+    if (type === "phone") {
+      if (!target) {
+        setValidationError("Phone number is required to send OTP.");
+        return;
+      }
+      if (!/^\+?[0-9]{8,15}$/.test(target)) {
+        setValidationError("Please enter a valid phone number (e.g. +919823456710).");
+        return;
+      }
+    } else {
+      if (!target) {
+        setValidationError("Email is required to send OTP.");
+        return;
+      }
+      if (!/\S+@\S+\.\S+/.test(target)) {
+        setValidationError("Please enter a valid email address.");
+        return;
+      }
+    }
+
+    console.log(`[Register] Requesting OTP for channel: ${type}, target: ${target}`);
+    setSendingChannel(type);
+
     otpMutation.mutate(
       { channel: type, target },
+      {
+        onSuccess: (data) => {
+          setSuccessMessage(data?.message || `${type === "phone" ? "Phone" : "Email"} OTP sent successfully.`);
+          setSendingChannel(null);
+        },
+        onError: (err) => {
+          setSendingChannel(null);
+        }
+      }
     );
   }
 
@@ -87,18 +133,46 @@ export function Register() {
             Phone OTP
             <div className="mt-2 flex gap-2">
               <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              <button type="button" onClick={() => sendOtp("phone")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
+              <button 
+                type="button" 
+                onClick={() => sendOtp("phone")} 
+                disabled={sendingChannel !== null}
+                className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingChannel === "phone" ? "Sending..." : "Send"}
+              </button>
             </div>
           </label>
           <label className="block text-sm font-medium text-slate-700">
             Email OTP
             <div className="mt-2 flex gap-2">
               <input inputMode="numeric" placeholder="123456" value={form.emailOtp} onChange={(event) => update("emailOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              <button type="button" onClick={() => sendOtp("email")} className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Send</button>
+              <button 
+                type="button" 
+                onClick={() => sendOtp("email")} 
+                disabled={sendingChannel !== null}
+                className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingChannel === "email" ? "Sending..." : "Send"}
+              </button>
             </div>
           </label>
         </div>
-        {otpMutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{otpMutation.error.message}</p> : null}
+        {validationError && (
+          <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
+            {validationError}
+          </p>
+        )}
+        {otpMutation.error && (
+          <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
+            {otpMutation.error.message}
+          </p>
+        )}
+        {successMessage && (
+          <p className="mt-4 whitespace-pre-line rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 border border-emerald-200">
+            {successMessage}
+          </p>
+        )}
         {mutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
         <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={mutation.isPending}>
           Create Workspace
