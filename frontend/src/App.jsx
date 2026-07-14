@@ -11,6 +11,7 @@ import { Dashboard } from "./pages/dashboard/Dashboard";
 import { OperationsPage } from "./pages/operations/OperationsPage";
 import { SalesPage } from "./pages/sales/SalesPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { ProcurementDashboard } from "./pages/procurement/ProcurementDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {

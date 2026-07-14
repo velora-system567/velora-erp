@@ -386,14 +386,290 @@ model Vendor {
   creditDays     Int      @default(0) @map("credit_days")
   paymentTerms   String?  @map("payment_terms")
   openingBalance Int      @default(0) @map("opening_balance")
+  contactPerson  String?  @map("contact_person")
+  email          String?
+  phone          String?
+  website        String?
+  category       String?
+  certifications Json?    @map("certifications")
+  riskScore      Int      @default(50) @map("risk_score")
+  qualityRating  Decimal? @map("quality_rating") @db.Decimal(3, 2)
+  deliveryRating Decimal? @map("delivery_rating") @db.Decimal(3, 2)
+  priceRating    Decimal? @map("price_rating") @db.Decimal(3, 2)
+  overallRating  Decimal? @map("overall_rating") @db.Decimal(3, 2)
+  totalOrders    Int      @default(0) @map("total_orders")
+  totalSpend     Int      @default(0) @map("total_spend")
+  onTimeDelivery Decimal? @map("on_time_delivery") @db.Decimal(5, 2)
+  isActive       Boolean  @default(true) @map("is_active")
   createdBy      String?  @map("created_by") @db.Uuid
   updatedBy      String?  @map("updated_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   isDeleted      Boolean  @default(false) @map("is_deleted")
 
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
+  goodsReceipts    GoodsReceipt[]
+
   @@index([tenantId, companyId, isDeleted])
   @@map("vendors")
+}
+
+enum PurchaseRequestStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  ORDERED
+  DELIVERED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  PENDING
+  INSPECTING
+  ACCEPTED
+  REJECTED
+  PARTIALLY_ACCEPTED
+}
+
+model PurchaseRequest {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  branchId          String?             @map("branch_id") @db.Uuid
+  requestNo         String              @map("request_no")
+  status            PurchaseRequestStatus @default(DRAFT)
+  requestDate       DateTime            @default(now()) @map("request_date")
+  expectedDelivery  DateTime?           @map("expected_delivery")
+  urgency           String              @default("NORMAL")
+  department        String?
+  project           String?
+  requestedBy       String              @map("requested_by") @db.Uuid
+  approvedBy        String?             @map("approved_by") @db.Uuid
+  approvedAt        DateTime?           @map("approved_at")
+  notes             String?
+  attachments       Json?
+  totalAmount       Int                 @default(0) @map("total_amount")
+  createdBy         String?             @map("created_by") @db.Uuid
+  updatedBy         String?             @map("updated_by") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  isDeleted         Boolean             @default(false) @map("is_deleted")
+
+  items PurchaseRequestItem[]
+  vendor Vendor? @relation(fields: [vendorId], references: [id])
+  vendorId String? @map("vendor_id") @db.Uuid
+
+  @@unique([tenantId, requestNo])
+  @@index([tenantId, companyId, isDeleted])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  branchId          String?  @map("branch_id") @db.Uuid
+  purchaseRequestId String   @map("purchase_request_id") @db.Uuid
+  itemId            String?  @map("item_id") @db.Uuid
+  itemName          String   @map("item_name")
+  itemDescription   String?  @map("item_description")
+  quantity          Decimal  @db.Decimal(18, 3)
+  unit              String?
+  estimatedPrice    Int      @default(0) @map("estimated_price")
+  actualPrice       Int?     @map("actual_price")
+  supplierQuote     Int?     @map("supplier_quote")
+  notes             String?
+  specification     Json?    @map("specification")
+  materialType      String?  @map("material_type")
+  purity            String?  @map("purity")
+  batchSize         String?  @map("batch_size")
+  createdBy         String?  @map("created_by") @db.Uuid
+  updatedBy         String?  @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  isDeleted         Boolean  @default(false) @map("is_deleted")
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
+
+  @@map("purchase_request_items")
+}
+
+model PurchaseOrder {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  branchId          String?             @map("branch_id") @db.Uuid
+  orderNo           String              @map("order_no")
+  vendorId          String              @map("vendor_id") @db.Uuid
+  status            PurchaseOrderStatus @default(DRAFT)
+  orderDate         DateTime            @default(now()) @map("order_date")
+  expectedDelivery  DateTime?           @map("expected_delivery")
+  actualDelivery    DateTime?           @map("actual_delivery")
+  currency          String              @default("INR")
+  subtotal          Int                 @default(0)
+  discount          Int                 @default(0)
+  taxableAmount     Int                 @default(0) @map("taxable_amount")
+  cgstAmount        Int                 @default(0) @map("cgst_amount")
+  sgstAmount        Int                 @default(0) @map("sgst_amount")
+  igstAmount        Int                 @default(0) @map("igst_amount")
+  totalAmount       Int                 @default(0) @map("total_amount")
+  terms             Json?
+  remarks           String?
+  attachments       Json?
+  revisionCount     Int                 @default(0) @map("revision_count")
+  parentOrderId     String?             @map("parent_order_id") @db.Uuid
+  purchaseRequestId String?             @map("purchase_request_id") @db.Uuid
+  department        String?
+  project           String?
+  paymentTerms      String?             @map("payment_terms")
+  deliveryAddress   Json?               @map("delivery_address")
+  approvedBy        String?             @map("approved_by") @db.Uuid
+  approvedAt        DateTime?           @map("approved_at")
+  sentAt            DateTime?           @map("sent_at")
+  closedAt          DateTime?           @map("closed_at")
+  createdBy         String?             @map("created_by") @db.Uuid
+  updatedBy         String?             @map("updated_by") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  isDeleted         Boolean             @default(false) @map("is_deleted")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+  items PurchaseOrderItem[]
+  goodsReceipts GoodsReceipt[]
+
+  @@unique([tenantId, orderNo])
+  @@index([tenantId, companyId, isDeleted])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  branchId          String?  @map("branch_id") @db.Uuid
+  purchaseOrderId   String   @map("purchase_order_id") @db.Uuid
+  itemId            String?  @map("item_id") @db.Uuid
+  itemName          String   @map("item_name")
+  itemDescription   String?  @map("item_description")
+  quantity          Decimal  @db.Decimal(18, 3)
+  receivedQuantity  Decimal  @default(0) @map("received_quantity") @db.Decimal(18, 3)
+  rejectedQuantity  Decimal  @default(0) @map("rejected_quantity") @db.Decimal(18, 3)
+  unit              String?
+  unitPrice         Int      @default(0) @map("unit_price")
+  discount          Int      @default(0)
+  taxableAmount     Int      @default(0) @map("taxable_amount")
+  gstRate           Int      @default(18) @map("gst_rate")
+  cgstAmount        Int      @default(0) @map("cgst_amount")
+  sgstAmount        Int      @default(0) @map("sgst_amount")
+  igstAmount        Int      @default(0) @map("igst_amount")
+  totalAmount       Int      @default(0) @map("total_amount")
+  hsnCode           String?  @map("hsn_code")
+  specification     Json?
+  materialType      String?  @map("material_type")
+  purity            String?  @map("purity")
+  batchSize         String?  @map("batch_size")
+  warehouseId       String?  @map("warehouse_id") @db.Uuid
+  storageLocation   String?  @map("storage_location")
+  notes             String?
+  createdBy         String?  @map("created_by") @db.Uuid
+  updatedBy         String?  @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  isDeleted         Boolean  @default(false) @map("is_deleted")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  companyId         String              @map("company_id") @db.Uuid
+  branchId          String?             @map("branch_id") @db.Uuid
+  receiptNo         String              @map("receipt_no")
+  purchaseOrderId   String              @map("purchase_order_id") @db.Uuid
+  vendorId          String              @map("vendor_id") @db.Uuid
+  status            GoodsReceiptStatus  @default(PENDING)
+  receiptDate       DateTime            @default(now()) @map("receipt_date")
+  invoiceNo         String?             @map("invoice_no")
+  invoiceDate       DateTime?           @map("invoice_date")
+  challanNo         String?             @map("challan_no")
+  vehicleNo         String?             @map("vehicle_no")
+  warehouseId       String?             @map("warehouse_id") @db.Uuid
+  inspectionNotes   String?             @map("inspection_notes")
+  qualityCheckPassed Boolean?           @map("quality_check_passed")
+  qcInspector       String?             @map("qc_inspector") @db.Uuid
+  qcDate            DateTime?           @map("qc_date")
+  attachments       Json?
+  totalReceived     Decimal             @default(0) @map("total_received") @db.Decimal(18, 3)
+  totalAccepted     Decimal             @default(0) @map("total_accepted") @db.Decimal(18, 3)
+  totalRejected     Decimal             @default(0) @map("total_rejected") @db.Decimal(18, 3)
+  remarks           String?
+  createdBy         String?             @map("created_by") @db.Uuid
+  updatedBy         String?             @map("updated_by") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  isDeleted         Boolean             @default(false) @map("is_deleted")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+  items GoodsReceiptItem[]
+
+  @@unique([tenantId, receiptNo])
+  @@index([tenantId, companyId, isDeleted])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  branchId          String?  @map("branch_id") @db.Uuid
+  goodsReceiptId    String   @map("goods_receipt_id") @db.Uuid
+  purchaseOrderItemId String @map("purchase_order_item_id") @db.Uuid
+  itemId            String?  @map("item_id") @db.Uuid
+  itemName          String   @map("item_name")
+  orderedQuantity   Decimal  @db.Decimal(18, 3)
+  receivedQuantity  Decimal  @db.Decimal(18, 3)
+  acceptedQuantity  Decimal  @db.Decimal(18, 3)
+  rejectedQuantity  Decimal  @db.Decimal(18, 3)
+  unit              String?
+  batchNumber       String?  @map("batch_number")
+  lotNumber         String?  @map("lot_number")
+  manufacturingDate DateTime? @map("manufacturing_date")
+  expiryDate        DateTime? @map("expiry_date")
+  purity            String?
+  certificateOfAnalysis Json? @map("certificate_of_analysis")
+  materialCertificate Json? @map("material_certificate")
+  labReport         Json?    @map("lab_report")
+  storageLocation   String?  @map("storage_location")
+  warehouseId       String?  @map("warehouse_id") @db.Uuid
+  images            Json?
+  inspectionNotes   String?  @map("inspection_notes")
+  rejectionReason   String?  @map("rejection_reason")
+  createdBy         String?  @map("created_by") @db.Uuid
+  updatedBy         String?  @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  isDeleted         Boolean  @default(false) @map("is_deleted")
+
+  goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id])
+
+  @@map("goods_receipt_items")
 }
 
 model ChartOfAccount {

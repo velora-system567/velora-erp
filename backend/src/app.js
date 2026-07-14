@@ -9,6 +9,7 @@ import coreRoutes from "./modules/core/core.routes.js";
 import masterRoutes from "./modules/master/master.routes.js";
 import salesRoutes from "./modules/sales/sales.routes.js";
 import purchaseRoutes from "./modules/purchase/purchase.routes.js";
+import purchaseRequestRoutes from "./modules/purchase/purchase-requests.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import accountsRoutes from "./modules/accounts/accounts.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
@@ -25,7 +26,8 @@ app.get("/api/health", (req, res) => ok(res, { status: "ok" }, "Velora ERP API i
 app.use("/api/auth", authRoutes);
 app.use("/api", coreRoutes);
 app.use("/api", salesRoutes);
-app.use("/api", purchaseRoutes);
+app.use("/api/purchase", purchaseRoutes);
+app.use("/api/purchase", purchaseRequestRoutes);
 app.use("/api", inventoryRoutes);
 app.use("/api", accountsRoutes);
 app.use("/api/dashboard", dashboardRoutes);

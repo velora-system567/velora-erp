@@ -106,6 +106,43 @@ export const operationsApi = {
   remove: (resource, id) => apiRequest(`/${resource}/records/${id}`, { method: "DELETE" }),
 };
 
+export const procurementApi = {
+  // Purchase Requests
+  getRequests: (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return apiRequest(`/purchase/requests?${params}`);
+  },
+  getRequest: (id) => apiRequest(`/purchase/requests/${id}`),
+  createRequest: (input) => apiRequest("/purchase/requests", { method: "POST", body: JSON.stringify(input) }),
+  updateRequest: (id, input) => apiRequest(`/purchase/requests/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteRequest: (id) => apiRequest(`/purchase/requests/${id}`, { method: "DELETE" }),
+  submitRequest: (id) => apiRequest(`/purchase/requests/${id}/submit`, { method: "POST" }),
+  updateRequestStatus: (id, status, remarks) => apiRequest(`/purchase/requests/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, remarks }) }),
+  
+  // Dashboard KPIs
+  getKpis: () => apiRequest("/purchase/dashboard/kpis"),
+  
+  // Purchase Orders
+  getOrders: (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return apiRequest(`/purchase/orders?${params}`);
+  },
+  getOrder: (id) => apiRequest(`/purchase/orders/${id}`),
+  createOrder: (input) => apiRequest("/purchase/orders", { method: "POST", body: JSON.stringify(input) }),
+  updateOrder: (id, input) => apiRequest(`/purchase/orders/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteOrder: (id) => apiRequest(`/purchase/orders/${id}`, { method: "DELETE" }),
+  
+  // Vendors
+  getVendors: (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return apiRequest(`/purchase/vendors?${params}`);
+  },
+  getVendor: (id) => apiRequest(`/purchase/vendors/${id}`),
+  createVendor: (input) => apiRequest("/purchase/vendors", { method: "POST", body: JSON.stringify(input) }),
+  updateVendor: (id, input) => apiRequest(`/purchase/vendors/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteVendor: (id) => apiRequest(`/purchase/vendors/${id}`, { method: "DELETE" }),
+};
+
 export const leadsApi = {
   list: () => apiRequest("/leads"),
   create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
