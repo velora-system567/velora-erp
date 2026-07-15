@@ -22,11 +22,19 @@ export function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * Checks that the authenticated user holds the given permission.
+ * Owners ("*") bypass all checks.
+ * @param {string|string[]} permission - single key or array (ANY match grants access)
+ */
 export function requirePermission(permission) {
+  const required = Array.isArray(permission) ? permission : [permission];
   return (req, res, next) => {
-    const permissions = req.user?.permissions || [];
-    if (!permissions.includes(permission) && !permissions.includes("*")) {
-      const error = new Error("Permission denied");
+    const perms = req.user?.permissions || [];
+    const granted =
+      perms.includes("*") || required.some((p) => perms.includes(p));
+    if (!granted) {
+      const error = new Error(`Permission denied. Required: ${required.join(" or ")}`);
       error.statusCode = 403;
       return next(error);
     }
