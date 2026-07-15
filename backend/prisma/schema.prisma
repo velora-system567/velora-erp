@@ -57,7 +57,9 @@ enum StockTransactionType {
 
 enum DocumentStatus {
   DRAFT
+  SUBMITTED
   APPROVED
+  REJECTED
   CANCELLED
   CLOSED
 }
@@ -72,6 +74,55 @@ enum LeadStatus {
 enum GstTreatment {
   INTRA_STATE
   INTER_STATE
+}
+
+enum PaymentType {
+  RECEIPT
+  PAYMENT
+}
+
+enum PurchaseRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONVERTED
+}
+
+enum RfqStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  COMPARED
+  CLOSED
+}
+
+enum GrnStatus {
+  DRAFT
+  INSPECTED
+  APPROVED
+  REJECTED
+}
+
+enum ProductionOrderStatus {
+  DRAFT
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+enum QualityStatus {
+  PASS
+  FAIL
+  REWORK
 }
 
 model Tenant {
@@ -152,9 +203,10 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
   isDeleted    Boolean  @default(false) @map("is_deleted")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  userRoles    UserRole[]
-  userBranches UserBranch[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  userRoles     UserRole[]
+  userBranches  UserBranch[]
+  refreshTokens RefreshToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId, isDeleted])
@@ -548,24 +600,31 @@ model Lead {
 }
 
 model Payment {
-  id          String      @id @default(uuid()) @db.Uuid
-  tenantId    String      @map("tenant_id") @db.Uuid
-  companyId   String      @map("company_id") @db.Uuid
-  branchId    String?     @map("branch_id") @db.Uuid
-  paymentType String      @map("payment_type")
-  partyId     String?     @map("party_id") @db.Uuid
-  amount      Int
-  mode        PaymentMode
-  referenceNo String?     @map("reference_no")
-  paymentDate DateTime    @default(now()) @map("payment_date")
-  createdBy   String?     @map("created_by") @db.Uuid
-  updatedBy   String?     @map("updated_by") @db.Uuid
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  isDeleted   Boolean     @default(false) @map("is_deleted")
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  companyId      String      @map("company_id") @db.Uuid
+  branchId       String?     @map("branch_id") @db.Uuid
+  paymentNumber  String      @map("payment_number")
+  paymentType    PaymentType @map("payment_type")
+  partyId        String?     @map("party_id") @db.Uuid
+  partyType      String?     @map("party_type")
+  amount         Int
+  mode           PaymentMode
+  referenceNo    String?     @map("reference_no")
+  bankName       String?     @map("bank_name")
+  narration      String?
+  paymentDate    DateTime    @default(now()) @map("payment_date")
+  journalEntryId String?     @map("journal_entry_id") @db.Uuid
+  createdBy      String?     @map("created_by") @db.Uuid
+  updatedBy      String?     @map("updated_by") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  isDeleted      Boolean     @default(false) @map("is_deleted")
 
   allocations PaymentAllocation[]
 
+  @@unique([tenantId, paymentNumber])
+  @@index([tenantId, companyId, paymentType, isDeleted])
   @@map("payments")
 }
 
@@ -687,4 +746,391 @@ model JournalEntryLine {
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
 
   @@map("journal_entry_lines")
+}
+
+// ─── Refresh Token (for revocation) ─────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @map("token_hash")
+  deviceInfo String? @map("device_info")
+  ipAddress String?  @map("ip_address")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// ─── Document Number Counter ─────────────────────────────────────────────────
+
+model DocNumberCounter {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  docType   String   @map("doc_type")
+  fyYear    String   @map("fy_year")
+  lastSeq   Int      @default(0) @map("last_seq")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, companyId, docType, fyYear])
+  @@map("doc_number_counters")
+}
+
+// ─── Purchase Request ────────────────────────────────────────────────────────
+
+model PurchaseRequest {
+  id          String                @id @default(uuid()) @db.Uuid
+  tenantId    String                @map("tenant_id") @db.Uuid
+  companyId   String                @map("company_id") @db.Uuid
+  branchId    String?               @map("branch_id") @db.Uuid
+  prNumber    String                @map("pr_number")
+  requestDate DateTime              @default(now()) @map("request_date")
+  requiredBy  DateTime?             @map("required_by")
+  status      PurchaseRequestStatus @default(DRAFT)
+  notes       String?
+  createdBy   String?               @map("created_by") @db.Uuid
+  updatedBy   String?               @map("updated_by") @db.Uuid
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  isDeleted   Boolean               @default(false) @map("is_deleted")
+
+  lines PurchaseRequestLine[]
+
+  @@unique([tenantId, prNumber])
+  @@index([tenantId, companyId, status, isDeleted])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestLine {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @map("tenant_id") @db.Uuid
+  companyId         String          @map("company_id") @db.Uuid
+  purchaseRequestId String          @map("purchase_request_id") @db.Uuid
+  itemId            String          @map("item_id") @db.Uuid
+  description       String?
+  quantity          Decimal         @db.Decimal(18, 3)
+  estimatedRate     Int             @default(0) @map("estimated_rate")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  isDeleted         Boolean         @default(false) @map("is_deleted")
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id])
+
+  @@map("purchase_request_lines")
+}
+
+// ─── RFQ / Vendor Quote ───────────────────────────────────────────────────────
+
+model Rfq {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  branchId    String?   @map("branch_id") @db.Uuid
+  rfqNumber   String    @map("rfq_number")
+  vendorId    String    @map("vendor_id") @db.Uuid
+  rfqDate     DateTime  @default(now()) @map("rfq_date")
+  validUntil  DateTime? @map("valid_until")
+  status      RfqStatus @default(DRAFT)
+  notes       String?
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+
+  lines RfqLine[]
+
+  @@unique([tenantId, rfqNumber])
+  @@index([tenantId, companyId, vendorId, isDeleted])
+  @@map("rfqs")
+}
+
+model RfqLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  rfqId       String   @map("rfq_id") @db.Uuid
+  itemId      String   @map("item_id") @db.Uuid
+  description String?
+  quantity    Decimal  @db.Decimal(18, 3)
+  quotedRate  Int      @default(0) @map("quoted_rate")
+  gstRate     Int      @default(18) @map("gst_rate")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  rfq Rfq @relation(fields: [rfqId], references: [id])
+
+  @@map("rfq_lines")
+}
+
+// ─── GRN (Goods Receipt Note) ────────────────────────────────────────────────
+
+model GoodsReceiptNote {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  branchId    String?   @map("branch_id") @db.Uuid
+  grnNumber   String    @map("grn_number")
+  vendorId    String    @map("vendor_id") @db.Uuid
+  warehouseId String    @map("warehouse_id") @db.Uuid
+  poId        String?   @map("po_id") @db.Uuid
+  receiptDate DateTime  @default(now()) @map("receipt_date")
+  status      GrnStatus @default(DRAFT)
+  notes       String?
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+
+  lines GoodsReceiptLine[]
+
+  @@unique([tenantId, grnNumber])
+  @@index([tenantId, companyId, vendorId, isDeleted])
+  @@map("goods_receipt_notes")
+}
+
+model GoodsReceiptLine {
+  id               String           @id @default(uuid()) @db.Uuid
+  tenantId         String           @map("tenant_id") @db.Uuid
+  companyId        String           @map("company_id") @db.Uuid
+  grnId            String           @map("grn_id") @db.Uuid
+  itemId           String           @map("item_id") @db.Uuid
+  orderedQty       Decimal          @map("ordered_qty") @db.Decimal(18, 3)
+  receivedQty      Decimal          @map("received_qty") @db.Decimal(18, 3)
+  acceptedQty      Decimal          @map("accepted_qty") @db.Decimal(18, 3)
+  rejectedQty      Decimal          @default(0) @map("rejected_qty") @db.Decimal(18, 3)
+  rate             Int              @default(0)
+  gstRate          Int              @default(18) @map("gst_rate")
+  lineTotal        Int              @default(0) @map("line_total")
+  batchNumber      String?          @map("batch_number")
+  expiryDate       DateTime?        @map("expiry_date")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  isDeleted        Boolean          @default(false) @map("is_deleted")
+
+  grn GoodsReceiptNote @relation(fields: [grnId], references: [id])
+
+  @@map("goods_receipt_lines")
+}
+
+// ─── Stock Batch (for FIFO / batch tracking) ─────────────────────────────────
+
+model StockBatch {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  companyId    String    @map("company_id") @db.Uuid
+  itemId       String    @map("item_id") @db.Uuid
+  warehouseId  String    @map("warehouse_id") @db.Uuid
+  batchNumber  String?   @map("batch_number")
+  expiryDate   DateTime? @map("expiry_date")
+  receivedDate DateTime  @default(now()) @map("received_date")
+  costRate     Int       @map("cost_rate")
+  qtyIn        Decimal   @map("qty_in") @db.Decimal(18, 3)
+  qtyRemaining Decimal   @map("qty_remaining") @db.Decimal(18, 3)
+  referenceId  String?   @map("reference_id") @db.Uuid
+  referenceType String?  @map("reference_type")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+
+  @@index([tenantId, itemId, warehouseId, isDeleted])
+  @@index([tenantId, itemId, warehouseId, receivedDate])
+  @@map("stock_batches")
+}
+
+// ─── Manufacturing (backend-connected) ───────────────────────────────────────
+
+model ProductionOrder {
+  id          String                @id @default(uuid()) @db.Uuid
+  tenantId    String                @map("tenant_id") @db.Uuid
+  companyId   String                @map("company_id") @db.Uuid
+  branchId    String?               @map("branch_id") @db.Uuid
+  poNumber    String                @map("po_number")
+  itemId      String                @map("item_id") @db.Uuid
+  bomId       String?               @map("bom_id") @db.Uuid
+  quantity    Decimal               @db.Decimal(18, 3)
+  plannedStart DateTime?            @map("planned_start")
+  plannedEnd   DateTime?            @map("planned_end")
+  actualStart  DateTime?            @map("actual_start")
+  actualEnd    DateTime?            @map("actual_end")
+  status      ProductionOrderStatus @default(DRAFT)
+  priority    String                @default("MEDIUM")
+  assignedTo  String?               @map("assigned_to")
+  notes       String?
+  progress    Int                   @default(0)
+  warehouseId String?               @map("warehouse_id") @db.Uuid
+  createdBy   String?               @map("created_by") @db.Uuid
+  updatedBy   String?               @map("updated_by") @db.Uuid
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  isDeleted   Boolean               @default(false) @map("is_deleted")
+
+  workOrders  WorkOrder[]
+  bomSnapshot Json?                  @map("bom_snapshot")
+
+  @@unique([tenantId, poNumber])
+  @@index([tenantId, companyId, status, isDeleted])
+  @@map("production_orders")
+}
+
+model WorkOrder {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @map("tenant_id") @db.Uuid
+  companyId         String          @map("company_id") @db.Uuid
+  productionOrderId String          @map("production_order_id") @db.Uuid
+  woNumber          String          @map("wo_number")
+  operationName     String          @map("operation_name")
+  machineId         String?         @map("machine_id") @db.Uuid
+  plannedQty        Decimal         @map("planned_qty") @db.Decimal(18, 3)
+  completedQty      Decimal         @default(0) @map("completed_qty") @db.Decimal(18, 3)
+  scrapQty          Decimal         @default(0) @map("scrap_qty") @db.Decimal(18, 3)
+  status            WorkOrderStatus @default(PENDING)
+  startedAt         DateTime?       @map("started_at")
+  completedAt       DateTime?       @map("completed_at")
+  assignedTo        String?         @map("assigned_to")
+  notes             String?
+  createdBy         String?         @map("created_by") @db.Uuid
+  updatedBy         String?         @map("updated_by") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  isDeleted         Boolean         @default(false) @map("is_deleted")
+
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id])
+  qualityChecks   QualityCheck[]
+
+  @@unique([tenantId, woNumber])
+  @@index([tenantId, companyId, productionOrderId, isDeleted])
+  @@map("work_orders")
+}
+
+model Bom {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  itemId      String   @map("item_id") @db.Uuid
+  version     String   @default("v1.0")
+  isDefault   Boolean  @default(false) @map("is_default")
+  notes       String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  lines BomLine[]
+
+  @@unique([tenantId, itemId, version])
+  @@index([tenantId, companyId, itemId, isDeleted])
+  @@map("boms")
+}
+
+model BomLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  bomId       String   @map("bom_id") @db.Uuid
+  componentId String   @map("component_id") @db.Uuid
+  quantity    Decimal  @db.Decimal(18, 3)
+  unitOfMeasureId String? @map("unit_of_measure_id") @db.Uuid
+  scrapPercent Int     @default(0) @map("scrap_percent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  bom Bom @relation(fields: [bomId], references: [id])
+
+  @@index([bomId, isDeleted])
+  @@map("bom_lines")
+}
+
+model Machine {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  machineCode     String   @map("machine_code")
+  name            String
+  type            String?
+  location        String?
+  status          String   @default("IDLE")
+  utilizationPct  Int      @default(0) @map("utilization_pct")
+  operatingHours  Int      @default(0) @map("operating_hours")
+  healthScore     Int      @default(100) @map("health_score")
+  maintenanceDue  DateTime? @map("maintenance_due")
+  currentProgram  String?  @map("current_program")
+  createdBy       String?  @map("created_by") @db.Uuid
+  updatedBy       String?  @map("updated_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  isDeleted       Boolean  @default(false) @map("is_deleted")
+
+  maintenanceTasks MaintenanceTask[]
+
+  @@unique([tenantId, machineCode])
+  @@index([tenantId, companyId, isDeleted])
+  @@map("machines")
+}
+
+model MaintenanceTask {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  machineId     String   @map("machine_id") @db.Uuid
+  taskNumber    String   @map("task_number")
+  taskType      String   @map("task_type")
+  description   String
+  scheduledDate DateTime @map("scheduled_date")
+  completedDate DateTime? @map("completed_date")
+  status        String   @default("SCHEDULED")
+  assignedTo    String?  @map("assigned_to")
+  costPaise     Int      @default(0) @map("cost_paise")
+  notes         String?
+  createdBy     String?  @map("created_by") @db.Uuid
+  updatedBy     String?  @map("updated_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@unique([tenantId, taskNumber])
+  @@index([tenantId, companyId, machineId, isDeleted])
+  @@map("maintenance_tasks")
+}
+
+model QualityCheck {
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.Uuid
+  companyId    String        @map("company_id") @db.Uuid
+  workOrderId  String        @map("work_order_id") @db.Uuid
+  qcNumber     String        @map("qc_number")
+  inspectedQty Decimal       @map("inspected_qty") @db.Decimal(18, 3)
+  passedQty    Decimal       @map("passed_qty") @db.Decimal(18, 3)
+  failedQty    Decimal       @map("failed_qty") @db.Decimal(18, 3)
+  reworkQty    Decimal       @default(0) @map("rework_qty") @db.Decimal(18, 3)
+  result       QualityStatus @default(PASS)
+  defects      Json?
+  inspector    String?
+  notes        String?
+  checkedAt    DateTime      @default(now()) @map("checked_at")
+  createdBy    String?       @map("created_by") @db.Uuid
+  updatedBy    String?       @map("updated_by") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  isDeleted    Boolean       @default(false) @map("is_deleted")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@unique([tenantId, qcNumber])
+  @@index([tenantId, companyId, workOrderId, isDeleted])
+  @@map("quality_checks")
 }
