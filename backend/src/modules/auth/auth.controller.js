@@ -1,6 +1,15 @@
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
-import { loginUser, refreshAccessToken, registerTenant } from "./auth.service.js";
+import {
+  loginUser,
+  refreshAccessToken,
+  registerTenant,
+  logoutUser,
+  logoutAllDevices,
+  getActiveSessions,
+  forgotPassword,
+  resetPassword,
+} from "./auth.service.js";
 import { requestOtp as requestOtpCode, verifyOtp } from "./otp.service.js";
 
 function publicUser(user) {
@@ -14,12 +23,22 @@ function publicUser(user) {
   };
 }
 
+function requestMeta(req) {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  return {
+    userAgent: req.headers["user-agent"] || null,
+    ipAddress: Array.isArray(forwardedFor)
+      ? forwardedFor[0]
+      : forwardedFor?.split(",")[0]?.trim() || req.ip || null,
+  };
+}
+
 export const register = asyncHandler(async (req, res) => {
   await verifyOtp({ channel: "email", target: req.validated.body.ownerEmail, code: req.validated.body.emailOtp });
   if (req.validated.body.ownerPhone) {
     await verifyOtp({ channel: "phone", target: req.validated.body.ownerPhone, code: req.validated.body.phoneOtp });
   }
-  const result = await registerTenant(req.validated.body);
+  const result = await registerTenant(req.validated.body, requestMeta(req));
   return created(
     res,
     {
@@ -39,7 +58,7 @@ export const requestOtp = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const result = await loginUser(req.validated.body.email, req.validated.body.password);
+  const result = await loginUser(req.validated.body.email, req.validated.body.password, requestMeta(req));
   return ok(res, {
     user: publicUser(result.user),
     accessToken: result.accessToken,
@@ -48,21 +67,52 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
-  return ok(res, await refreshAccessToken(req.validated.body.refreshToken), "Token refreshed");
+  const result = await refreshAccessToken(req.validated.body.refreshToken, requestMeta(req));
+  return ok(res, result, "Token refreshed");
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  return ok(res, {}, "Logout successful");
+  const token = req.body?.refreshToken;
+  await logoutUser(token);
+  return ok(res, {}, "Logged out successfully");
 });
 
-export const forgotPassword = asyncHandler(async (req, res) => {
-  return ok(res, { email: req.validated.body.email }, "Password reset OTP queued");
+export const logoutAll = asyncHandler(async (req, res) => {
+  await logoutAllDevices(req.user.sub);
+  return ok(res, {}, "All sessions terminated");
 });
 
-export const resetPassword = asyncHandler(async (req, res) => {
-  return ok(res, {}, "Password reset successful");
+export const sessions = asyncHandler(async (req, res) => {
+  const result = await getActiveSessions(req.user.sub);
+  return ok(res, result, "Active sessions loaded");
+});
+
+export const forgotPasswordHandler = asyncHandler(async (req, res) => {
+  await forgotPassword(req.validated.body.email);
+  return ok(res, {}, "If that email exists, a reset code has been sent");
+});
+
+export const resetPasswordHandler = asyncHandler(async (req, res) => {
+  await resetPassword(
+    req.validated.body.email,
+    req.validated.body.otp,
+    req.validated.body.password,
+  );
+  return ok(res, {}, "Password reset successfully. Please login again.");
 });
 
 export const me = asyncHandler(async (req, res) => {
-  return ok(res, { user: req.user }, "Authenticated user");
+  const { getPrisma } = await import("../../config/db.js");
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: req.user.sub, isDeleted: false },
+    include: { userRoles: { include: { role: true } } },
+  });
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const { passwordHash: _, ...safeUser } = user;
+  return ok(res, { user: safeUser }, "Authenticated user");
 });
