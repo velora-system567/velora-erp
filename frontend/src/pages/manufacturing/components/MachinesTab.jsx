@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useManufacturingStore } from "../hooks/useManufacturingStore";
-import { Cpu, Power, Calendar, Wrench, ShieldAlert, TrendingUp, RefreshCw, Activity, ArrowRight, Play, CheckCircle } from "lucide-react";
+import { Cpu, Power, Calendar, Wrench, ShieldAlert, TrendingUp, RefreshCw, Activity, ArrowRight, Play, CheckCircle, X } from "lucide-react";
 import { TonedDot } from "./TonedDot";
 
 const STATUS_THEMES = {

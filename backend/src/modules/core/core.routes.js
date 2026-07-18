@@ -9,6 +9,7 @@ import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { writeAudit } from "../../utils/audit.js";
 import { panRegex } from "../../utils/validators.js";
+import { updateTenantRecord } from "../../utils/tenant-record.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
@@ -104,10 +105,8 @@ router.get("/company", requirePermission("company:read"), asyncHandler(async (re
 router.patch("/company", requirePermission("company:update"), validate(companySchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.company.findFirst({ where: { id: req.companyId, tenantId: req.tenantId, isDeleted: false } });
-  const company = await prisma.company.update({
-    where: { id: req.companyId },
-    data: { ...cleanStrings(req.validated.body), updatedBy: req.user.sub },
-  });
+  const company = await updateTenantRecord(prisma, "company", req, req.companyId,
+    { ...cleanStrings(req.validated.body), updatedBy: req.user.sub }, { notFoundMessage: "Company not found" });
   await writeAudit(req, { tableName: "companies", recordId: company.id, action: "COMPANY_UPDATED", oldValue, newValue: company });
   return ok(res, company, "Company updated");
 }));
@@ -115,7 +114,8 @@ router.patch("/company", requirePermission("company:update"), validate(companySc
 router.delete("/company", requirePermission("company:delete"), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.company.findFirst({ where: { id: req.companyId, tenantId: req.tenantId, isDeleted: false } });
-  const company = await prisma.company.update({ where: { id: req.companyId }, data: { isDeleted: true, updatedBy: req.user.sub } });
+  const company = await updateTenantRecord(prisma, "company", req, req.companyId,
+    { isDeleted: true, updatedBy: req.user.sub }, { notFoundMessage: "Company not found" });
   await writeAudit(req, { tableName: "companies", recordId: company.id, action: "COMPANY_ARCHIVED", oldValue, newValue: company });
   return ok(res, company, "Company archived");
 }));
@@ -137,7 +137,8 @@ router.post("/branches", requirePermission("branches:create"), validate(branchSc
 router.patch("/branches/:id", requirePermission("branches:update"), validate(z.object({ params: idParams, body: branchSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.branch.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-  const branch = await prisma.branch.update({ where: { id: req.validated.params.id }, data: { ...cleanStrings(req.validated.body), updatedBy: req.user.sub } });
+  const branch = await updateTenantRecord(prisma, "branch", req, req.validated.params.id,
+    { ...cleanStrings(req.validated.body), updatedBy: req.user.sub }, { notFoundMessage: "Branch not found" });
   await writeAudit(req, { tableName: "branches", recordId: branch.id, action: "BRANCH_UPDATED", oldValue, newValue: branch });
   return ok(res, branch, "Branch updated");
 }));
@@ -145,7 +146,8 @@ router.patch("/branches/:id", requirePermission("branches:update"), validate(z.o
 router.delete("/branches/:id", requirePermission("branches:delete"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.branch.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-  const branch = await prisma.branch.update({ where: { id: req.validated.params.id }, data: { isDeleted: true, updatedBy: req.user.sub } });
+  const branch = await updateTenantRecord(prisma, "branch", req, req.validated.params.id,
+    { isDeleted: true, updatedBy: req.user.sub }, { notFoundMessage: "Branch not found" });
   await writeAudit(req, { tableName: "branches", recordId: branch.id, action: "BRANCH_DELETED", oldValue, newValue: branch });
   return ok(res, branch, "Branch deleted");
 }));
@@ -196,7 +198,8 @@ router.patch("/users/:id", requirePermission("users:update"), validate(z.object(
   delete data.branchIds;
   delete data.role;
   if (data.email) data.email = data.email.toLowerCase();
-  const updated = await prisma.user.update({ where: { id: req.validated.params.id }, data: { ...data, updatedBy: req.user.sub } });
+  const updated = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
+    { ...data, updatedBy: req.user.sub }, { notFoundMessage: "User not found" });
   await writeAudit(req, { tableName: "users", recordId: updated.id, action: "USER_UPDATED", oldValue, newValue: { ...updated, passwordHash: undefined } });
   const { passwordHash: _passwordHash, ...user } = updated;
   return ok(res, user, "User updated");
@@ -205,21 +208,24 @@ router.patch("/users/:id", requirePermission("users:update"), validate(z.object(
 router.post("/users/:id/reset-password", requirePermission("users:update"), validate(z.object({ params: idParams, body: resetPasswordSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const passwordHash = await bcrypt.hash(req.validated.body.password, 12);
-  const user = await prisma.user.update({ where: { id: req.validated.params.id }, data: { passwordHash, updatedBy: req.user.sub } });
+  const user = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
+    { passwordHash, updatedBy: req.user.sub }, { notFoundMessage: "User not found" });
   await writeAudit(req, { tableName: "users", recordId: user.id, action: "USER_PASSWORD_RESET", newValue: { userId: user.id } });
   return ok(res, {}, "Password reset");
 }));
 
 router.post("/users/:id/disable", requirePermission("users:update"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
-  const user = await prisma.user.update({ where: { id: req.validated.params.id }, data: { isActive: false, updatedBy: req.user.sub } });
+  const user = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
+    { isActive: false, updatedBy: req.user.sub }, { notFoundMessage: "User not found" });
   await writeAudit(req, { tableName: "users", recordId: user.id, action: "USER_DISABLED", newValue: { userId: user.id } });
   return ok(res, {}, "User disabled");
 }));
 
 router.delete("/users/:id", requirePermission("users:delete"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
-  const user = await prisma.user.update({ where: { id: req.validated.params.id }, data: { isDeleted: true, updatedBy: req.user.sub } });
+  const user = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
+    { isDeleted: true, updatedBy: req.user.sub }, { notFoundMessage: "User not found" });
   await writeAudit(req, { tableName: "users", recordId: user.id, action: "USER_DELETED", newValue: { userId: user.id } });
   return ok(res, {}, "User deleted");
 }));
@@ -241,7 +247,8 @@ router.post("/products", requirePermission("products:create"), validate(productS
 router.patch("/products/:id", requirePermission("products:update"), validate(z.object({ params: idParams, body: productSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.item.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-  const product = await prisma.item.update({ where: { id: req.validated.params.id }, data: { ...cleanStrings(req.validated.body), updatedBy: req.user.sub } });
+  const product = await updateTenantRecord(prisma, "item", req, req.validated.params.id,
+    { ...cleanStrings(req.validated.body), updatedBy: req.user.sub }, { notFoundMessage: "Product not found" });
   await writeAudit(req, { tableName: "items", recordId: product.id, action: "PRODUCT_UPDATED", oldValue, newValue: product });
   return ok(res, product, "Product updated");
 }));
@@ -249,7 +256,8 @@ router.patch("/products/:id", requirePermission("products:update"), validate(z.o
 router.delete("/products/:id", requirePermission("products:delete"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.item.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-  const product = await prisma.item.update({ where: { id: req.validated.params.id }, data: { isDeleted: true, updatedBy: req.user.sub } });
+  const product = await updateTenantRecord(prisma, "item", req, req.validated.params.id,
+    { isDeleted: true, updatedBy: req.user.sub }, { notFoundMessage: "Product not found" });
   await writeAudit(req, { tableName: "items", recordId: product.id, action: "PRODUCT_DELETED", oldValue, newValue: product });
   return ok(res, product, "Product deleted");
 }));

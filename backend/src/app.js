@@ -12,6 +12,7 @@ import purchaseRoutes from "./modules/purchase/purchase.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import accountsRoutes from "./modules/accounts/accounts.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import manufacturingRoutes from "./modules/manufacturing/manufacturing.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -21,15 +22,35 @@ app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: "5mb" }));
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
-app.get("/api/health", (req, res) => ok(res, { status: "ok" }, "Velora ERP API is running"));
+// Health
+app.get("/api/health", (req, res) => ok(res, { status: "ok", version: "1.5.0" }, "Velora ERP API is running"));
+
+// Auth
 app.use("/api/auth", authRoutes);
+
+// Core (company, branches, users, products, audit)
 app.use("/api", coreRoutes);
-app.use("/api", salesRoutes);
-app.use("/api", purchaseRoutes);
-app.use("/api", inventoryRoutes);
-app.use("/api", accountsRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+
+// Master data (items, customers, vendors, COA, etc.)
 app.use("/api", masterRoutes);
+
+// Sales (leads, quotations, SO, DN, invoices, receipts)
+app.use("/api", salesRoutes);
+
+// Purchase (PR, RFQ, PO, GRN, vendor bills, payments)
+app.use("/api", purchaseRoutes);
+
+// Inventory (stock ledger, transfers, adjustments)
+app.use("/api", inventoryRoutes);
+
+// Accounts (COA, journal entries, reports, GST)
+app.use("/api", accountsRoutes);
+
+// Dashboard KPIs
+app.use("/api/dashboard", dashboardRoutes);
+
+// Manufacturing (BOM, production orders, work orders, machines, maintenance, QC)
+app.use("/api", manufacturingRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

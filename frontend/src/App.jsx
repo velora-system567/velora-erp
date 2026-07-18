@@ -8,9 +8,11 @@ import { AuditLogPage } from "./pages/core/AuditLogPage";
 import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
-import { OperationsPage } from "./pages/operations/OperationsPage";
 import { SalesPage } from "./pages/sales/SalesPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { PurchasePage } from "./pages/purchase/PurchasePage";
+import { InventoryPage } from "./pages/inventory/InventoryPage";
+import { AccountsPage } from "./pages/accounts/AccountsPage";
+import { ManufacturingPage } from "./pages/manufacturing/ManufacturingPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,18 +36,19 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route element={<ProtectedRoute />}>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/company" element={<CompanyPage />} />
-            <Route path="/branches" element={<CorePage resource="branches" />} />
-            <Route path="/users" element={<CorePage resource="users" />} />
-            <Route path="/products" element={<CorePage resource="products" />} />
-            <Route path="/sales" element={<SalesPage />} />
-            <Route path="/purchase" element={<OperationsPage resource="purchase" />} />
-            <Route path="/inventory" element={<PlaceholderPage title="Inventory" description="Track stock ledger, stock transfers, adjustments, low-stock alerts, and valuation." action="Add Opening Stock" />} />
-            <Route path="/accounts" element={<OperationsPage resource="accounts" />} />
-            <Route path="/activity" element={<AuditLogPage />} />
-          </Route>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/company" element={<CompanyPage />} />
+              <Route path="/branches" element={<CorePage resource="branches" />} />
+              <Route path="/users" element={<CorePage resource="users" />} />
+              <Route path="/products" element={<CorePage resource="products" />} />
+              <Route path="/sales" element={<SalesPage />} />
+              <Route path="/purchase" element={<PurchasePage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/accounts" element={<AccountsPage />} />
+              <Route path="/manufacturing" element={<ManufacturingPage />} />
+              <Route path="/activity" element={<AuditLogPage />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>

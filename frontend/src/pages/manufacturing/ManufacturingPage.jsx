@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, ClipboardList, Layers, Cpu, Package, CheckSquare, Wrench, BarChart3, Lock, Sparkles, Home, Search, Upload, Download, Plus, ChevronRight, Terminal, X } from "lucide-react";
-import { moduleApi } from "../../services/api";
-import { PremiumUpgradePage } from "../PremiumUpgradePage";
+import { Activity, ClipboardList, Layers, Cpu, Package, CheckSquare, Wrench, BarChart3, Sparkles, Home, Search, ChevronRight, Terminal, X } from "lucide-react";
+import { manufacturingApi } from "../../services/api";
+import { useManufacturingDashboard } from "./hooks/useManufacturingApi";
+import { formatRupees } from "../../utils/money";
 
 // Tab Imports
 import { DashboardTab } from "./components/DashboardTab";
@@ -45,12 +46,15 @@ function ManufacturingSkeleton() {
 }
 
 export function ManufacturingPage() {
-  // Subscription check
+  // Real API access check — replaces mock module gate
   const accessQuery = useQuery({
     queryKey: ["module-access", "MANUFACTURING"],
-    queryFn: () => moduleApi.access("MANUFACTURING"),
-    retry: false,
+    queryFn: () => manufacturingApi.access(),
+    retry: 1,
   });
+
+  // Live dashboard KPIs from backend
+  const dashboardQuery = useManufacturingDashboard();
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -89,7 +93,12 @@ export function ManufacturingPage() {
   }, [commandQuery]);
 
   if (accessQuery.error || accessQuery.data?.data?.locked) {
-    return <PremiumUpgradePage moduleKey="manufacturing" />;
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <p className="text-lg font-semibold text-slate-950">Manufacturing module not available</p>
+        <p className="mt-2 text-sm text-slate-600">Connect your backend API to enable manufacturing features.</p>
+      </div>
+    );
   }
 
   if (accessQuery.isPending) {
@@ -120,6 +129,22 @@ export function ManufacturingPage() {
                 <Sparkles size={11} />
                 Flagship Suite
               </div>
+              {dashboardQuery.data?.data && (
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ["Active Orders", dashboardQuery.data.data.activeOrders],
+                    ["Delayed", dashboardQuery.data.data.delayedOrders],
+                    ["PM Due", dashboardQuery.data.data.pendingMaintenance],
+                  ].map(([label, val]) => (
+                    <span key={label} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
+                      {label}: <span className="text-slate-950">{val}</span>
+                    </span>
+                  ))}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                    Pass Rate: {dashboardQuery.data.data.overallPassRatePct}%
+                  </span>
+                </div>
+              )}
             </div>
 
             <h1 className="mt-2.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">

@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
 import { getPrisma } from "../../config/db.js";
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { gstinRegex, panRegex } from "../../utils/validators.js";
+import { PERMISSIONS } from "../../utils/permissions.js";
+import { updateTenantRecord } from "../../utils/tenant-record.js";
 
 const router = Router();
 const prismaModelByResource = {
@@ -71,7 +73,7 @@ function modelFor(resource) {
 
 router.use(requireAuth, requireTenant);
 
-router.get("/items/search", validate(itemSearchSchema), asyncHandler(async (req, res) => {
+router.get("/items/search", requirePermission(PERMISSIONS.MASTER_READ), validate(itemSearchSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const rows = await prisma.item.findMany({
     where: {
@@ -88,11 +90,11 @@ router.get("/items/search", validate(itemSearchSchema), asyncHandler(async (req,
   return ok(res, rows, "Items found");
 }));
 
-router.get("/customers/:id/outstanding", validate(z.object({ params: z.object({ id: z.string().uuid() }) })), asyncHandler(async (req, res) => {
+router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ), validate(z.object({ params: z.object({ id: z.string().uuid() }) })), asyncHandler(async (req, res) => {
   return ok(res, { customerId: req.params.id, outstandingPaise: 0 }, "Customer outstanding");
 }));
 
-router.get("/:resource", validate(listSchema), asyncHandler(async (req, res) => {
+router.get("/:resource", requirePermission(PERMISSIONS.MASTER_READ), validate(listSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
   const { page, limit } = req.validated.query;
@@ -104,7 +106,7 @@ router.get("/:resource", validate(listSchema), asyncHandler(async (req, res) => 
   return ok(res, rows, "Records loaded", { page, limit, total });
 }));
 
-router.post("/:resource", validate(writeSchema), asyncHandler(async (req, res) => {
+router.post("/:resource", requirePermission(PERMISSIONS.MASTER_CREATE), validate(writeSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
   if (["customers", "vendors"].includes(req.validated.params.resource)) {
@@ -123,7 +125,7 @@ router.post("/:resource", validate(writeSchema), asyncHandler(async (req, res) =
   return created(res, row, "Record created");
 }));
 
-router.get("/:resource/:id", validate(idSchema), asyncHandler(async (req, res) => {
+router.get("/:resource/:id", requirePermission(PERMISSIONS.MASTER_READ), validate(idSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
   const row = await prisma[model].findFirst({
@@ -132,23 +134,19 @@ router.get("/:resource/:id", validate(idSchema), asyncHandler(async (req, res) =
   return ok(res, row, "Record loaded");
 }));
 
-router.patch("/:resource/:id", validate(z.object({ params: idSchema.shape.params, body: z.record(z.string(), z.unknown()) })), asyncHandler(async (req, res) => {
+router.patch("/:resource/:id", requirePermission(PERMISSIONS.MASTER_UPDATE), validate(z.object({ params: idSchema.shape.params, body: z.record(z.string(), z.unknown()) })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
-  const row = await prisma[model].update({
-    where: { id: req.validated.params.id },
-    data: { ...req.validated.body, updatedBy: req.user.sub },
-  });
+  const row = await updateTenantRecord(prisma, model, req, req.validated.params.id,
+    { ...req.validated.body, updatedBy: req.user.sub });
   return ok(res, row, "Record updated");
 }));
 
-router.delete("/:resource/:id", validate(idSchema), asyncHandler(async (req, res) => {
+router.delete("/:resource/:id", requirePermission(PERMISSIONS.MASTER_DELETE), validate(idSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
-  const row = await prisma[model].update({
-    where: { id: req.validated.params.id },
-    data: { isDeleted: true, updatedBy: req.user.sub },
-  });
+  const row = await updateTenantRecord(prisma, model, req, req.validated.params.id,
+    { isDeleted: true, updatedBy: req.user.sub });
   return ok(res, row, "Record deleted");
 }));
 
