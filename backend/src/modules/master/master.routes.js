@@ -83,6 +83,9 @@ router.get("/items/search", requirePermission(PERMISSIONS.MASTER_READ), validate
       OR: [
         { name: { contains: req.validated.query.q, mode: "insensitive" } },
         { itemCode: { contains: req.validated.query.q, mode: "insensitive" } },
+        { barcode: { contains: req.validated.query.q, mode: "insensitive" } },
+        { qrCode: { contains: req.validated.query.q, mode: "insensitive" } },
+        { brand: { contains: req.validated.query.q, mode: "insensitive" } },
       ],
     },
     take: 20,

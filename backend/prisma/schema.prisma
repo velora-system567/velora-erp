@@ -124,6 +124,50 @@ enum QualityStatus {
   FAIL
   REWORK
 }
+enum InventoryMovementType {
+  OPENING_STOCK
+  STOCK_IN
+  STOCK_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  DAMAGE
+  RESERVE
+  UNRESERVE
+  PRODUCTION_IN
+  PRODUCTION_OUT
+}
+
+enum InventoryReferenceType {
+  PURCHASE_ORDER
+  SALES_ORDER
+  GOODS_RECEIPT
+  STOCK_TRANSFER
+  STOCK_ADJUSTMENT
+  PURCHASE_RETURN
+  SALES_RETURN
+  PRODUCTION_ORDER
+  MANUAL
+  OPENING_STOCK
+}
+
+enum InventoryMovementSource {
+  WEB
+  MOBILE
+  BARCODE
+  IMPORT
+  API
+  AI
+}
+
+enum InventoryItemStatus {
+  AVAILABLE
+  RESERVED
+  DAMAGED
+  QUALITY_CHECK
+  IN_TRANSIT
+  BLOCKED
+}
 
 model Tenant {
   id        String   @id @default(uuid()) @db.Uuid
@@ -385,6 +429,18 @@ model Item {
   gstRate         Int      @default(18) @map("gst_rate")
   reorderLevel    Decimal? @map("reorder_level") @db.Decimal(18, 3)
   reorderQuantity Decimal? @map("reorder_quantity") @db.Decimal(18, 3)
+  barcode         String?
+  qrCode          String?  @map("qr_code")
+  brand           String?
+  imageUrl        String?  @map("image_url")
+  attributes      Json?
+  attachments     Json?
+  notes           String?
+  trackingMode    String   @default("NONE") @map("tracking_mode")
+  lifecycleStatus String   @default("ACTIVE") @map("lifecycle_status")
+  safetyStock     Decimal? @map("safety_stock") @db.Decimal(18, 3)
+  eoqQuantity     Decimal? @map("eoq_quantity") @db.Decimal(18, 3)
+  leadTimeDays    Int      @default(0) @map("lead_time_days")
   isActive        Boolean  @default(true) @map("is_active")
   createdBy       String?  @map("created_by") @db.Uuid
   updatedBy       String?  @map("updated_by") @db.Uuid
@@ -397,6 +453,8 @@ model Item {
 
   @@unique([tenantId, itemCode])
   @@index([tenantId, companyId, isDeleted])
+  @@index([tenantId, barcode])
+  @@index([tenantId, qrCode])
   @@map("items")
 }
 
@@ -489,7 +547,13 @@ model Warehouse {
   companyId String   @map("company_id") @db.Uuid
   branchId  String?  @map("branch_id") @db.Uuid
   name      String
+  code      String?
   address   Json?
+  parentWarehouseId String? @map("parent_warehouse_id") @db.Uuid
+  warehouseType String @default("WAREHOUSE") @map("warehouse_type")
+  capacity  Decimal? @db.Decimal(18, 3)
+  isDefault Boolean @default(false) @map("is_default")
+  isActive  Boolean @default(true) @map("is_active")
   createdBy String?  @map("created_by") @db.Uuid
   updatedBy String?  @map("updated_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
@@ -497,7 +561,117 @@ model Warehouse {
   isDeleted Boolean  @default(false) @map("is_deleted")
 
   @@index([tenantId, companyId, isDeleted])
+  @@unique([tenantId, companyId, code])
   @@map("warehouses")
+}
+
+model InventoryLocation {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  parentId    String?  @map("parent_id") @db.Uuid
+  code        String
+  name        String
+  zone        String?
+  bin         String?
+  capacity    Decimal? @db.Decimal(18, 3)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@unique([tenantId, warehouseId, code])
+  @@index([tenantId, companyId, warehouseId, isDeleted])
+  @@map("inventory_locations")
+}
+
+model InventoryReservation {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  itemId      String   @map("item_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  locationId  String?  @map("location_id") @db.Uuid
+  quantity    Decimal  @db.Decimal(18, 3)
+  referenceId String?  @map("reference_id") @db.Uuid
+  referenceType String? @map("reference_type")
+  status      String   @default("ACTIVE")
+  expiresAt   DateTime? @map("expires_at")
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@index([tenantId, companyId, itemId, warehouseId, status])
+  @@map("inventory_reservations")
+}
+
+model ProductSerial {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  itemId      String   @map("item_id") @db.Uuid
+  warehouseId String?  @map("warehouse_id") @db.Uuid
+  batchId     String?  @map("batch_id") @db.Uuid
+  serialNumber String  @map("serial_number")
+  status      String   @default("AVAILABLE")
+  receivedAt  DateTime? @map("received_at")
+  soldAt      DateTime? @map("sold_at")
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@unique([tenantId, serialNumber])
+  @@index([tenantId, companyId, itemId, status])
+  @@map("product_serials")
+}
+
+model CycleCount {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  countNumber String   @map("count_number")
+  status      String   @default("DRAFT")
+  scheduledAt DateTime? @map("scheduled_at")
+  completedAt DateTime? @map("completed_at")
+  notes       String?
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+
+  @@unique([tenantId, countNumber])
+  @@index([tenantId, companyId, warehouseId, status])
+  @@map("cycle_counts")
+}
+
+model CycleCountLine {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  cycleCountId String   @map("cycle_count_id") @db.Uuid
+  itemId       String   @map("item_id") @db.Uuid
+  expectedQty  Decimal  @map("expected_qty") @db.Decimal(18, 3)
+  countedQty   Decimal? @map("counted_qty") @db.Decimal(18, 3)
+  varianceQty  Decimal? @map("variance_qty") @db.Decimal(18, 3)
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+
+  @@unique([cycleCountId, itemId])
+  @@index([tenantId, companyId, cycleCountId])
+  @@map("cycle_count_lines")
 }
 
 model PriceList {

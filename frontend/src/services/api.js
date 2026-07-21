@@ -219,8 +219,20 @@ export const purchaseApi = {
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 export const inventoryApi = {
+  dashboard: (p = {}) => apiRequest(`/inventory/dashboard?${new URLSearchParams(p)}`),
   stockSummary: (p = {}) => apiRequest(`/inventory/stock-summary?${new URLSearchParams(p)}`),
   stockLedger: (itemId, p = {}) => apiRequest(`/inventory/stock-ledger/${itemId}?${new URLSearchParams(p)}`),
+  ledger: (p = {}) => apiRequest(`/inventory/ledger?${new URLSearchParams(p)}`),
+  batches: (p = {}) => apiRequest(`/inventory/batches?${new URLSearchParams(p)}`),
+  locations: (p = {}) => apiRequest(`/inventory/locations?${new URLSearchParams(p)}`),
+  createLocation: (input) => apiRequest("/inventory/locations", { method: "POST", body: JSON.stringify(input) }),
+  reservations: () => apiRequest("/inventory/reservations"),
+  createReservation: (input) => apiRequest("/inventory/reservations", { method: "POST", body: JSON.stringify(input) }),
+  releaseReservation: (id) => apiRequest(`/inventory/reservations/${id}/release`, { method: "PATCH" }),
+  serials: (p = {}) => apiRequest(`/inventory/serials?${new URLSearchParams(p)}`),
+  cycleCounts: () => apiRequest("/inventory/cycle-counts"),
+  createCycleCount: (input) => apiRequest("/inventory/cycle-counts", { method: "POST", body: JSON.stringify(input) }),
+  completeCycleCount: (id, input) => apiRequest(`/inventory/cycle-counts/${id}/complete`, { method: "PATCH", body: JSON.stringify(input) }),
   stockTransfers: () => apiRequest("/inventory/stock-transfers"),
   createTransfer: (input) => apiRequest("/inventory/stock-transfer", { method: "POST", body: JSON.stringify(input) }),
   createAdjustment: (input) => apiRequest("/inventory/stock-adjustment", { method: "POST", body: JSON.stringify(input) }),

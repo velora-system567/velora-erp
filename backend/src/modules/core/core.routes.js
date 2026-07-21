@@ -72,6 +72,16 @@ const productSchema = z.object({
     gstRate: z.coerce.number().int().min(0).max(28).default(18),
     purchasePrice: z.coerce.number().int().min(0).default(0),
     sellingPrice: z.coerce.number().int().min(0).default(0),
+    barcode: z.string().max(120).optional().or(z.literal("")),
+    qrCode: z.string().max(500).optional().or(z.literal("")),
+    brand: z.string().max(120).optional().or(z.literal("")),
+    imageUrl: z.string().url().optional().or(z.literal("")),
+    notes: z.string().max(5000).optional().or(z.literal("")),
+    trackingMode: z.enum(["NONE", "BATCH", "SERIAL", "BATCH_AND_SERIAL"]).default("NONE"),
+    lifecycleStatus: z.enum(["DRAFT", "ACTIVE", "DISCONTINUED", "OBSOLETE"]).default("ACTIVE"),
+    safetyStock: z.coerce.number().min(0).optional(),
+    eoqQuantity: z.coerce.number().min(0).optional(),
+    leadTimeDays: z.coerce.number().int().min(0).max(3650).default(0),
     isActive: z.boolean().default(true),
   }),
 });
@@ -85,7 +95,15 @@ async function listRows(model, req, extraWhere = {}) {
   const { page, limit, q } = req.validated.query;
   const where = { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false, ...extraWhere };
   if (q) {
-    where.OR = [{ name: { contains: q, mode: "insensitive" } }];
+    where.OR = model === "item"
+      ? [
+        { name: { contains: q, mode: "insensitive" } },
+        { itemCode: { contains: q, mode: "insensitive" } },
+        { barcode: { contains: q, mode: "insensitive" } },
+        { qrCode: { contains: q, mode: "insensitive" } },
+        { brand: { contains: q, mode: "insensitive" } },
+      ]
+      : [{ name: { contains: q, mode: "insensitive" } }];
   }
   const [total, rows] = await Promise.all([
     prisma[model].count({ where }),

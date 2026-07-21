@@ -1,233 +1,125 @@
+import crypto from "crypto";
 import { getRedis } from "../../config/redis.js";
 import { env } from "../../config/env.js";
 
 const OTP_TTL_SECONDS = 10 * 60;
+const RESEND_COOLDOWN_SECONDS = 60;
+const MAX_SENDS_PER_HOUR = 5;
+const MAX_VERIFY_ATTEMPTS = 5;
 
-function otpKey(channel, target) {
-  return `otp:${channel}:${target.toLowerCase()}`;
+function normalizedTarget(channel, target) {
+  const value = String(target || "").trim();
+  if (channel === "email") return value.toLowerCase();
+  if (!/^\+[1-9]\d{7,14}$/.test(value)) {
+    const error = new Error("Phone numbers must use E.164 format, for example +919823456710.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return value;
 }
 
-function generateOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+function targetDigest(channel, target) {
+  return crypto.createHmac("sha256", env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET).update(`${channel}:${target}`).digest("hex");
+}
+
+function otpHash(channel, target, code) {
+  return crypto.createHmac("sha256", env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET).update(`${channel}:${target}:${code}`).digest("hex");
+}
+
+function otpKey(channel, target) { return `otp:v2:${channel}:${targetDigest(channel, target)}`; }
+function cooldownKey(channel, target) { return `otp:v2:cooldown:${channel}:${targetDigest(channel, target)}`; }
+function sendWindowKey(channel, target) { return `otp:v2:sends:${channel}:${targetDigest(channel, target)}`; }
+function sendLockKey(channel, target) { return `otp:v2:lock:${channel}:${targetDigest(channel, target)}`; }
+
+function generateOtp() { return crypto.randomInt(100000, 1000000).toString(); }
+
+function providerError(message, statusCode = 502) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 async function sendEmailOtp(target, code) {
-  if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) {
-    const error = new Error("Email OTP provider is not configured. Add RESEND_API_KEY and OTP_FROM_EMAIL in Vercel.");
-    error.statusCode = 503;
-    throw error;
-  }
-
+  if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) throw providerError("Email verification is not configured. Set RESEND_API_KEY and OTP_FROM_EMAIL.", 503);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: env.OTP_FROM_EMAIL,
-      to: target,
-      subject: "Velora ERP email verification code",
-      text: `Your Velora ERP verification code is ${code}. It expires in 10 minutes.`,
+      to: [target],
+      subject: "Your Velora ERP verification code",
+      text: `Your Velora ERP verification code is ${code}. It expires in 10 minutes. Do not share this code with anyone.`,
+      html: `<main style="font-family:Arial,sans-serif;color:#0f172a"><h1 style="font-size:20px">Verify your Velora ERP account</h1><p>Use this one-time verification code:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>This code expires in 10 minutes. Do not share it with anyone.</p></main>`,
     }),
   });
-
-  if (!response.ok) {
-    const error = new Error("Email OTP could not be sent.");
-    error.statusCode = 502;
-    throw error;
-  }
+  if (!response.ok) throw providerError("Email verification could not be sent. Please try again shortly.");
 }
 
 async function sendPhoneOtp(target, code) {
-  console.log(`[SMS] Initiating Phone OTP send to target: ${target}`);
-
-  // Resolve config keys (custom keys first, fallback to Twilio)
-  const apiKey = env.SMS_API_KEY || env.TWILIO_ACCOUNT_SID;
-  const secret = env.SMS_SECRET || env.TWILIO_AUTH_TOKEN;
-  const endpoint = env.SMS_ENDPOINT || (apiKey ? `https://api.twilio.com/2010-04-01/Accounts/${apiKey}/Messages.json` : null);
-  const senderId = env.SENDER_ID || env.TWILIO_FROM_PHONE;
-
-  const missing = [];
-  if (!apiKey) missing.push("SMS API Key / TWILIO_ACCOUNT_SID");
-  if (!secret) missing.push("SMS Secret / TWILIO_AUTH_TOKEN");
-  if (!endpoint) missing.push("SMS Endpoint");
-  if (!senderId) missing.push("Sender ID / TWILIO_FROM_PHONE");
-
-  if (missing.length > 0) {
-    const errorMsg = `Phone OTP provider is not fully configured. Missing environment variables: ${missing.join(", ")}`;
-    console.error(`[SMS] [Error] Configuration check failed: ${errorMsg}`);
-    const error = new Error(errorMsg);
-    error.statusCode = 503;
-    throw error;
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_PHONE) {
+    throw providerError("SMS verification is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_PHONE.", 503);
   }
-
-  // Determine if it is Twilio or generic
-  const isTwilio = endpoint.includes("api.twilio.com");
-  const authHeader = env.AUTH_TOKENS || (isTwilio
-    ? `Basic ${Buffer.from(`${apiKey}:${secret}`).toString("base64")}`
-    : `Bearer ${secret}`);
-
-  let headers = {
-    Authorization: authHeader,
-  };
-  let body;
-
-  if (isTwilio) {
-    headers["Content-Type"] = "application/x-www-form-urlencoded";
-    body = new URLSearchParams({
-      To: target,
-      From: senderId,
-      Body: `Your Velora ERP verification code is ${code}. It expires in 10 minutes.`,
-    });
-  } else {
-    headers["Content-Type"] = "application/json";
-    body = JSON.stringify({
-      to: target,
-      from: senderId,
-      body: `Your Velora ERP verification code is ${code}. It expires in 10 minutes.`,
-    });
-  }
-
-  console.log(`[SMS] Sending POST request to URL: ${endpoint}. Payload: target=${target}, sender=${senderId}`);
-
-  let response;
-  try {
-    response = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: isTwilio ? body : body,
-    });
-  } catch (fetchErr) {
-    console.error(`[SMS] [Error] Failed to connect to SMS provider network:`, fetchErr);
-    const error = new Error(`SMS service unavailable. Network error: ${fetchErr.message}`);
-    error.statusCode = 502;
-    throw error;
-  }
-
-  console.log(`[SMS] SMS provider returned HTTP status: ${response.status}`);
-
-  if (!response.ok) {
-    let responseText = "";
-    try {
-      responseText = await response.text();
-    } catch (_) {}
-
-    console.error(`[SMS] [Error] SMS provider error response. HTTP Status: ${response.status}. Response: ${responseText}`);
-
-    let errorDetail = "";
-    try {
-      const json = JSON.parse(responseText);
-      errorDetail = json.message || json.error_message || json.error || responseText;
-    } catch (_) {
-      errorDetail = responseText;
-    }
-
-    const error = new Error(`SMS service failed: ${errorDetail || "Unknown error"}`);
-    error.statusCode = response.status === 401 || response.status === 403 ? 401 : 502;
-    throw error;
-  }
-
-  console.log(`[SMS] Phone OTP successfully sent to: ${target}`);
+  const credentials = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ To: target, From: env.TWILIO_FROM_PHONE, Body: `Your Velora ERP verification code is ${code}. It expires in 10 minutes. Do not share it.` }),
+  });
+  if (!response.ok) throw providerError("SMS verification could not be sent. Please try again shortly.");
 }
 
 export async function requestOtp({ channel, target }) {
-  console.log(`[OTP] API request received for channel: ${channel}, target: ${target}`);
-
-  // Validation
-  if (channel === "phone") {
-    if (!/^\+?[0-9]{8,15}$/.test(target)) {
-      console.warn(`[OTP] Validation failed. Invalid phone number: "${target}"`);
-      const error = new Error("Invalid phone number format. Please enter a valid number (e.g. +919823456710).");
-      error.statusCode = 400;
-      throw error;
-    }
-  } else if (channel === "email") {
-    if (!/\S+@\S+\.\S+/.test(target)) {
-      console.warn(`[OTP] Validation failed. Invalid email: "${target}"`);
-      const error = new Error("Invalid email format.");
-      error.statusCode = 400;
-      throw error;
-    }
-  }
-
+  const normalized = normalizedTarget(channel, target);
   const redis = getRedis();
-
-  // Rate Limiting (prevent spam, 1 request per 60 seconds per target)
-  const rateLimitKey = `otp-limit:${channel}:${target.toLowerCase()}`;
-  try {
-    const isRateLimited = await redis.get(rateLimitKey);
-    if (isRateLimited) {
-      console.warn(`[OTP] Rate limit hit for ${channel}:${target}`);
-      const error = new Error("Rate limit exceeded. Please wait 60 seconds before requesting another code.");
-      error.statusCode = 429;
-      throw error;
-    }
-  } catch (redisErr) {
-    console.error(`[OTP] [Error] Redis read failed during rate-limit check:`, redisErr);
-    // Continue despite Redis rate-limit read error, so we don't block users if cache has transient issues
-  }
-
-  const code = generateOtp();
-  console.log(`[OTP] Successfully generated OTP code for ${channel}:${target}`);
+  const cooldown = cooldownKey(channel, normalized);
+  const lock = sendLockKey(channel, normalized);
+  if (await redis.exists(cooldown)) throw providerError("Please wait 60 seconds before requesting another code.", 429);
+  const locked = await redis.set(lock, "1", "EX", 30, "NX");
+  if (!locked) throw providerError("A verification request is already in progress. Please wait a moment.", 429);
 
   try {
-    await redis.set(otpKey(channel, target), code, "EX", OTP_TTL_SECONDS);
-    console.log(`[OTP] OTP code saved to Redis for ${channel}:${target}`);
-    
-    // Set rate limit key
-    await redis.set(rateLimitKey, "1", "EX", 60);
-    console.log(`[OTP] Rate limit lock set for ${channel}:${target} (60s)`);
-  } catch (redisErr) {
-    console.error(`[OTP] [Error] Failed to store OTP / limit in Redis:`, redisErr);
-    const error = new Error("Internal server error. Failed to cache verification code.");
-    error.statusCode = 500;
+    const windowKey = sendWindowKey(channel, normalized);
+    const sends = await redis.incr(windowKey);
+    if (sends === 1) await redis.expire(windowKey, 60 * 60);
+    if (sends > MAX_SENDS_PER_HOUR) throw providerError("Too many verification requests. Please try again in an hour.", 429);
+
+    const code = generateOtp();
+    if (channel === "email") await sendEmailOtp(normalized, code);
+    else await sendPhoneOtp(normalized, code);
+
+    await redis.multi()
+      .set(otpKey(channel, normalized), JSON.stringify({ hash: otpHash(channel, normalized, code), attempts: 0 }), "EX", OTP_TTL_SECONDS)
+      .set(cooldown, "1", "EX", RESEND_COOLDOWN_SECONDS)
+      .del(lock)
+      .exec();
+    return { expiresInSeconds: OTP_TTL_SECONDS, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };
+  } catch (error) {
+    await redis.del(lock);
     throw error;
-  }
-
-  // Delegate sending
-  if (channel === "email") {
-    try {
-      await sendEmailOtp(target, code);
-    } catch (err) {
-      console.error(`[OTP] [Error] Email OTP sending failed for ${target}:`, err);
-      throw err;
-    }
-  } else if (channel === "phone") {
-    try {
-      await sendPhoneOtp(target, code);
-    } catch (err) {
-      console.error(`[OTP] [Error] Phone OTP sending failed for ${target}:`, err);
-      throw err;
-    }
   }
 }
 
 export async function verifyOtp({ channel, target, code }) {
-  console.log(`[OTP] Verifying code for channel: ${channel}, target: ${target}`);
+  const normalized = normalizedTarget(channel, target);
+  if (!/^\d{6}$/.test(String(code))) throw providerError("Verification code must contain 6 digits.", 422);
   const redis = getRedis();
-  let stored;
-  
-  try {
-    stored = await redis.get(otpKey(channel, target));
-  } catch (redisErr) {
-    console.error(`[OTP] [Error] Redis get failed during verification:`, redisErr);
-    const error = new Error("Cache service unavailable. Verification could not be completed.");
-    error.statusCode = 500;
-    throw error;
-  }
-
-  if (!stored || stored !== code) {
-    console.warn(`[OTP] Verification failed for ${channel}:${target}. Code matches: ${stored === code}`);
-    const error = new Error(`${channel === "email" ? "Email" : "Phone"} OTP is invalid or expired`);
-    error.statusCode = 422;
-    throw error;
-  }
-
-  try {
-    await redis.del(otpKey(channel, target));
-    console.log(`[OTP] Verification successful. Deleted cached OTP for ${channel}:${target}`);
-  } catch (redisErr) {
-    console.error(`[OTP] [Error] Failed to clean up OTP key from Redis:`, redisErr);
-  }
+  const key = otpKey(channel, normalized);
+  const expectedHash = otpHash(channel, normalized, String(code));
+  const result = await redis.eval(
+    `local value = redis.call('GET', KEYS[1])
+     if not value then return 0 end
+     local record = cjson.decode(value)
+     if record.hash == ARGV[1] then redis.call('DEL', KEYS[1]); return 1 end
+     record.attempts = (record.attempts or 0) + 1
+     if record.attempts >= tonumber(ARGV[2]) then redis.call('DEL', KEYS[1]); return -1 end
+     redis.call('SET', KEYS[1], cjson.encode(record), 'KEEPTTL')
+     return -2`,
+    1,
+    key,
+    expectedHash,
+    String(MAX_VERIFY_ATTEMPTS),
+  );
+  if (Number(result) === 1) return true;
+  if (Number(result) === -1) throw providerError("Too many incorrect codes. Request a new verification code.", 429);
+  throw providerError("Verification code is invalid or expired.", 422);
 }

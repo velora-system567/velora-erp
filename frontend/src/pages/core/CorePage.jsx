@@ -45,9 +45,16 @@ const configs = {
       ["gstRate", "GST %"],
       ["purchasePrice", "Purchase Price"],
       ["sellingPrice", "Selling Price"],
+      ["barcode", "Barcode"],
+      ["brand", "Brand"],
+      ["trackingMode", "Traceability"],
+      ["lifecycleStatus", "Lifecycle Status"],
+      ["safetyStock", "Safety Stock"],
+      ["eoqQuantity", "EOQ Quantity"],
+      ["leadTimeDays", "Lead Time (days)"],
     ],
     columns: ["itemCode", "name", "itemType", "hsnCode", "gstRate"],
-    blank: { itemCode: "", name: "", itemType: "FINISHED_GOOD", hsnCode: "", gstRate: 18, purchasePrice: 0, sellingPrice: 0, isActive: true },
+    blank: { itemCode: "", name: "", itemType: "FINISHED_GOOD", hsnCode: "", gstRate: 18, purchasePrice: 0, sellingPrice: 0, barcode: "", brand: "", trackingMode: "NONE", lifecycleStatus: "ACTIVE", safetyStock: "", eoqQuantity: "", leadTimeDays: 0, isActive: true },
   },
 };
 
@@ -70,6 +77,8 @@ const selectOptions = {
     ["SERVICE", "Service"],
     ["CONSUMABLE", "Consumable"],
   ],
+  trackingMode: [["NONE", "No tracking"], ["BATCH", "Batch / lot"], ["SERIAL", "Serial number"], ["BATCH_AND_SERIAL", "Batch and serial"]],
+  lifecycleStatus: [["DRAFT", "Draft"], ["ACTIVE", "Active"], ["DISCONTINUED", "Discontinued"], ["OBSOLETE", "Obsolete"]],
 };
 
 const placeholders = {

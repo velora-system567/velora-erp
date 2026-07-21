@@ -1,204 +1,77 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Package, AlertTriangle, BarChart3 } from "lucide-react";
-import { inventoryApi } from "../../services/api";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, ArrowDownUp, Boxes, ChevronDown, ClipboardList, Download, FileClock, PackagePlus, RefreshCw, Search, Send, Truck, Warehouse } from "lucide-react";
 import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonTable, SkeletonCards } from "../../components/Skeleton";
+import { ErrorBanner, ErrorState } from "../../components/ErrorState";
+import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";
+import { SkeletonCards, SkeletonTable } from "../../components/Skeleton";
+import { coreApi, inventoryApi } from "../../services/api";
 import { formatRupees } from "../../utils/money";
 
-const TABS = ["Stock Summary", "Low Stock Alerts", "Valuation Report", "Transfers"];
+const TABS = [
+  ["Overview", Boxes], ["Stock", PackagePlus], ["Movements", ArrowDownUp], ["Traceability", FileClock], ["Transfers", Truck],
+];
 
-function TabBar({ active, onChange }) {
-  return (
-    <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
-      {TABS.map((t) => (
-        <button key={t} onClick={() => onChange(t)}
-          className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${active === t ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-          {t}
-        </button>
-      ))}
-    </div>
-  );
+const number = (value, digits = 0) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: digits }).format(Number(value || 0));
+const date = (value) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+function exportCsv(filename, rows, columns) {
+  const escape = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const csv = [columns.map((column) => escape(column.label)).join(","), ...rows.map((row) => columns.map((column) => escape(column.value(row))).join(","))].join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url);
 }
 
-function StockSummaryTab() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["stock-summary"], queryFn: () => inventoryApi.stockSummary() });
-  const rows = query.data?.data || [];
-
-  if (query.isPending) return <SkeletonTable rows={8} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["stock-summary"] })} />;
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-            <tr>{["Item Code", "Item Name", "Warehouse", "Qty on Hand", "Value (FIFO)"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">No stock entries found. Add opening stock to get started.</td></tr>
-            ) : rows.map((r, i) => (
-              <tr key={i} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.item?.itemCode || "—"}</td>
-                <td className="px-4 py-3 font-medium text-slate-950">{r.item?.name || r.itemId.slice(0, 8)}</td>
-                <td className="px-4 py-3 text-slate-600">{r.warehouseId.slice(0, 8)}…</td>
-                <td className={`px-4 py-3 font-bold tabular-nums ${r.quantity <= 0 ? "text-rose-600" : "text-slate-950"}`}>
-                  {Number(r.quantity).toFixed(3)}
-                </td>
-                <td className="px-4 py-3 font-semibold text-slate-700">{formatRupees(r.valuePaise)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+function StatCard({ label, value, detail, tone = "slate" }) {
+  const colors = { slate: "border-slate-200", blue: "border-blue-200", amber: "border-amber-200", rose: "border-rose-200", emerald: "border-emerald-200" };
+  return <article className={`rounded-xl border bg-white p-4 shadow-sm ${colors[tone]}`}><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums text-slate-950">{value}</p>{detail && <p className="mt-1 text-xs text-slate-600">{detail}</p>}</article>;
 }
 
-function LowStockTab() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["low-stock"], queryFn: inventoryApi.lowStockAlerts });
-  const alerts = query.data?.data || [];
+function TableShell({ children }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="min-w-full text-left text-sm">{children}</table></div>; }
+function Head({ children }) { return <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500"><tr>{children}</tr></thead>; }
+function Cell({ children, className = "" }) { return <td className={`px-4 py-3.5 ${className}`}>{children}</td>; }
+function Status({ children, tone = "slate" }) { const tones = { slate: "bg-slate-100 text-slate-700", blue: "bg-blue-50 text-blue-700", amber: "bg-amber-50 text-amber-800", rose: "bg-rose-50 text-rose-700", emerald: "bg-emerald-50 text-emerald-700" }; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>{children}</span>; }
 
-  if (query.isPending) return <SkeletonTable rows={5} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["low-stock"] })} />;
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <AlertTriangle size={16} className="text-amber-600" />
-          <span className="text-sm font-semibold text-slate-950">{alerts.length} items at or below reorder level</span>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs font-semibold uppercase text-slate-500">
-            <tr>{["Code", "Item", "Current Stock", "Reorder Level", "Deficit", "Reorder Qty"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {alerts.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">All items are above reorder levels.</td></tr>
-            ) : alerts.map((a) => (
-              <tr key={a.itemId} className="hover:bg-amber-50/30">
-                <td className="px-4 py-3 font-mono text-xs text-slate-600">{a.itemCode}</td>
-                <td className="px-4 py-3 font-medium text-slate-950">{a.name}</td>
-                <td className={`px-4 py-3 font-bold tabular-nums ${a.currentStock <= 0 ? "text-rose-600" : "text-amber-700"}`}>
-                  {Number(a.currentStock).toFixed(2)}
-                </td>
-                <td className="px-4 py-3 tabular-nums text-slate-700">{Number(a.reorderLevel).toFixed(2)}</td>
-                <td className="px-4 py-3 font-semibold text-rose-700 tabular-nums">{Number(a.deficit).toFixed(2)}</td>
-                <td className="px-4 py-3 tabular-nums text-slate-700">{Number(a.reorderQuantity).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function ValuationTab() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["valuation-report"], queryFn: inventoryApi.valuationReport });
+function Overview({ warehouseId }) {
+  const query = useQuery({ queryKey: ["inventory-dashboard", warehouseId], queryFn: () => inventoryApi.dashboard(warehouseId ? { warehouseId } : {}) });
   const data = query.data?.data;
-
-  if (query.isPending) return <SkeletonTable rows={6} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["valuation-report"] })} />;
-
-  const rows = data?.rows || [];
-  const totalValue = data?.totalValuePaise || 0;
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm font-medium text-slate-600">Total Inventory Value (FIFO Cost)</p>
-        <p className="mt-1 text-3xl font-bold text-slate-950">{formatRupees(totalValue)}</p>
-      </div>
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-              <tr>{["Code", "Item", "Qty", "Avg Cost", "Total Value"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((r, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{r.item?.itemCode || "—"}</td>
-                  <td className="px-4 py-3 font-medium text-slate-950">{r.item?.name || r.itemId.slice(0, 8)}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">{Number(r.quantity).toFixed(3)}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">{formatRupees(r.avgCostRate)}</td>
-                  <td className="px-4 py-3 font-bold text-slate-950">{formatRupees(r.valuePaise)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  if (query.isPending) return <><SkeletonCards count={4} /><SkeletonTable rows={6} cols={5} /></>;
+  if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
+  const kpis = data.kpis;
+  return <div className="space-y-5">
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard label="Inventory valuation" value={formatRupees(kpis.inventoryValuePaise)} detail="FIFO cost basis" tone="blue" />
+      <StatCard label="Total stock" value={number(kpis.totalStock, 3)} detail={`${number(kpis.inventoryTurnover, 2)}x annualized turnover`} />
+      <StatCard label="Replenishment risks" value={number(kpis.lowStockItems)} detail={`${number(kpis.outOfStockItems)} out of stock`} tone="amber" />
+      <StatCard label="Overstock & expiry" value={number(kpis.overstockItems)} detail={`${number(kpis.expiringBatches)} batches expiring in 90 days`} tone="rose" />
+    </section>
+    <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-semibold text-slate-950">Warehouse summary</h2><p className="mt-1 text-sm text-slate-600">Stock quantity and FIFO value by storage site.</p></div><Warehouse className="text-blue-600" size={20} /></div><div className="mt-5 space-y-3">{data.warehouseSummary.length ? data.warehouseSummary.map((row) => <div key={row.warehouseId} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-3"><div><p className="font-medium text-slate-900">{row.warehouseName}</p><p className="text-xs text-slate-500">{number(row.skuCount)} active SKUs · {number(row.quantity, 3)} units</p></div><p className="font-semibold tabular-nums text-slate-900">{formatRupees(row.valuePaise)}</p></div>) : <EmptyState title="No warehouses with stock" description="Post opening stock or approve a goods receipt to populate warehouse balances." />}</div></article>
+      <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-slate-950">ABC analysis</h2><p className="mt-1 text-sm text-slate-600">Classified by current inventory value.</p><div className="mt-5 grid gap-3">{data.abcSummary.map((row) => <div key={row.classification} className="flex items-center justify-between rounded-xl border border-slate-100 p-3"><Status tone={row.classification === "A" ? "rose" : row.classification === "B" ? "amber" : "blue"}>Class {row.classification}</Status><span className="text-sm text-slate-600">{number(row.itemCount)} SKUs</span><strong className="tabular-nums text-slate-950">{formatRupees(row.valuePaise)}</strong></div>)}</div></article>
+    </section>
+    <section className="grid gap-4 xl:grid-cols-2"><ProductList title="Top stocked products" rows={data.topMovingProducts} empty="No on-hand stock yet." /><ProductList title="Slow-moving products" rows={data.slowMovingProducts} empty="No slow-moving stock identified in the last 90 days." /></section>
+    <ActivityList rows={data.recentActivity} />
+  </div>;
 }
 
-function TransfersTab() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["stock-transfers"], queryFn: inventoryApi.stockTransfers });
-  const rows = query.data?.data || [];
+function ProductList({ title, rows, empty }) { return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-slate-950">{title}</h2><div className="mt-4 space-y-2">{rows.length ? rows.map((row) => <div key={row.id} className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-slate-50"><div><p className="font-medium text-slate-900">{row.name}</p><p className="font-mono text-xs text-slate-500">{row.itemCode}</p></div><div className="text-right"><p className="font-semibold tabular-nums text-slate-900">{number(row.quantity, 3)}</p><p className="text-xs text-slate-500">{formatRupees(row.valuePaise)}</p></div></div>) : <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">{empty}</p>}</div></article>; }
+function ActivityList({ rows }) { return <article className="rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-200 px-5 py-4"><h2 className="font-semibold text-slate-950">Recent inventory activity</h2></div>{rows.length ? <div className="divide-y divide-slate-100">{rows.map((row) => <div key={row.id} className="flex items-center justify-between gap-3 px-5 py-3"><div className="min-w-0"><p className="truncate font-medium text-slate-900">{row.item?.name || "Inventory movement"}</p><p className="text-xs text-slate-500">{row.warehouse?.name || "Warehouse"} · {date(row.createdAt)}</p></div><div className="text-right"><Status tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>{row.transactionType.replaceAll("_", " ")}</Status><p className="mt-1 tabular-nums text-xs text-slate-600">{Number(row.quantity) > 0 ? "+" : ""}{number(row.quantity, 3)}</p></div></div>)}</div> : <EmptyState title="No inventory activity" description="Approved goods receipts, transfers, production, and adjustments appear here." />}</article>; }
 
-  if (query.isPending) return <SkeletonTable rows={4} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["stock-transfers"] })} />;
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-            <tr>{["Date", "Item", "From", "To", "Qty", "Status"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No stock transfers recorded.</td></tr>
-            ) : rows.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 text-slate-600">{new Date(r.createdAt).toLocaleDateString("en-IN")}</td>
-                <td className="px-4 py-3 text-slate-700">{r.itemId.slice(0, 8)}…</td>
-                <td className="px-4 py-3 text-slate-600">{r.fromWarehouseId.slice(0, 8)}…</td>
-                <td className="px-4 py-3 text-slate-600">{r.toWarehouseId.slice(0, 8)}…</td>
-                <td className="px-4 py-3 font-bold tabular-nums text-slate-950">{Number(r.quantity).toFixed(3)}</td>
-                <td className="px-4 py-3 text-emerald-700 font-semibold">COMPLETED</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+function StockTable({ warehouseId, search }) {
+  const [sortBy, setSortBy] = useState("name"); const [selected, setSelected] = useState([]);
+  const query = useQuery({ queryKey: ["stock-summary", warehouseId], queryFn: () => inventoryApi.stockSummary(warehouseId ? { warehouseId } : {}) });
+  if (query.isPending) return <SkeletonTable rows={8} cols={6} />; if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
+  const rows = useMemo(() => (query.data?.data || []).filter((row) => `${row.item?.itemCode} ${row.item?.name}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => sortBy === "quantity" ? Number(b.quantity) - Number(a.quantity) : (a.item?.name || "").localeCompare(b.item?.name || "")), [query.data, search, sortBy]);
+  const toggleAll = () => setSelected(selected.length === rows.length ? [] : rows.map((row) => row.itemId));
+  const exportRows = rows.filter((row) => !selected.length || selected.includes(row.itemId));
+  return <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-slate-600">{number(rows.length)} stock balances {selected.length ? `· ${selected.length} selected` : ""}</p><SecondaryButton label="Export CSV" icon={Download} onClick={() => exportCsv("velora-stock-summary.csv", exportRows, [{ label: "SKU", value: (r) => r.item?.itemCode }, { label: "Product", value: (r) => r.item?.name }, { label: "Warehouse ID", value: (r) => r.warehouseId }, { label: "Quantity", value: (r) => r.quantity }, { label: "FIFO value", value: (r) => r.valuePaise }])} /></div><TableShell><Head><th className="w-12 px-4 py-3"><input aria-label="Select all stock rows" type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={toggleAll} /></th><th className="px-4 py-3"><button className="inline-flex items-center gap-1" onClick={() => setSortBy("name")}>Product <ChevronDown size={13} /></button></th><th className="px-4 py-3">Warehouse</th><th className="px-4 py-3 text-right"><button className="inline-flex items-center gap-1" onClick={() => setSortBy("quantity")}>On hand <ChevronDown size={13} /></button></th><th className="px-4 py-3 text-right">FIFO value</th></Head><tbody className="divide-y divide-slate-100">{rows.length ? rows.map((row) => <tr key={`${row.itemId}-${row.warehouseId}`} className="hover:bg-slate-50"><Cell><input aria-label={`Select ${row.item?.name || row.itemId}`} type="checkbox" checked={selected.includes(row.itemId)} onChange={() => setSelected((current) => current.includes(row.itemId) ? current.filter((id) => id !== row.itemId) : [...current, row.itemId])} /></Cell><Cell><p className="font-medium text-slate-950">{row.item?.name || "Unknown item"}</p><p className="font-mono text-xs text-slate-500">{row.item?.itemCode || row.itemId}</p></Cell><Cell className="font-mono text-xs text-slate-600">{row.warehouseId}</Cell><Cell className={`text-right font-semibold tabular-nums ${Number(row.quantity) <= 0 ? "text-rose-700" : "text-slate-950"}`}>{number(row.quantity, 3)}</Cell><Cell className="text-right font-semibold tabular-nums text-slate-900">{formatRupees(row.valuePaise)}</Cell></tr>) : <tr><Cell className="py-12 text-center text-slate-500" colSpan={5}>No stock balance matches the selected filters.</Cell></tr>}</tbody></TableShell></div>;
 }
 
-export function InventoryPage() {
-  const [activeTab, setActiveTab] = useState("Stock Summary");
-  const tabContent = {
-    "Stock Summary": <StockSummaryTab />,
-    "Low Stock Alerts": <LowStockTab />,
-    "Valuation Report": <ValuationTab />,
-    "Transfers": <TransfersTab />,
-  };
+function MovementTable({ warehouseId }) { const [filters, setFilters] = useState({ transactionType: "", fromDate: "", toDate: "" }); const query = useQuery({ queryKey: ["inventory-ledger", warehouseId, filters], queryFn: () => inventoryApi.ledger({ ...(warehouseId ? { warehouseId } : {}), ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value)) }) }); if (query.isPending) return <SkeletonTable rows={8} cols={6} />; if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />; const rows = query.data?.data || []; return <div className="space-y-3"><div className="grid gap-2 sm:grid-cols-3"><select aria-label="Filter movement type" value={filters.transactionType} onChange={(e) => setFilters({ ...filters, transactionType: e.target.value })} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="">All movement types</option>{["PURCHASE", "SALE", "TRANSFER_IN", "TRANSFER_OUT", "ADJUSTMENT", "OPENING", "PRODUCTION_IN", "PRODUCTION_OUT"].map((type) => <option key={type}>{type}</option>)}</select><input aria-label="From date" type="date" value={filters.fromDate} onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })} className="h-11 rounded-lg border border-slate-200 px-3 text-sm" /><input aria-label="To date" type="date" value={filters.toDate} onChange={(e) => setFilters({ ...filters, toDate: e.target.value })} className="h-11 rounded-lg border border-slate-200 px-3 text-sm" /></div><TableShell><Head><th className="px-4 py-3">Date</th><th className="px-4 py-3">Product</th><th className="px-4 py-3">Movement</th><th className="px-4 py-3">Warehouse</th><th className="px-4 py-3 text-right">Quantity</th><th className="px-4 py-3 text-right">Value</th></Head><tbody className="divide-y divide-slate-100">{rows.map((row) => <tr key={row.id}><Cell className="text-slate-600">{date(row.createdAt)}</Cell><Cell><p className="font-medium text-slate-950">{row.item?.name || "Unknown item"}</p><p className="font-mono text-xs text-slate-500">{row.item?.itemCode}</p></Cell><Cell><Status tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>{row.transactionType.replaceAll("_", " ")}</Status></Cell><Cell className="text-slate-600">{row.warehouse?.name || "—"}</Cell><Cell className="text-right font-semibold tabular-nums">{Number(row.quantity) > 0 ? "+" : ""}{number(row.quantity, 3)}</Cell><Cell className="text-right tabular-nums">{formatRupees(Math.abs(row.value))}</Cell></tr>)}</tbody></TableShell></div>; }
 
-  return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
-      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-950">Inventory</h1>
-            <p className="mt-1 text-sm leading-6 text-slate-600">Real-time FIFO stock balances, low stock alerts, transfers, and valuation.</p>
-          </div>
-          <Package className="hidden shrink-0 text-blue-600 sm:block" size={22} />
-        </div>
-      </header>
-      <TabBar active={activeTab} onChange={setActiveTab} />
-      <div className="min-h-[300px]">{tabContent[activeTab]}</div>
-    </div>
-  );
-}
+function BatchTable({ warehouseId }) { const [status, setStatus] = useState("ALL"); const query = useQuery({ queryKey: ["inventory-batches", warehouseId, status], queryFn: () => inventoryApi.batches({ status, ...(warehouseId ? { warehouseId } : {}) }) }); if (query.isPending) return <SkeletonTable rows={6} cols={6} />; if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />; const rows = query.data?.data || []; return <div className="space-y-3"><select aria-label="Filter batch status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="ALL">All batches</option><option value="ACTIVE">Active</option><option value="EXPIRING">Expiring within 90 days</option><option value="EXPIRED">Expired</option></select><TableShell><Head><th className="px-4 py-3">Product</th><th className="px-4 py-3">Batch / lot</th><th className="px-4 py-3">Warehouse</th><th className="px-4 py-3 text-right">Available</th><th className="px-4 py-3">Expiry</th><th className="px-4 py-3 text-right">Cost</th></Head><tbody className="divide-y divide-slate-100">{rows.length ? rows.map((row) => <tr key={row.id}><Cell><p className="font-medium text-slate-950">{row.item?.name}</p><p className="font-mono text-xs text-slate-500">{row.item?.itemCode}</p></Cell><Cell className="font-mono text-xs text-slate-700">{row.batchNumber || "Unbatched"}</Cell><Cell className="text-slate-600">{row.warehouse?.name}</Cell><Cell className="text-right font-semibold tabular-nums">{number(row.qtyRemaining, 3)}</Cell><Cell><Status tone={row.expiryDate && new Date(row.expiryDate) < new Date() ? "rose" : "slate"}>{date(row.expiryDate)}</Status></Cell><Cell className="text-right tabular-nums">{formatRupees(row.costRate)}</Cell></tr>) : <tr><Cell colSpan={6} className="py-12 text-center text-slate-500">No batches match this traceability view.</Cell></tr>}</tbody></TableShell></div>; }
+
+function TransferWorkspace({ warehouses, items }) { const qc = useQueryClient(); const [mode, setMode] = useState("transfer"); const [notice, setNotice] = useState(""); const [form, setForm] = useState({ itemId: "", fromWarehouseId: "", toWarehouseId: "", warehouseId: "", quantity: "", adjustmentQty: "", reason: "" }); const mutation = useMutation({ mutationFn: () => mode === "transfer" ? inventoryApi.createTransfer({ itemId: form.itemId, fromWarehouseId: form.fromWarehouseId, toWarehouseId: form.toWarehouseId, quantity: Number(form.quantity) }) : inventoryApi.createAdjustment({ itemId: form.itemId, warehouseId: form.warehouseId, adjustmentQty: Number(form.adjustmentQty), reason: form.reason }), onSuccess: (_, variables) => { setNotice(mode === "transfer" ? "Transfer posted successfully." : "Stock adjustment posted successfully."); qc.invalidateQueries({ queryKey: ["stock-summary"] }); qc.invalidateQueries({ queryKey: ["inventory-dashboard"] }); qc.invalidateQueries({ queryKey: ["inventory-ledger"] }); qc.invalidateQueries({ queryKey: ["stock-transfers"] }); } }); const update = (key) => (e) => setForm({ ...form, [key]: e.target.value }); const productSelect = <select required value={form.itemId} onChange={update("itemId")} className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-3"><option value="">Select product</option>{items.map((item) => <option key={item.id} value={item.id}>{item.itemCode} · {item.name}</option>)}</select>; const warehouseSelect = (key, label) => <label className="block text-sm font-medium text-slate-700">{label}<select required value={form[key]} onChange={update(key)} className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-white px-3"><option value="">Select warehouse</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>; return <section className="grid gap-4 lg:grid-cols-[1fr_1.4fr]"><article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-slate-950">Internal stock operations</h2><p className="mt-1 text-sm text-slate-600">Every confirmed operation writes the FIFO ledger and audit trail.</p><div className="mt-4 grid grid-cols-2 gap-2"><button onClick={() => setMode("transfer")} className={`min-h-11 rounded-lg text-sm font-semibold ${mode === "transfer" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}>Transfer</button><button onClick={() => setMode("adjustment")} className={`min-h-11 rounded-lg text-sm font-semibold ${mode === "adjustment" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}>Adjustment</button></div></article><form onSubmit={(e) => { e.preventDefault(); setNotice(""); mutation.mutate(); }} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium text-slate-700 sm:col-span-2">Product{productSelect}</label>{mode === "transfer" ? <>{warehouseSelect("fromWarehouseId", "From warehouse")}{warehouseSelect("toWarehouseId", "To warehouse")}<label className="block text-sm font-medium text-slate-700 sm:col-span-2">Quantity<input required min="0.001" step="0.001" type="number" value={form.quantity} onChange={update("quantity")} className="mt-1 h-11 w-full rounded-lg border border-slate-200 px-3" /></label></> : <>{warehouseSelect("warehouseId", "Warehouse")}<label className="block text-sm font-medium text-slate-700">Quantity change<input required step="0.001" type="number" value={form.adjustmentQty} onChange={update("adjustmentQty")} className="mt-1 h-11 w-full rounded-lg border border-slate-200 px-3" /></label><label className="block text-sm font-medium text-slate-700 sm:col-span-2">Reason<textarea required minLength={3} value={form.reason} onChange={update("reason")} className="mt-1 min-h-20 w-full rounded-lg border border-slate-200 p-3" /></label></>}</div>{mutation.error && <div className="mt-4"><ErrorBanner error={mutation.error} /></div>}{notice && <p aria-live="polite" className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">{notice}</p>}<button disabled={mutation.isPending} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"><Send size={16} />{mutation.isPending ? "Posting…" : mode === "transfer" ? "Post transfer" : "Post adjustment"}</button></form></section>; }
+
+export function InventoryPage() { const [tab, setTab] = useState("Overview"); const [warehouseId, setWarehouseId] = useState(""); const [search, setSearch] = useState(""); const masters = useQuery({ queryKey: ["inventory-masters"], queryFn: async () => { const [warehouseResponse, itemResponse] = await Promise.all([coreApi.list("warehouses", { limit: 100 }), coreApi.list("items", { limit: 100 })]); return { warehouses: warehouseResponse.data || [], items: itemResponse.data || [] }; } }); const warehouses = masters.data?.warehouses || []; const items = masters.data?.items || []; const content = { Overview: <Overview warehouseId={warehouseId} />, Stock: <StockTable warehouseId={warehouseId} search={search} />, Movements: <MovementTable warehouseId={warehouseId} />, Traceability: <BatchTable warehouseId={warehouseId} />, Transfers: <TransferWorkspace warehouses={warehouses} items={items} /> }[tab]; return <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8"><PageHeader title="Inventory control tower" description="Monitor stock health, trace FIFO batches, investigate movements, and execute controlled warehouse operations." actions={<><SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => window.location.reload()} /><AddButton label="Stock operation" onClick={() => setTab("Transfers")} /></>} /><div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center"><div role="tablist" aria-label="Inventory workspace" className="flex min-w-0 gap-1 overflow-x-auto">{TABS.map(([name, Icon]) => <button role="tab" aria-selected={tab === name} key={name} onClick={() => setTab(name)} className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold ${tab === name ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}><Icon size={16} />{name}</button>)}</div><div className="flex flex-1 gap-2 lg:justify-end"><label className="relative min-w-0 flex-1 lg:max-w-xs"><Search aria-hidden="true" size={16} className="pointer-events-none absolute left-3 top-3 text-slate-400" /><input aria-label="Search stock by product or SKU" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SKU or product" className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" /></label><select aria-label="Filter warehouse" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="h-11 max-w-44 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="">All warehouses</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></div></div>{masters.isError ? <ErrorState title="Inventory setup data unavailable" error={masters.error} onRetry={masters.refetch} /> : content}</div>; }

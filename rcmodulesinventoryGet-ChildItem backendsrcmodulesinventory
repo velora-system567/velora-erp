@@ -1,0 +1,169 @@
+warning: in the working copy of 'backend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/prisma/schema.prisma', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/modules/auth/otp.service.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/modules/core/core.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/modules/inventory/inventory.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/src/modules/master/master.routes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/core/CorePage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/inventory/InventoryPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/services/api.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/backend/package.json b/backend/package.json[m
+[1mindex fba561d..4212050 100644[m
+[1m--- a/backend/package.json[m
+[1m+++ b/backend/package.json[m
+[36m@@ -22,6 +22,7 @@[m
+     "ioredis": "^5.8.2",[m
+     "jsonwebtoken": "^9.0.2",[m
+     "morgan": "^1.10.1",[m
+[32m+[m[32m    "pg": "^8.22.0",[m
+     "zod": "^4.1.13"[m
+   },[m
+   "devDependencies": {[m
+[1mdiff --git a/backend/prisma/schema.prisma b/backend/prisma/schema.prisma[m
+[1mindex 95ac00c..8cf5faa 100644[m
+[1m--- a/backend/prisma/schema.prisma[m
+[1m+++ b/backend/prisma/schema.prisma[m
+[36m@@ -124,6 +124,50 @@[m [menum QualityStatus {[m
+   FAIL[m
+   REWORK[m
+ }[m
+[32m+[m[32menum InventoryMovementType {[m
+[32m+[m[32m  OPENING_STOCK[m
+[32m+[m[32m  STOCK_IN[m
+[32m+[m[32m  STOCK_OUT[m
+[32m+[m[32m  TRANSFER_IN[m
+[32m+[m[32m  TRANSFER_OUT[m
+[32m+[m[32m  ADJUSTMENT[m
+[32m+[m[32m  DAMAGE[m
+[32m+[m[32m  RESERVE[m
+[32m+[m[32m  UNRESERVE[m
+[32m+[m[32m  PRODUCTION_IN[m
+[32m+[m[32m  PRODUCTION_OUT[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32menum InventoryReferenceType {[m
+[32m+[m[32m  PURCHASE_ORDER[m
+[32m+[m[32m  SALES_ORDER[m
+[32m+[m[32m  GOODS_RECEIPT[m
+[32m+[m[32m  STOCK_TRANSFER[m
+[32m+[m[32m  STOCK_ADJUSTMENT[m
+[32m+[m[32m  PURCHASE_RETURN[m
+[32m+[m[32m  SALES_RETURN[m
+[32m+[m[32m  PRODUCTION_ORDER[m
+[32m+[m[32m  MANUAL[m
+[32m+[m[32m  OPENING_STOCK[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32menum InventoryMovementSource {[m
+[32m+[m[32m  WEB[m
+[32m+[m[32m  MOBILE[m
+[32m+[m[32m  BARCODE[m
+[32m+[m[32m  IMPORT[m
+[32m+[m[32m  API[m
+[32m+[m[32m  AI[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32menum InventoryItemStatus {[m
+[32m+[m[32m  AVAILABLE[m
+[32m+[m[32m  RESERVED[m
+[32m+[m[32m  DAMAGED[m
+[32m+[m[32m  QUALITY_CHECK[m
+[32m+[m[32m  IN_TRANSIT[m
+[32m+[m[32m  BLOCKED[m
+[32m+[m[32m}[m
+ [m
+ model Tenant {[m
+   id        String   @id @default(uuid()) @db.Uuid[m
+[36m@@ -385,6 +429,18 @@[m [mmodel Item {[m
+   gstRate         Int      @default(18) @map("gst_rate")[m
+   reorderLevel    Decimal? @map("reorder_level") @db.Decimal(18, 3)[m
+   reorderQuantity Decimal? @map("reorder_quantity") @db.Decimal(18, 3)[m
+[32m+[m[32m  barcode         String?[m
+[32m+[m[32m  qrCode          String?  @map("qr_code")[m
+[32m+[m[32m  brand           String?[m
+[32m+[m[32m  imageUrl        String?  @map("image_url")[m
+[32m+[m[32m  attributes      Json?[m
+[32m+[m[32m  attachments     Json?[m
+[32m+[m[32m  notes           String?[m
+[32m+[m[32m  trackingMode    String   @default("NONE") @map("tracking_mode")[m
+[32m+[m[32m  lifecycleStatus String   @default("ACTIVE") @map("lifecycle_status")[m
+[32m+[m[32m  safetyStock     Decimal? @map("safety_stock") @db.Decimal(18, 3)[m
+[32m+[m[32m  eoqQuantity     Decimal? @map("eoq_quantity") @db.Decimal(18, 3)[m
+[32m+[m[32m  leadTimeDays    Int      @default(0) @map("lead_time_days")[m
+   isActive        Boolean  @default(true) @map("is_active")[m
+   createdBy       String?  @map("created_by") @db.Uuid[m
+   updatedBy       String?  @map("updated_by") @db.Uuid[m
+[36m@@ -397,6 +453,8 @@[m [mmodel Item {[m
+ [m
+   @@unique([tenantId, itemCode])[m
+   @@index([tenantId, companyId, isDeleted])[m
+[32m+[m[32m  @@index([tenantId, barcode])[m
+[32m+[m[32m  @@index([tenantId, qrCode])[m
+   @@map("items")[m
+ }[m
+ [m
+[36m@@ -489,7 +547,13 @@[m [mmodel Warehouse {[m
+   companyId String   @map("company_id") @db.Uuid[m
+   branchId  String?  @map("branch_id") @db.Uuid[m
+   name      String[m
+[32m+[m[32m  code      String?[m
+   address   Json?[m
+[32m+[m[32m  parentWarehouseId String? @map("parent_warehouse_id") @db.Uuid[m
+[32m+[m[32m  warehouseType String @default("WAREHOUSE") @map("warehouse_type")[m
+[32m+[m[32m  capacity  Decimal? @db.Decimal(18, 3)[m
+[32m+[m[32m  isDefault Boolean @default(false) @map("is_default")[m
+[32m+[m[32m  isActive  Boolean @default(true) @map("is_active")[m
+   createdBy String?  @map("created_by") @db.Uuid[m
+   updatedBy String?  @map("updated_by") @db.Uuid[m
+   createdAt DateTime @default(now()) @map("created_at")[m
+[36m@@ -497,9 +561,119 @@[m [mmodel Warehouse {[m
+   isDeleted Boolean  @default(false) @map("is_deleted")[m
+ [m
+   @@index([tenantId, companyId, isDeleted])[m
+[32m+[m[32m  @@unique([tenantId, companyId, code])[m
+   @@map("warehouses")[m
+ }[m
+ [m
+[32m+[m[32mmodel InventoryLocation {[m
+[32m+[m[32m  id          String   @id @default(uuid()) @db.Uuid[m
+[32m+[m[32m  tenantId    String   @map("tenant_id") @db.Uuid[m
+[32m+[m[32m  companyId   String   @map("company_id") @db.Uuid[m
+[32m+[m[32m  warehouseId String   @map("warehouse_id") @db.Uuid[m
+[32m+[m[32m  parentId    String?  @map("parent_id") @db.Uuid[m
+[32m+[m[32m  code        String[m
+[32m+[m[32m  name        String[m
+[32m+[m[32m  zone        String?[m
+[32m+[m[32m  bin         String?[m
+[32m+[m[32m  capacity    Decimal? @db.Decimal(18, 3)[m
+[32m+[m[32m  isActive    Boolean  @default(true) @map("is_active")[m
+[32m+[m[32m  createdBy   String?  @map("created_by") @db.Uuid[m
+[32m+[m[32m  updatedBy   String?  @map("updated_by") @db.Uuid[m
+[32m+[m[32m  createdAt   DateTime @default(now()) @map("created_at")[m
+[32m+[m[32m  updatedAt   DateTime @updatedAt @map("updated_at")[m
+[32m+[m[32m  isDeleted   Boolean  @default(false) @map("is_deleted")[m
+[32m+[m
+[32m+[m[32m  @@unique([tenantId, warehouseId, code])[m
+[32m+[m[32m  @@index([tenantId, companyId, warehouseId, isDeleted])[m
+[32m+[m[32m  @@map("inventory_locations")[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mmodel InventoryReservation {[m
+[32m+[m[32m  id          String   @id @default(uuid()) @db.Uuid[m
+[32m+[m[32m  tenantId    String   @map("tenant_id") @db.Uuid[m
+[32m+[m[32m  companyId   String   @map("company_id") @db.Uuid[m
+[32m+[m[32m  branchId    String?  @map("branch_id") @db.Uuid[m
+[32m+[m[32m  itemId      String   @map("item_id") @db.Uuid[m
+[32m+[m[32m  warehouseId String   @map("warehouse_id") @db.Uuid[m
+[32m+[m[32m  locationId  String?  @map("location_id") @db.Uuid[m
+[32m+[m[32m  quantity    Decimal  @db.Decimal(18, 3)[m
+[32m+[m[32m  referenceId String?  @map("reference_id") @db.Uuid[m
+[32m+[m[32m  referenceType String? @map("reference_type")[m
+[32m+[m[32m  status      String   @default("ACTIVE")[m
+[32m+[m[32m  expiresAt   DateTime? @map("expires_at")[m
+[32m+[m[32m  createdBy   String?  @map("created_by") @db.Uuid[m
+[32m+[m[32m  updatedBy   String?  @map("updated_by") @db.Uuid[m
+[32m+[m[32m  createdAt   DateTime @default(now()) @map("created_at")[m
+[32m+[m[32m  updatedAt   DateTime @updatedAt @map("updated_at")[m
+[32m+[m[32m  isDeleted   Boolean  @default(false) @map("is_deleted")[m
+[32m+[m
+[32m+[m[32m  @@index([tenantId, companyId, itemId, warehouseId, s
