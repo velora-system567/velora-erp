@@ -82,7 +82,6 @@ export function Register() {
       }
     }
 
-    console.log(`[Register] Requesting OTP for channel: ${type}, target: ${target}`);
     setSendingChannel(type);
 
     otpMutation.mutate(

@@ -77,7 +77,7 @@ export async function verifyEmail(token) {
   // Send welcome email
   const user = await prisma.user.findUnique({ where: { id: record.userId } });
   if (user) {
-    await sendWelcomeEmail({ to: user.email, name: user.name }).catch(() => {});
+    await sendWelcomeEmail({ to: user.email, name: user.name }).catch((err) => console.error("[auth] Welcome email error:", err.message));
   }
 
   return true;

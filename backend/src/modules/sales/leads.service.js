@@ -1,6 +1,7 @@
 import { getPrisma } from "../../config/db.js";
 import { writeAudit } from "../../utils/audit.js";
 import { rupeesToPaise } from "../../utils/money.js";
+import { rupeesToPaise } from "../../utils/money.js";
 import { updateTenantRecord } from "../../utils/tenant-record.js";
 
 function cleanLead(input) {
@@ -49,7 +50,7 @@ export async function updateLead(req, id, input) {
   const prisma = getPrisma();
   const old = await prisma.lead.findFirst({ where: { id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
   if (!old) { const e = new Error("Lead not found"); e.statusCode = 404; throw e; }
-  const merged = cleanLead({ ...old, ...input, value: input.value !== undefined ? input.value : old.value / 100 });
+  const merged = cleanLead({ ...old, ...input, value: input.value !== undefined ? rupeesToPaise(input.value) : old.value });
   const lead = await updateTenantRecord(prisma, "lead", req, id, { ...merged, updatedBy: req.user.sub }, { notFoundMessage: "Lead not found" });
   await writeAudit(req, { tableName: "leads", recordId: lead.id, action: "LEAD_UPDATED", oldValue: old, newValue: lead });
   return lead;

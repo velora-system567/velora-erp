@@ -48,7 +48,7 @@ export const register = asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({ where: { id: result.user.id } });
   if (user) {
-    sendEmailVerification(user.id, user.email).catch(() => {});
+    sendEmailVerification(user.id, user.email).catch((err) => console.error("[auth] Failed to send verification email:", err.message));
   }
 
   return created(
@@ -82,7 +82,7 @@ export const login = asyncHandler(async (req, res) => {
       recordId: result.user.id,
       action: "LOGIN_SUCCESS",
       newValue: { method: "password", ip: requestMeta(req).ipAddress },
-    }).catch(() => {});
+    }).catch((err) => console.error("[auth] Audit log error:", err.message));
     return ok(res, {
       user: publicUser(result.user),
       accessToken: result.accessToken,

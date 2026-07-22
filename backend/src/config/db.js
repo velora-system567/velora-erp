@@ -1,11 +1,12 @@
 import { PrismaClient } from "@prisma/client";
+import { env } from "./env.js";
 
 let prisma;
 
 export function getPrisma() {
   if (!prisma) {
     prisma = new PrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+      log: env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
     });
   }
 

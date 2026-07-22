@@ -2,7 +2,9 @@ import { z } from "zod";
 import { getPrisma } from "../config/db.js";
 import { created, ok } from "./api-response.js";
 import { asyncHandler } from "./async-handler.js";
+import { rupeesToPaise } from "./money.js";
 import { writeAudit } from "./audit.js";
+import { updateTenantRecord } from "./tenant-record.js";
 
 export const operationSchema = z.object({
   body: z.object({
@@ -30,7 +32,7 @@ export function listOperationRecords(documentType) {
 export function createOperationRecord(documentType) {
   return asyncHandler(async (req, res) => {
     const prisma = getPrisma();
-    const amount = Math.round(Number(req.validated.body.amount) * 100);
+    const amount = rupeesToPaise(req.validated.body.amount);
     const row = await prisma.businessDocument.create({
       data: {
         tenantId: req.tenantId,
@@ -57,10 +59,8 @@ export function createOperationRecord(documentType) {
 export function deleteOperationRecord(documentType) {
   return asyncHandler(async (req, res) => {
     const prisma = getPrisma();
-    const row = await prisma.businessDocument.update({
-      where: { id: req.params.id },
-      data: { isDeleted: true, updatedBy: req.user.sub },
-    });
+    const row = await updateTenantRecord(prisma, "businessDocument", req, req.params.id,
+      { isDeleted: true, updatedBy: req.user.sub });
     await writeAudit(req, { tableName: "business_documents", recordId: row.id, action: `${documentType}_DELETED`, newValue: row });
     return ok(res, row, "Record deleted");
   });

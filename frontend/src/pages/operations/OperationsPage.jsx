@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { operationsApi } from "../../services/api";
+import { formatRupees } from "../../utils/money";
 
 const labels = {
   sales: { title: "Sales", action: "Add Sale", party: "Customer Name" },
@@ -109,7 +110,7 @@ export function OperationsPage({ resource, embedded = false }) {
                     <tr key={row.id}>
                       <td className="px-3 py-3 text-slate-700">{new Date(row.documentDate).toLocaleDateString()}</td>
                       <td className="px-3 py-3 text-slate-700">{row.documentNo || "-"}</td>
-                      <td className="px-3 py-3 font-medium text-slate-950">₹{(row.totalAmount / 100).toLocaleString("en-IN")}</td>
+                      <td className="px-3 py-3 font-medium text-slate-950">{formatRupees(row.totalAmount)}</td>
                       <td className="px-3 py-3 text-slate-700">{row.status}</td>
                       <td className="px-3 py-3 text-right"><button onClick={() => deleteMutation.mutate(row.id)} className="rounded-lg border border-slate-200 p-2 text-rose-600 hover:bg-rose-50"><Trash2 size={16} /></button></td>
                     </tr>
