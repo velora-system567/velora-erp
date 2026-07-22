@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownUp, Boxes, ClipboardList, FileClock, Layers,
-  PackagePlus, RefreshCw, Search, Truck, Warehouse, Box,
+  PackagePlus, RefreshCw, Search, Truck, Warehouse,
   BarChart3, Building2, Tag,
 } from "lucide-react";
 import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";

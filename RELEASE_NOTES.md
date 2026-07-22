@@ -1,3 +1,43 @@
+# Velora ERP v1.5.0 Release Notes
+
+Version 1.5.0 delivers a production-grade inventory module comparable to Odoo or Zoho Inventory.
+
+## What Changed
+
+### Inventory Control Tower
+- Real-time KPI grid: inventory value (FIFO), total stock, turnover rate, reserved stock, out-of-stock, low stock, overstock, and expiring batches.
+- Warehouse summary with percentage share bars and ABC Pareto analysis.
+- Movement heatmap showing 7 days of stock activity by hour.
+- Reorder recommendations with urgency indicators.
+
+### Products
+- Full product lifecycle management (Draft → Active → Discontinued → Obsolete).
+- SKU auto-generation with configurable prefixes (RM/FG/SF/SR/CN + brand + name).
+- Barcode generation and manual entry support.
+- Category, brand, unit of measure, and GST rate management.
+- Batch and serial number tracking configuration.
+
+### Reports
+- Stock Valuation Report: per-item FIFO cost, quantity, and percentage of total value.
+- Movement Report: grouped by transaction type (purchase, sale, transfer, adjustment, etc.).
+- Dead/Slow-Moving Stock: items with aging > 90 days and no recent sales activity.
+- Fast-Moving Products: top 5 highest-value stocked items.
+- Low Stock Alerts: actionable reorder suggestions with urgency levels.
+- All reports support CSV export.
+
+### Suppliers
+- Vendor list with purchase order counts and total purchase value.
+- Supplier detail view with purchase order history and payment records.
+- Search by name, GSTIN, or PAN.
+
+### Technical
+- Modular component architecture replacing 985-line monolithic file.
+- Warehouse names now returned throughout all API responses (no raw UUIDs).
+- Proper tenant isolation and permission checks on all new endpoints.
+- Frontend build size: 1.5 MB JS, 38 KB CSS (gzipped: 439 KB JS, 7 KB CSS).
+
+---
+
 # Velora ERP v1.4.3 Release Notes
 
 Version 1.4.3 improves mobile and cross-device layout quality.

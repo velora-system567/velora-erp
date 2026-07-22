@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, Download, FileBarChart, TrendingDown, TrendingUp } from "lucide-react";
 import { inventoryApi } from "../../services/api";
-import { formatRupees, formatRupeesCompact } from "../../utils/money";
+import { formatRupees } from "../../utils/money";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader, SecondaryButton } from "../../components/PageHeader";

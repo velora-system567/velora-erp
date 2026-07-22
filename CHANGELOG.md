@@ -2,7 +2,29 @@
 
 All notable changes to Velora ERP will be documented in this file.
 
-## [1.4.3] - 2026-06-28
+## [1.5.0] - 2026-07-22
+
+### Added
+- **Inventory Control Tower**: KPI dashboard with inventory value, turnover, low-stock alerts, ABC analysis, warehouse summary, movement heatmap, and reorder recommendations.
+- **Products Module**: Full CRUD with SKU auto-generation, barcode support, categories, brands, units of measure, GST configuration, tracking modes (batch/serial), and lifecycle status.
+- **Inventory Reports**: 5 report types — stock valuation (FIFO), movement analysis, dead/slow-moving stock, fast-moving products, low-stock alerts — all with CSV export.
+- **Suppliers Module**: Vendor management with purchase order history, payment tracking, credit terms, GST/PAN information, and contact management.
+- **Backend Endpoints**: `/inventory/suppliers` (list with PO counts, searchable), `/inventory/suppliers/:id` (detail with purchase orders and payments).
+- **Movement Heatmap**: Visual 7-day × 24-hour stock movement activity on the control tower dashboard.
+
+### Changed
+- **Refactored** monolithic 985-line InventoryPage into 10 modular components (Overview, StockTable, MovementTable, BatchTable, TransferWorkspace, ReservationsPanel, CycleCountsPanel, WarehouseManager, shared primitives).
+- **Enriched** all stock endpoints to return warehouse names instead of raw UUIDs (stock-summary, valuation-report, stock-ledger).
+- **Improved** sidebar navigation with direct links to Products, Reports, and Suppliers sub-pages.
+- **Upgraded** frontend to React 19, TanStack Query, and latest dependencies.
+
+### Fixed
+- Stock summary display showing raw warehouse UUIDs — now shows warehouse names.
+- Valuation report missing warehouse context — now includes warehouse names.
+- Stock ledger missing item/warehouse details — now includes related objects.
+- Products page showing raw UUIDs for reservations — now resolves warehouse/item names.
+- Cycle counts showing raw warehouse IDs — now displays warehouse names.
+- Various unused imports, missing loading states, and code quality issues.
 
 ### Fixed
 - Added mobile app chrome with sticky header and bottom navigation.

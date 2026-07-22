@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, Download, Mail, MapPin, Phone, Plus, Search, ShoppingBag, X, Edit3,
+  ArrowLeft, Building2, Download, MapPin, Plus, Search, ShoppingBag, X,
 } from "lucide-react";
 import { coreApi, inventoryApi } from "../../services/api";
 import { formatRupees } from "../../utils/money";

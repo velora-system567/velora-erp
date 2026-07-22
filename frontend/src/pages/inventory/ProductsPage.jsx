@@ -11,11 +11,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Edit3, Package, Plus, Search, Trash2, X, RefreshCw,
-  Barcode, Tag, Boxes, Hash,
+  ArrowLeft, Edit3, Plus, Search, Trash2, X, RefreshCw,
+  Barcode, Tag, Hash,
 } from "lucide-react";
 import { coreApi } from "../../services/api";
-import { ErrorBanner, ErrorState } from "../../components/ErrorState";
+import { ErrorBanner } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";
 import { SkeletonPage, SkeletonTable } from "../../components/Skeleton";
