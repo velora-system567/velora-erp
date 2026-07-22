@@ -11,6 +11,9 @@ import { Dashboard } from "./pages/dashboard/Dashboard";
 import { SalesPage } from "./pages/sales/SalesPage";
 import { PurchasePage } from "./pages/purchase/PurchasePage";
 import { InventoryPage } from "./pages/inventory/InventoryPage";
+import ProductsPage from "./pages/inventory/ProductsPage";
+import ReportsPage from "./pages/inventory/ReportsPage";
+import SuppliersPage from "./pages/inventory/SuppliersPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
 import { ManufacturingPage } from "./pages/manufacturing/ManufacturingPage";
 
@@ -45,6 +48,9 @@ export default function App() {
               <Route path="/sales" element={<SalesPage />} />
               <Route path="/purchase" element={<PurchasePage />} />
               <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/inventory/products" element={<ProductsPage />} />
+              <Route path="/inventory/reports" element={<ReportsPage />} />
+              <Route path="/inventory/suppliers" element={<SuppliersPage />} />
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/manufacturing" element={<ManufacturingPage />} />
               <Route path="/activity" element={<AuditLogPage />} />

@@ -239,6 +239,8 @@ export const inventoryApi = {
   openingStock: (input) => apiRequest("/inventory/opening-stock", { method: "POST", body: JSON.stringify(input) }),
   lowStockAlerts: () => apiRequest("/inventory/low-stock-alerts"),
   valuationReport: () => apiRequest("/inventory/valuation-report"),
+  suppliers: (p = {}) => apiRequest(`/inventory/suppliers?${new URLSearchParams(p)}`),
+  supplierDetail: (id) => apiRequest(`/inventory/suppliers/${id}`),
 };
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────

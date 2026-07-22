@@ -75,16 +75,28 @@ router.get("/inventory/stock-summary", requirePermission(PERMISSIONS.INVENTORY_R
   const { warehouseId } = req.validated.query;
   const balances = await getStockBalances(prisma, { tenantId: req.tenantId, companyId: req.companyId, warehouseId });
 
-  // Enrich with item names
+  // Enrich with item and warehouse names
   const itemIds = [...new Set(balances.map((b) => b.itemId))];
-  const items = await prisma.item.findMany({
-    where: { id: { in: itemIds }, isDeleted: false },
-    select: { id: true, itemCode: true, name: true, unitOfMeasureId: true },
-  });
+  const whIds = [...new Set(balances.map((b) => b.warehouseId))];
+  const [items, warehouses] = await Promise.all([
+    prisma.item.findMany({
+      where: { id: { in: itemIds }, isDeleted: false },
+      select: { id: true, itemCode: true, name: true, unitOfMeasureId: true },
+    }),
+    prisma.warehouse.findMany({
+      where: { id: { in: whIds }, isDeleted: false },
+      select: { id: true, name: true, code: true },
+    }),
+  ]);
   const itemMap = new Map(items.map((i) => [i.id, i]));
+  const whMap = new Map(warehouses.map((w) => [w.id, w]));
 
   const rows = balances
-    .map((b) => ({ ...b, item: itemMap.get(b.itemId) || null }))
+    .map((b) => ({
+      ...b,
+      item: itemMap.get(b.itemId) || null,
+      warehouse: whMap.get(b.warehouseId) || null,
+    }))
     .filter((b) => b.quantity !== 0);
 
   return ok(res, rows, "Stock summary loaded");
@@ -99,7 +111,16 @@ router.get("/inventory/stock-ledger/:itemId", requirePermission(PERMISSIONS.INVE
     const where = { tenantId: req.tenantId, itemId: req.params.itemId, isDeleted: false };
     const [total, rows] = await Promise.all([
       prisma.stockLedger.count({ where }),
-      prisma.stockLedger.findMany({ where, skip: (Number(page) - 1) * Number(limit), take: Number(limit), orderBy: { createdAt: "desc" } }),
+      prisma.stockLedger.findMany({
+        where,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+        orderBy: { createdAt: "desc" },
+        include: {
+          item: { select: { name: true, itemCode: true } },
+          warehouse: { select: { name: true } },
+        },
+      }),
     ]);
     return ok(res, rows, "Stock ledger loaded", { page: Number(page), limit: Number(limit), total });
   }));
@@ -353,18 +374,92 @@ router.get("/inventory/valuation-report", requirePermission(PERMISSIONS.INVENTOR
   const prisma = getPrisma();
   const balances = await getStockBalances(prisma, { tenantId: req.tenantId, companyId: req.companyId });
   const itemIds = [...new Set(balances.map((b) => b.itemId))];
-  const items = await prisma.item.findMany({
-    where: { id: { in: itemIds }, isDeleted: false },
-    select: { id: true, itemCode: true, name: true },
-  });
+  const whIds = [...new Set(balances.map((b) => b.warehouseId))];
+  const [items, warehouses] = await Promise.all([
+    prisma.item.findMany({
+      where: { id: { in: itemIds }, isDeleted: false },
+      select: { id: true, itemCode: true, name: true },
+    }),
+    prisma.warehouse.findMany({
+      where: { id: { in: whIds }, isDeleted: false },
+      select: { id: true, name: true },
+    }),
+  ]);
   const itemMap = new Map(items.map((i) => [i.id, i]));
+  const whMap = new Map(warehouses.map((w) => [w.id, w]));
   const totalValue = balances.reduce((s, b) => s + b.valuePaise, 0);
   const rows = balances.map((b) => ({
     ...b,
     item: itemMap.get(b.itemId) || null,
+    warehouse: whMap.get(b.warehouseId) || null,
     avgCostRate: b.quantity > 0 ? Math.round(b.valuePaise / b.quantity) : 0,
   }));
   return ok(res, { rows, totalValuePaise: totalValue }, "Valuation report");
 }));
+
+// ─── Inventory Suppliers ────────────────────────────────────────────
+router.get("/inventory/suppliers", requirePermission(PERMISSIONS.INVENTORY_READ),
+  validate(z.object({ query: z.object({ q: z.string().optional() }) })),
+  asyncHandler(async (req, res) => {
+    const prisma = getPrisma();
+    const { tenantId, companyId } = req;
+    const { q } = req.validated.query;
+    const where = { tenantId, companyId, isDeleted: false };
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { gstin: { contains: q, mode: "insensitive" } },
+        { panNumber: { contains: q, mode: "insensitive" } },
+      ];
+    }
+    const vendors = await prisma.vendor.findMany({
+      where,
+      orderBy: { name: "asc" },
+      take: 100,
+    });
+
+  // Enrich with purchase order counts
+  const vendorIds = vendors.map((v) => v.id);
+  const poCounts = await prisma.businessDocument.groupBy({
+    by: ["partyId"],
+    where: { tenantId, companyId, documentType: "PURCHASE_ORDER", partyId: { in: vendorIds }, isDeleted: false },
+    _count: { id: true },
+    _sum: { totalAmount: true },
+  });
+  const poMap = new Map(poCounts.map((r) => [r.partyId, { poCount: r._count.id, totalAmount: r._sum.totalAmount }]));
+
+  const rows = vendors.map((v) => ({
+    ...v,
+    purchaseOrderCount: poMap.get(v.id)?.poCount || 0,
+    totalPurchaseValue: poMap.get(v.id)?.totalAmount || 0,
+  }));
+  return ok(res, rows, "Suppliers loaded");
+}));
+
+router.get("/inventory/suppliers/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
+  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  asyncHandler(async (req, res) => {
+    const prisma = getPrisma();
+    const vendor = await prisma.vendor.findFirst({
+      where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },
+    });
+    if (!vendor) { const e = new Error("Supplier not found"); e.statusCode = 404; throw e; }
+
+    const purchaseOrders = await prisma.businessDocument.findMany({
+      where: { tenantId: req.tenantId, companyId: req.companyId, partyId: vendor.id, documentType: "PURCHASE_ORDER", isDeleted: false },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: { lines: { where: { isDeleted: false } } },
+    });
+
+    // Payment history
+    const payments = await prisma.payment.findMany({
+      where: { tenantId: req.tenantId, companyId: req.companyId, partyId: vendor.id, partyType: "VENDOR", isDeleted: false },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return ok(res, { vendor, purchaseOrders, payments }, "Supplier details loaded");
+  }));
 
 export default router;
