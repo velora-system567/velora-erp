@@ -13,16 +13,22 @@ const envSchema = z.object({
   ACCESS_TOKEN_EXPIRES_IN: z.string().default("8h"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
+
   RESEND_API_KEY: z.string().optional(),
   OTP_FROM_EMAIL: z.string().email().optional(),
+
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_PHONE: z.string().optional(),
+
   SMS_API_KEY: z.string().optional(),
   SMS_SECRET: z.string().optional(),
   SMS_ENDPOINT: z.string().optional(),
   SENDER_ID: z.string().optional(),
   AUTH_TOKENS: z.string().optional(),
+
+  OTP_BYPASS: z.string().optional(),
+  MODULE_LICENSE_TEST_OPEN: z.coerce.boolean().default(true),
 });
 
 export const env = envSchema.parse(process.env);
