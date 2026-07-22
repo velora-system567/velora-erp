@@ -83,7 +83,7 @@ async function sendEmailOtp(target, code, purpose = "verification") {
 
 async function sendPhoneOtp(target, code) {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_PHONE) {
-    throw providerError("SMS verification is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_PHONE.", 503);
+    throw providerError("Phone SMS service is not available. Email verification is the primary method.", 503);
   }
   const credentials = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {

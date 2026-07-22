@@ -24,7 +24,7 @@ export const registerSchema = z.object({
       .regex(/[0-9]/, "Password must contain at least one digit")
       .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
     confirmPassword: z.string(),
-    phoneOtp: z.string().length(6),
+    phoneOtp: z.string().length(6).optional().or(z.literal("")),
     emailOtp: z.string().length(6),
   })
     .refine((data) => data.password === data.confirmPassword, {

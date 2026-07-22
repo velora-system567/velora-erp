@@ -51,7 +51,13 @@ export function Register() {
 
   function submit(event) {
     event.preventDefault();
-    mutation.mutate({ ...form, gstin: form.gstin.trim(), ownerPhone: form.ownerPhone.trim() });
+    const payload = {
+      ...form,
+      gstin: form.gstin.trim(),
+      ownerPhone: form.ownerPhone.trim() || undefined,
+      phoneOtp: form.ownerPhone.trim() ? form.phoneOtp : "",
+    };
+    mutation.mutate(payload);
   }
 
   function sendOtp(type) {
@@ -128,20 +134,25 @@ export function Register() {
             Confirm Password
             <input type={showPassword ? "text" : "password"} placeholder="Rajesh@123" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Phone OTP
-            <div className="mt-2 flex gap-2">
-              <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              <button 
-                type="button" 
-                onClick={() => sendOtp("phone")} 
-                disabled={sendingChannel !== null}
-                className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingChannel === "phone" ? "Sending..." : "Send"}
-              </button>
-            </div>
-          </label>
+          {form.ownerPhone && (
+            <label className="block text-sm font-medium text-slate-700">
+              Phone OTP <span className="text-slate-400 font-normal">(optional)</span>
+              <div className="mt-2 flex gap-2">
+                <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                <button
+                  type="button"
+                  onClick={() => sendOtp("phone")}
+                  disabled={sendingChannel !== null}
+                  className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingChannel === "phone" ? "Sending..." : "Send"}
+                </button>
+              </div>
+              {otpMutation.error && otpMutation.error.message?.includes("SMS") && (
+                <p className="mt-1 text-xs text-amber-600">Phone SMS not configured. Skip phone OTP or contact support.</p>
+              )}
+            </label>
+          )}
           <label className="block text-sm font-medium text-slate-700">
             Email OTP
             <div className="mt-2 flex gap-2">
