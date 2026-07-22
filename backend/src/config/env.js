@@ -28,6 +28,7 @@ const envSchema = z.object({
   AUTH_TOKENS: z.string().optional(),
 
   OTP_BYPASS: z.string().optional(),
+  OTP_HASH_SECRET: z.string().optional(),
   MODULE_LICENSE_TEST_OPEN: z.coerce.boolean().default(true),
 });
 

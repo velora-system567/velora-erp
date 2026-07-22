@@ -12,6 +12,8 @@ import {
   requestOtp,
   resetPasswordHandler,
   sessions,
+  verifyEmailHandler,
+  resendVerificationHandler,
 } from "./auth.controller.js";
 import {
   forgotPasswordSchema,
@@ -20,6 +22,8 @@ import {
   registerSchema,
   requestOtpSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
 } from "./auth.schemas.js";
 
 const router = Router();
@@ -34,5 +38,9 @@ router.get("/sessions", requireAuth, sessions);
 router.post("/forgot-password", validate(forgotPasswordSchema), forgotPasswordHandler);
 router.post("/reset-password", validate(resetPasswordSchema), resetPasswordHandler);
 router.get("/me", requireAuth, me);
+
+// Email verification
+router.post("/verify-email", validate(verifyEmailSchema), verifyEmailHandler);
+router.post("/resend-verification", validate(resendVerificationSchema), resendVerificationHandler);
 
 export default router;

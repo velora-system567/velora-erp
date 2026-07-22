@@ -1,5 +1,6 @@
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
+import { writeAudit } from "../../utils/audit.js";
 import {
   loginUser,
   refreshAccessToken,
@@ -10,7 +11,9 @@ import {
   forgotPassword,
   resetPassword,
 } from "./auth.service.js";
-import { requestOtp as requestOtpCode, verifyOtp } from "./otp.service.js";
+import { requestOtp as requestOtpCode, verifyOtp, checkLoginRateLimit, recordLoginAttempt } from "./otp.service.js";
+import { sendEmailVerification, verifyEmail, resendVerification } from "./verification.service.js";
+import { getPrisma } from "../../config/db.js";
 
 function publicUser(user) {
   return {
@@ -20,6 +23,7 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    emailVerifiedAt: user.emailVerifiedAt,
   };
 }
 
@@ -39,6 +43,14 @@ export const register = asyncHandler(async (req, res) => {
     await verifyOtp({ channel: "phone", target: req.validated.body.ownerPhone, code: req.validated.body.phoneOtp });
   }
   const result = await registerTenant(req.validated.body, requestMeta(req));
+
+  // Send email verification
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: result.user.id } });
+  if (user) {
+    sendEmailVerification(user.id, user.email).catch(() => {});
+  }
+
   return created(
     res,
     {
@@ -48,7 +60,7 @@ export const register = asyncHandler(async (req, res) => {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
     },
-    "Tenant registered successfully",
+    "Tenant registered successfully. Please verify your email.",
   );
 });
 
@@ -58,12 +70,28 @@ export const requestOtp = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const result = await loginUser(req.validated.body.email, req.validated.body.password, requestMeta(req));
-  return ok(res, {
-    user: publicUser(result.user),
-    accessToken: result.accessToken,
-    refreshToken: result.refreshToken,
-  }, "Login successful");
+  // Rate limiting check
+  await checkLoginRateLimit(req.validated.body.email);
+
+  try {
+    const result = await loginUser(req.validated.body.email, req.validated.body.password, requestMeta(req));
+    await recordLoginAttempt(req.validated.body.email, true);
+    // Audit login
+    await writeAudit(req, {
+      tableName: "users",
+      recordId: result.user.id,
+      action: "LOGIN_SUCCESS",
+      newValue: { method: "password", ip: requestMeta(req).ipAddress },
+    }).catch(() => {});
+    return ok(res, {
+      user: publicUser(result.user),
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, "Login successful");
+  } catch (error) {
+    await recordLoginAttempt(req.validated.body.email, false);
+    throw error;
+  }
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
@@ -102,7 +130,6 @@ export const resetPasswordHandler = asyncHandler(async (req, res) => {
 });
 
 export const me = asyncHandler(async (req, res) => {
-  const { getPrisma } = await import("../../config/db.js");
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({
     where: { id: req.user.sub, isDeleted: false },
@@ -115,4 +142,27 @@ export const me = asyncHandler(async (req, res) => {
   }
   const { passwordHash: _, ...safeUser } = user;
   return ok(res, { user: safeUser }, "Authenticated user");
+});
+
+// ─── Email Verification Handlers ───────────────────────────────────────
+
+export const verifyEmailHandler = asyncHandler(async (req, res) => {
+  await verifyEmail(req.validated.body.token);
+  return ok(res, {}, "Email verified successfully");
+});
+
+export const resendVerificationHandler = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub || req.validated.body.email;
+  if (typeof userId === "string" && userId.includes("@")) {
+    // If email was provided instead of userId, look up the user
+    const prisma = getPrisma();
+    const user = await prisma.user.findFirst({
+      where: { email: userId.toLowerCase(), isDeleted: false },
+    });
+    if (!user) return ok(res, {}, "If that email exists, a verification has been sent");
+    await resendVerification(user.id);
+  } else {
+    await resendVerification(userId);
+  }
+  return ok(res, {}, "Verification email sent");
 });

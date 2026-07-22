@@ -1,11 +1,17 @@
 import crypto from "crypto";
 import { getRedis } from "../../config/redis.js";
 import { env } from "../../config/env.js";
+import { sendOtpEmail } from "../../utils/email.js";
 
 const OTP_TTL_SECONDS = 10 * 60;
 const RESEND_COOLDOWN_SECONDS = 60;
 const MAX_SENDS_PER_HOUR = 5;
 const MAX_VERIFY_ATTEMPTS = 5;
+
+// Login rate limiting
+const LOGIN_MAX_ATTEMPTS = 10;
+const LOGIN_WINDOW_SECONDS = 15 * 60; // 15 minutes
+const LOGIN_BAN_SECONDS = 30 * 60; // 30 min ban after max attempts
 
 function normalizedTarget(channel, target) {
   const value = String(target || "").trim();
@@ -31,6 +37,37 @@ function cooldownKey(channel, target) { return `otp:v2:cooldown:${channel}:${tar
 function sendWindowKey(channel, target) { return `otp:v2:sends:${channel}:${targetDigest(channel, target)}`; }
 function sendLockKey(channel, target) { return `otp:v2:lock:${channel}:${targetDigest(channel, target)}`; }
 
+// ─── Login rate limiting ───────────────────────────────────────────────
+function loginAttemptsKey(email) { return `login:attempts:${email.toLowerCase()}`; }
+function loginBanKey(email) { return `login:banned:${email.toLowerCase()}`; }
+
+export async function checkLoginRateLimit(email) {
+  const redis = getRedis();
+  const banned = await redis.get(loginBanKey(email));
+  if (banned) {
+    const ttl = await redis.ttl(loginBanKey(email));
+    const error = new Error(`Too many login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`);
+    error.statusCode = 429;
+    throw error;
+  }
+}
+
+export async function recordLoginAttempt(email, success) {
+  const redis = getRedis();
+  if (success) {
+    await redis.del(loginAttemptsKey(email));
+    await redis.del(loginBanKey(email));
+    return;
+  }
+  const key = loginAttemptsKey(email);
+  const attempts = await redis.incr(key);
+  if (attempts === 1) await redis.expire(key, LOGIN_WINDOW_SECONDS);
+  if (attempts >= LOGIN_MAX_ATTEMPTS) {
+    await redis.set(loginBanKey(email), "1", "EX", LOGIN_BAN_SECONDS);
+    await redis.del(key);
+  }
+}
+
 function generateOtp() { return crypto.randomInt(100000, 1000000).toString(); }
 
 function providerError(message, statusCode = 502) {
@@ -39,20 +76,9 @@ function providerError(message, statusCode = 502) {
   return error;
 }
 
-async function sendEmailOtp(target, code) {
+async function sendEmailOtp(target, code, purpose = "verification") {
   if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) throw providerError("Email verification is not configured. Set RESEND_API_KEY and OTP_FROM_EMAIL.", 503);
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: env.OTP_FROM_EMAIL,
-      to: [target],
-      subject: "Your Velora ERP verification code",
-      text: `Your Velora ERP verification code is ${code}. It expires in 10 minutes. Do not share this code with anyone.`,
-      html: `<main style="font-family:Arial,sans-serif;color:#0f172a"><h1 style="font-size:20px">Verify your Velora ERP account</h1><p>Use this one-time verification code:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>This code expires in 10 minutes. Do not share it with anyone.</p></main>`,
-    }),
-  });
-  if (!response.ok) throw providerError("Email verification could not be sent. Please try again shortly.");
+  await sendOtpEmail({ to: target, code, purpose });
 }
 
 async function sendPhoneOtp(target, code) {
@@ -68,7 +94,7 @@ async function sendPhoneOtp(target, code) {
   if (!response.ok) throw providerError("SMS verification could not be sent. Please try again shortly.");
 }
 
-export async function requestOtp({ channel, target }) {
+export async function requestOtp({ channel, target, purpose = "verification" }) {
   const normalized = normalizedTarget(channel, target);
   const redis = getRedis();
   const cooldown = cooldownKey(channel, normalized);
@@ -84,7 +110,7 @@ export async function requestOtp({ channel, target }) {
     if (sends > MAX_SENDS_PER_HOUR) throw providerError("Too many verification requests. Please try again in an hour.", 429);
 
     const code = generateOtp();
-    if (channel === "email") await sendEmailOtp(normalized, code);
+    if (channel === "email") await sendEmailOtp(normalized, code, purpose);
     else await sendPhoneOtp(normalized, code);
 
     await redis.multi()

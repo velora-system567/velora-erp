@@ -88,6 +88,8 @@ export const authApi = {
   forgotPassword: (email) => apiRequest("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
   resetPassword: (input) => apiRequest("/auth/reset-password", { method: "POST", body: JSON.stringify(input) }),
   me: () => apiRequest("/auth/me"),
+  verifyEmail: (token) => apiRequest("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+  resendVerification: (email) => apiRequest("/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }) }),
 };
 
 // Legacy exports kept for backward compat
