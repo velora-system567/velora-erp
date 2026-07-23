@@ -230,7 +230,7 @@ router.post("/vendor-payments", requirePermission(PERMISSIONS.PURCHASE_PAYMENT),
     return created(res, payment, "Vendor payment recorded");
   }));
 
-n// ─── PURCHASE DASHBOARD ────────────────────────────────────
+// ─── PURCHASE DASHBOARD ────────────────────────────────────
 router.get("/purchase/dashboard", requirePermission(PERMISSIONS.PURCHASE_READ), asyncHandler(async (req, res) => {
   const data = await getPurchaseDashboard(req);
   return ok(res, data, "Purchase dashboard loaded");
