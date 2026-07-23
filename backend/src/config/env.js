@@ -26,6 +26,13 @@ const envSchema = z.object({
 
   // Optional: separate secret for OTP hash (defaults to JWT_ACCESS_SECRET)
   OTP_HASH_SECRET: z.string().optional(),
+
+  // AI Copilot
+  AI_PROVIDER: z.enum(["openai", "anthropic", "ollama"]).optional().default("openai"),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().optional(),
+  AI_TEMPERATURE: z.string().optional(),
+  AI_BASE_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

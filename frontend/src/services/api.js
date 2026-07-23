@@ -283,6 +283,14 @@ export const accountsApi = {
   cashBook: () => apiRequest("/accounts/cash-book"),
 };
 
+// ─── AI Copilot ────────────────────────────────────────────────────────────────
+
+export const aiApi = {
+  chat: (message, context, history = []) => apiRequest("/ai/chat", { method: "POST", body: JSON.stringify({ message, context, history }) }),
+  insights: () => apiRequest("/ai/insights"),
+  diagnose: () => apiRequest("/ai/diagnose"),
+};
+
 // ─── BI (Business Intelligence) ────────────────────────────────────────────────
 
 export const biApi = {

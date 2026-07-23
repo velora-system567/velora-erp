@@ -5,6 +5,7 @@ import {
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
+import AICopilot from "./AICopilot";
 
 const navItems = [
   { to: "/crm", label: "CRM", icon: Users },
@@ -122,6 +123,7 @@ export function AppShell() {
         {/* Page content */}
         <main className="min-w-0 pb-24 lg:pb-0">
           <Outlet />
+          <AICopilot />
         </main>
 
         {/* Mobile Bottom Nav */}

@@ -16,6 +16,7 @@ import manufacturingRoutes from "./modules/manufacturing/manufacturing.routes.js
 import crmRoutes from "./modules/crm/crm.routes.js";
 import wmsRoutes from "./modules/wms/wms.routes.js";
 import biRoutes from "./modules/bi/bi.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -63,6 +64,9 @@ app.use("/api", wmsRoutes);
 
 // BI (executive dashboard, analytics, insights)
 app.use("/api", biRoutes);
+
+// AI Copilot (chat, insights, diagnostics)
+app.use("/api", aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
