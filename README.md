@@ -30,6 +30,24 @@ The inventory module is a production-grade subsystem comparable to Odoo or Zoho 
 | **Reports** | Valuation report, movement analysis, dead/slow-moving stock, fast-moving products, low-stock alerts — all with CSV export |
 | **Audit Trail** | Complete stock movement history with FIFO batch traceability, serial number tracking, reservation system |
 
+## Configuration
+
+The following environment variables are required to run the application:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ Yes | PostgreSQL connection string |
+| `REDIS_URL` | ✅ Yes | Redis connection string (used for OTP, sessions, caching) |
+| `JWT_ACCESS_SECRET` | ✅ Yes | JWT signing secret (min 24 characters) |
+| `JWT_REFRESH_SECRET` | ✅ Yes | JWT refresh signing secret (min 24 characters) |
+| `FRONTEND_URL` | ✅ Yes | Frontend URL for CORS and email links |
+| `RESEND_API_KEY` | ⬜ For email | Resend API key for transactional emails (https://resend.com) |
+| `OTP_FROM_EMAIL` | ⬜ For email | Sender email address for OTP and verification emails |
+
+In **development**, the application works without email configuration — OTP codes and verification links are logged to the server console. Set `RESEND_API_KEY` and `OTP_FROM_EMAIL` for production email delivery.
+
+SMS/Phone verification is optional and disabled by default. Email verification is always available as the primary method.
+
 ## Structure
 
 ```text

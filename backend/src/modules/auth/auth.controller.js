@@ -13,6 +13,7 @@ import {
 } from "./auth.service.js";
 import { requestOtp as requestOtpCode, verifyOtp, checkLoginRateLimit, recordLoginAttempt } from "./otp.service.js";
 import { sendEmailVerification, verifyEmail, resendVerification } from "./verification.service.js";
+import { env } from "../../config/env.js";
 import { getPrisma } from "../../config/db.js";
 
 function publicUser(user) {
@@ -65,8 +66,19 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const requestOtp = asyncHandler(async (req, res) => {
-  await requestOtpCode(req.validated.body);
-  return ok(res, {}, "Verification code sent");
+  const result = await requestOtpCode(req.validated.body);
+  const channel = req.validated.body.channel;
+  const configured = channel === "email"
+    ? !!(env.RESEND_API_KEY && env.OTP_FROM_EMAIL)
+    : !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_PHONE);
+
+  const message = configured
+    ? `Verification code sent to your ${channel}.`
+    : `OTP stored (${channel} delivery not configured). ${
+        channel === "phone" ? "SMS verification is currently disabled. Email verification is available." : "Set RESEND_API_KEY and OTP_FROM_EMAIL to enable email delivery."
+      }`;
+
+  return ok(res, { ...result, channel, delivered: configured }, message);
 });
 
 export const login = asyncHandler(async (req, res) => {

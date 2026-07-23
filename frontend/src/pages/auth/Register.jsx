@@ -94,7 +94,13 @@ export function Register() {
       { channel: type, target },
       {
         onSuccess: (data) => {
-          setSuccessMessage(data?.message || `${type === "phone" ? "Phone" : "Email"} OTP sent successfully.`);
+          const delivered = data?.data?.delivered;
+          const msg = data?.message || "";
+          if (type === "phone" && delivered === false) {
+            setSuccessMessage("SMS verification is currently disabled. Email verification is available. You can skip phone verification.");
+          } else {
+            setSuccessMessage(msg || `${type === "phone" ? "Phone" : "Email"} OTP sent successfully.`);
+          }
           setSendingChannel(null);
         },
         onError: (err) => {

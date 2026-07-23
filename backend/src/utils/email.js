@@ -2,14 +2,35 @@
  * Velora ERP — Email Service
  *
  * Sends transactional emails via Resend with branded HTML templates.
- * Gracefully degrades when email provider is not configured.
+ * In development, OTPs and verification codes are logged to the console
+ * so flows can be tested without an email provider.
+ * In production, RESEND_API_KEY and OTP_FROM_EMAIL must be set.
  */
 
 import { env } from "../config/env.js";
 
+/**
+ * Sends an email via Resend, or logs to console in development.
+ * Returns { id } from Resend on success, null when skipping delivery.
+ * Throws only on Resend API errors (not on missing config).
+ */
 async function sendViaResend({ to, subject, html }) {
   if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) {
-    console.warn("[email] Resend not configured — email not sent to", to);
+    if (env.NODE_ENV === "production") {
+      const missing = [];
+      if (!env.RESEND_API_KEY) missing.push("RESEND_API_KEY");
+      if (!env.OTP_FROM_EMAIL) missing.push("OTP_FROM_EMAIL");
+      throw new Error(
+        `[email] Cannot send email in production. Missing: ${missing.join(", ")}. ` +
+        "Set these in your environment or .env file."
+      );
+    }
+    // Development: log instead of sending — enables testing without an email provider
+    console.log("=".repeat(60));
+    console.log(`[DEV EMAIL] To: ${to}`);
+    console.log(`[DEV EMAIL] Subject: ${subject}`);
+    console.log(`[DEV EMAIL] Body preview: ${html.replace(/<[^>]*>/g, "").trim().slice(0, 200)}…`);
+    console.log("=".repeat(60));
     return null;
   }
   const response = await fetch("https://api.resend.com/emails", {

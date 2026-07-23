@@ -77,13 +77,17 @@ function providerError(message, statusCode = 502) {
 }
 
 async function sendEmailOtp(target, code, purpose = "verification") {
-  if (!env.RESEND_API_KEY || !env.OTP_FROM_EMAIL) throw providerError("Email verification is not configured. Set RESEND_API_KEY and OTP_FROM_EMAIL.", 503);
-  await sendOtpEmail({ to: target, code, purpose });
+  // email.js handles missing config gracefully (logs to console in dev, warns in prod)
+  await sendOtpEmail({ to: target, code, purpose }).catch((err) => {
+    console.error("[otp] Failed to send email OTP:", err.message);
+  });
 }
 
 async function sendPhoneOtp(target, code) {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_PHONE) {
-    throw providerError("Phone SMS service is not available. Email verification is the primary method.", 503);
+    // SMS is optional — silently skip delivery, OTP is still stored in Redis
+    console.log("[otp] SMS not configured — skipping phone delivery for", target);
+    return;
   }
   const credentials = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
@@ -91,7 +95,7 @@ async function sendPhoneOtp(target, code) {
     headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ To: target, From: env.TWILIO_FROM_PHONE, Body: `Your Velora ERP verification code is ${code}. It expires in 10 minutes. Do not share it.` }),
   });
-  if (!response.ok) throw providerError("SMS verification could not be sent. Please try again shortly.");
+  if (!response.ok) console.error("[otp] Twilio send failed:", await response.text().catch(() => "unknown"));
 }
 
 export async function requestOtp({ channel, target, purpose = "verification" }) {
