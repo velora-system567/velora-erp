@@ -213,6 +213,11 @@ export const purchaseApi = {
   vendorPayments: () => apiRequest("/vendor-payments"),
   createVendorPayment: (input) => apiRequest("/vendor-payments", { method: "POST", body: JSON.stringify(input) }),
 
+  // Dashboard & Analytics
+  dashboard: () => apiRequest("/purchase/dashboard"),
+  analytics: () => apiRequest("/purchase/analytics"),
+  report: (p = {}) => apiRequest(`/purchase/report?${new URLSearchParams(p)}`),
+
   // Reports
   outstandingReport: () => apiRequest("/purchase/outstanding-report"),
   vendorLedger: (id) => apiRequest(`/vendors/${id}/ledger`),

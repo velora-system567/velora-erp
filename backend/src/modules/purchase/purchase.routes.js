@@ -13,6 +13,7 @@ import {
   createGrn, approveGrn, listGrns,
   createPurchaseInvoice,
   recordVendorPayment, getPurchaseOutstanding,
+  getPurchaseDashboard, getPurchaseAnalytics, getPurchaseReport,
 } from "./purchase.service.js";
 import { updateTenantRecord } from "../../utils/tenant-record.js";
 
@@ -227,6 +228,24 @@ router.post("/vendor-payments", requirePermission(PERMISSIONS.PURCHASE_PAYMENT),
   asyncHandler(async (req, res) => {
     const payment = await recordVendorPayment(req, req.validated.body);
     return created(res, payment, "Vendor payment recorded");
+  }));
+
+n// ─── PURCHASE DASHBOARD ────────────────────────────────────
+router.get("/purchase/dashboard", requirePermission(PERMISSIONS.PURCHASE_READ), asyncHandler(async (req, res) => {
+  const data = await getPurchaseDashboard(req);
+  return ok(res, data, "Purchase dashboard loaded");
+}));
+
+router.get("/purchase/analytics", requirePermission(PERMISSIONS.PURCHASE_READ), asyncHandler(async (req, res) => {
+  const data = await getPurchaseAnalytics(req);
+  return ok(res, data, "Purchase analytics loaded");
+}));
+
+router.get("/purchase/report", requirePermission(PERMISSIONS.PURCHASE_READ),
+  validate(z.object({ query: z.object({ fromDate: z.string().optional(), toDate: z.string().optional() }) })),
+  asyncHandler(async (req, res) => {
+    const data = await getPurchaseReport(req, req.validated.query);
+    return ok(res, data, "Purchase report loaded");
   }));
 
 // ─── REPORTS ─────────────────────────────────────────────────────────────────

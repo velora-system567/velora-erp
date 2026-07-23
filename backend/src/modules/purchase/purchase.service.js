@@ -345,3 +345,75 @@ export async function getPurchaseOutstanding(req) {
     agingDays: Math.floor((Date.now() - new Date(inv.documentDate).getTime()) / 86400000),
   }));
 }
+
+
+// ─── Purchase Dashboard ─────────────────────────────────────────────────────
+
+export async function getPurchaseDashboard(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const poWhere = { tenantId, companyId, documentType: "PURCHASE_ORDER", isDeleted: false };
+  const payWhere = { tenantId, companyId, paymentType: "PAYMENT", isDeleted: false };
+
+  const [totalPOs, pendingPOs, draftPOs, approvedPOs, monthlyPOs, totalGrns, monthlyPayments, vendorCount, topVendors, recentActivity] = await Promise.all([
+    prisma.businessDocument.count({ where: poWhere }),
+    prisma.businessDocument.count({ where: { ...poWhere, status: { in: ["DRAFT", "SUBMITTED"] } } }),
+    prisma.businessDocument.count({ where: { ...poWhere, status: "DRAFT" } }),
+    prisma.businessDocument.count({ where: { ...poWhere, status: "APPROVED" } }),
+    prisma.businessDocument.aggregate({ where: { ...poWhere, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.goodsReceiptNote.count({ where: { tenantId, companyId, isDeleted: false } }),
+    prisma.payment.aggregate({ where: { ...payWhere, paymentDate: { gte: monthStart } }, _sum: { amount: true } }),
+    prisma.vendor.count({ where: { tenantId, companyId, isDeleted: false } }),
+    prisma.businessDocument.groupBy({ by: ["partyId"], where: { ...poWhere, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: { id: true }, orderBy: { _sum: { totalAmount: "desc" } }, take: 5 }),
+    prisma.businessDocument.findMany({ where: { ...poWhere }, orderBy: { updatedAt: "desc" }, take: 10, select: { id: true, documentNo: true, status: true, totalAmount: true, updatedAt: true, partyId: true } }),
+  ]);
+
+  const vendorIds = topVendors.map((v) => v.partyId).filter(Boolean);
+  const vendors = vendorIds.length ? await prisma.vendor.findMany({ where: { id: { in: vendorIds } }, select: { id: true, name: true } }) : [];
+  const vendorMap = new Map(vendors.map((v) => [v.id, v]));
+
+  return {
+    kpis: { totalPOs, pendingPOs, draftPOs, approvedPOs, totalGrns, vendorCount, monthlyPurchaseValue: monthlyPOs._sum.totalAmount || 0, monthlyPOCount: monthlyPOs._count || 0, monthlyPaymentValue: monthlyPayments._sum.amount || 0 },
+    topVendors: topVendors.map((v) => ({ id: v.partyId, name: vendorMap.get(v.partyId)?.name || "Unknown", totalAmount: v._sum.totalAmount || 0, orderCount: v._count.id || 0 })),
+    recentActivity: recentActivity.map((a) => ({ ...a, partyName: vendorMap.get(a.partyId)?.name || "Unknown" })),
+  };
+}
+
+export async function getPurchaseAnalytics(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const months = 12;
+  const result = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const start = new Date();
+    start.setMonth(start.getMonth() - i);
+    start.setDate(1); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setMonth(end.getMonth() + 1);
+    const [po, grn, pay] = await Promise.all([
+      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_ORDER", isDeleted: false, documentDate: { gte: start, lt: end } }, _sum: { totalAmount: true }, _count: true }),
+      prisma.goodsReceiptNote.count({ where: { tenantId, companyId, isDeleted: false, createdAt: { gte: start, lt: end } } }),
+      prisma.payment.aggregate({ where: { tenantId, companyId, paymentType: "PAYMENT", isDeleted: false, paymentDate: { gte: start, lt: end } }, _sum: { amount: true } }),
+    ]);
+    result.push({ month: start.toLocaleString("en-US", { month: "short", year: "2-digit" }), orders: po._count || 0, value: po._sum.totalAmount || 0, grns: grn, payments: pay._sum.amount || 0 });
+  }
+  return result;
+}
+
+export async function getPurchaseReport(req, { fromDate, toDate }) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const where = { tenantId, companyId, documentType: "PURCHASE_ORDER", isDeleted: false };
+  if (fromDate) where.documentDate = { ...where.documentDate, gte: new Date(fromDate) };
+  if (toDate) where.documentDate = { ...where.documentDate, lte: new Date(toDate + "T23:59:59.999Z") };
+  const orders = await prisma.businessDocument.findMany({ where, include: { lines: { where: { isDeleted: false } } }, orderBy: { documentDate: "desc" }, take: 500 });
+  const vendorIds = [...new Set(orders.map((o) => o.partyId).filter(Boolean))];
+  const vendors = vendorIds.length ? await prisma.vendor.findMany({ where: { id: { in: vendorIds } }, select: { id: true, name: true, gstin: true } }) : [];
+  const vendorMap = new Map(vendors.map((v) => [v.id, v]));
+  const rows = orders.map((o) => ({ id: o.id, documentNo: o.documentNo, documentDate: o.documentDate, vendor: vendorMap.get(o.partyId) || { name: "Unknown" }, status: o.status, subtotal: o.subtotal, discount: o.discount, taxableAmount: o.taxableAmount, cgstAmount: o.cgstAmount, sgstAmount: o.sgstAmount, igstAmount: o.igstAmount, totalAmount: o.totalAmount, lineCount: o.lines.length }));
+  const totalValue = rows.reduce((s, r) => s + r.totalAmount, 0);
+  const totalTax = rows.reduce((s, r) => s + r.cgstAmount + r.sgstAmount + r.igstAmount, 0);
+  return { rows, summary: { totalOrders: rows.length, totalValue, totalTax } };
+}
