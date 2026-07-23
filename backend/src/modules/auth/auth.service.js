@@ -311,12 +311,12 @@ export async function forgotPassword(email) {
     where: { email: email.toLowerCase(), isDeleted: false, isActive: true },
   });
   if (!user) return; // Silent — don't expose if email exists
-  await requestOtp({ channel: "email", target: email });
+  await requestOtp({ target: email, purpose: "password-reset" });
 }
 
 export async function resetPassword(email, otp, newPassword) {
   const { verifyOtp } = await import("./otp.service.js");
-  await verifyOtp({ channel: "email", target: email, code: otp });
+  await verifyOtp({ target: email, code: otp });
 
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({

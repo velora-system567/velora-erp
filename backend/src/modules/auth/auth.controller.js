@@ -15,6 +15,7 @@ import { requestOtp as requestOtpCode, verifyOtp, checkLoginRateLimit, recordLog
 import { sendEmailVerification, verifyEmail, resendVerification } from "./verification.service.js";
 import { env } from "../../config/env.js";
 import { getPrisma } from "../../config/db.js";
+import { checkConfig } from "../../utils/email.js";
 
 function publicUser(user) {
   return {
@@ -39,18 +40,15 @@ function requestMeta(req) {
 }
 
 export const register = asyncHandler(async (req, res) => {
-  await verifyOtp({ channel: "email", target: req.validated.body.ownerEmail, code: req.validated.body.emailOtp });
-  if (req.validated.body.ownerPhone) {
-    await verifyOtp({ channel: "phone", target: req.validated.body.ownerPhone, code: req.validated.body.phoneOtp });
-  }
+  // Verify email OTP before creating the account
+  await verifyOtp({ target: req.validated.body.ownerEmail, code: req.validated.body.emailOtp });
+
   const result = await registerTenant(req.validated.body, requestMeta(req));
 
-  // Send email verification
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { id: result.user.id } });
-  if (user) {
-    sendEmailVerification(user.id, user.email).catch((err) => console.error("[auth] Failed to send verification email:", err.message));
-  }
+  // Fire-and-forget: send verification email
+  sendEmailVerification(result.user.id, result.user.email).catch((err) =>
+    console.error("[auth] Failed to send verification email:", err.message)
+  );
 
   return created(
     res,
@@ -67,34 +65,31 @@ export const register = asyncHandler(async (req, res) => {
 
 export const requestOtp = asyncHandler(async (req, res) => {
   const result = await requestOtpCode(req.validated.body);
-  const channel = req.validated.body.channel;
-  const configured = channel === "email"
-    ? !!(env.RESEND_API_KEY && env.OTP_FROM_EMAIL)
-    : !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM_PHONE);
+
+  const missing = checkConfig();
+  const configured = missing.length === 0;
 
   const message = configured
-    ? `Verification code sent to your ${channel}.`
-    : `OTP stored (${channel} delivery not configured). ${
-        channel === "phone" ? "SMS verification is currently disabled. Email verification is available." : "Set RESEND_API_KEY and OTP_FROM_EMAIL to enable email delivery."
-      }`;
+    ? "Verification code sent to your email."
+    : `OTP generated (email delivery requires: ${missing.join(", ")}). Check the server console for the code in development.`;
 
-  return ok(res, { ...result, channel, delivered: configured }, message);
+  return ok(res, { ...result, delivered: configured }, message);
 });
 
 export const login = asyncHandler(async (req, res) => {
-  // Rate limiting check
   await checkLoginRateLimit(req.validated.body.email);
 
   try {
     const result = await loginUser(req.validated.body.email, req.validated.body.password, requestMeta(req));
     await recordLoginAttempt(req.validated.body.email, true);
-    // Audit login
+
     await writeAudit(req, {
       tableName: "users",
       recordId: result.user.id,
       action: "LOGIN_SUCCESS",
       newValue: { method: "password", ip: requestMeta(req).ipAddress },
     }).catch((err) => console.error("[auth] Audit log error:", err.message));
+
     return ok(res, {
       user: publicUser(result.user),
       accessToken: result.accessToken,
@@ -112,8 +107,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  const token = req.body?.refreshToken;
-  await logoutUser(token);
+  await logoutUser(req.body?.refreshToken);
   return ok(res, {}, "Logged out successfully");
 });
 
@@ -133,11 +127,7 @@ export const forgotPasswordHandler = asyncHandler(async (req, res) => {
 });
 
 export const resetPasswordHandler = asyncHandler(async (req, res) => {
-  await resetPassword(
-    req.validated.body.email,
-    req.validated.body.otp,
-    req.validated.body.password,
-  );
+  await resetPassword(req.validated.body.email, req.validated.body.otp, req.validated.body.password);
   return ok(res, {}, "Password reset successfully. Please login again.");
 });
 
@@ -156,7 +146,7 @@ export const me = asyncHandler(async (req, res) => {
   return ok(res, { user: safeUser }, "Authenticated user");
 });
 
-// ─── Email Verification Handlers ───────────────────────────────────────
+// ─── Email Verification Handlers ─────────────────────────────────
 
 export const verifyEmailHandler = asyncHandler(async (req, res) => {
   await verifyEmail(req.validated.body.token);
@@ -166,7 +156,6 @@ export const verifyEmailHandler = asyncHandler(async (req, res) => {
 export const resendVerificationHandler = asyncHandler(async (req, res) => {
   const userId = req.user?.sub || req.validated.body.email;
   if (typeof userId === "string" && userId.includes("@")) {
-    // If email was provided instead of userId, look up the user
     const prisma = getPrisma();
     const user = await prisma.user.findFirst({
       where: { email: userId.toLowerCase(), isDeleted: false },

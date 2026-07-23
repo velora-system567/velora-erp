@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { Building2, Eye, EyeOff } from "lucide-react";
+import { Building2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerTenant, requestOtp } from "../../services/api";
+import { authApi } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 
 const fieldConfig = [
@@ -24,17 +24,16 @@ export function Register() {
     ownerPhone: "",
     password: "",
     confirmPassword: "",
-    phoneOtp: "",
     emailOtp: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [sendingChannel, setSendingChannel] = useState(null);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [validationError, setValidationError] = useState("");
 
-  const otpMutation = useMutation({ mutationFn: requestOtp });
+  const otpMutation = useMutation({ mutationFn: authApi.requestOtp });
   const mutation = useMutation({
-    mutationFn: registerTenant,
+    mutationFn: authApi.register,
     onSuccess: (payload) => {
       setSession(payload.data);
       navigate("/");
@@ -42,8 +41,8 @@ export function Register() {
   });
 
   function update(key, value) {
-    setForm((current) => ({ ...current, [key]: value }));
-    if (key === "ownerPhone" || key === "ownerEmail") {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === "ownerEmail") {
       setValidationError("");
       setSuccessMessage("");
     }
@@ -51,150 +50,166 @@ export function Register() {
 
   function submit(event) {
     event.preventDefault();
-    const payload = {
+    mutation.mutate({
       ...form,
       gstin: form.gstin.trim(),
       ownerPhone: form.ownerPhone.trim() || undefined,
-      phoneOtp: form.ownerPhone.trim() ? form.phoneOtp : "",
-    };
-    mutation.mutate(payload);
+    });
   }
 
-  function sendOtp(type) {
-    const target = type === "phone" ? form.ownerPhone.trim() : form.ownerEmail.trim();
-    
-    // Reset feedback states
+  function sendOtp() {
+    const target = form.ownerEmail.trim();
     setValidationError("");
     setSuccessMessage("");
 
-    // Client-side validations
-    if (type === "phone") {
-      if (!target) {
-        setValidationError("Phone number is required to send OTP.");
-        return;
-      }
-      if (!/^\+?[0-9]{8,15}$/.test(target)) {
-        setValidationError("Please enter a valid phone number (e.g. +919823456710).");
-        return;
-      }
-    } else {
-      if (!target) {
-        setValidationError("Email is required to send OTP.");
-        return;
-      }
-      if (!/\S+@\S+\.\S+/.test(target)) {
-        setValidationError("Please enter a valid email address.");
-        return;
-      }
+    if (!target) {
+      setValidationError("Email is required to send OTP.");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(target)) {
+      setValidationError("Please enter a valid email address.");
+      return;
     }
 
-    setSendingChannel(type);
-
+    setSendingOtp(true);
     otpMutation.mutate(
-      { channel: type, target },
+      { channel: "email", target },
       {
         onSuccess: (data) => {
           const delivered = data?.data?.delivered;
-          const msg = data?.message || "";
-          if (type === "phone" && delivered === false) {
-            setSuccessMessage("SMS verification is currently disabled. Email verification is available. You can skip phone verification.");
+          if (delivered) {
+            setSuccessMessage("Verification code sent to your email.");
           } else {
-            setSuccessMessage(msg || `${type === "phone" ? "Phone" : "Email"} OTP sent successfully.`);
+            setSuccessMessage("OTP generated but email delivery requires RESEND_API_KEY. Check server console for the code.");
           }
-          setSendingChannel(null);
+          setSendingOtp(false);
         },
-        onError: (err) => {
-          setSendingChannel(null);
-        }
-      }
+        onError: () => {
+          setSendingOtp(false);
+        },
+      },
     );
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50 p-4">
-      <form onSubmit={submit} className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white"><Building2 size={22} /></div>
-          <div>
-            <h1 className="text-xl font-semibold text-slate-950">Create Company Workspace</h1>
-            <p className="text-sm text-slate-500">Start with your own business data.</p>
+    <div className="grid min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col justify-center">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-200">
+            <Building2 size={28} className="text-white" />
           </div>
+          <h1 className="text-2xl font-bold text-slate-950">Create Company Workspace</h1>
+          <p className="mt-1 text-sm text-slate-500">Start with your own business data.</p>
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {fieldConfig.map(([key, label, type, placeholder]) => (
-            <label key={key} className="block text-sm font-medium text-slate-700">
-              {label}
-              <input type={type} placeholder={placeholder} value={form[key]} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-            </label>
-          ))}
-          <label className="block text-sm font-medium text-slate-700">
-            Password
-            <div className="mt-2 flex h-11 rounded-lg border border-slate-200 focus-within:border-blue-500">
-              <input type={showPassword ? "text" : "password"} placeholder="Rajesh@123" value={form.password} onChange={(event) => update("password", event.target.value)} className="min-w-0 flex-1 rounded-l-lg px-3 outline-none" />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} className="grid w-11 place-items-center text-slate-500">
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Confirm Password
-            <input type={showPassword ? "text" : "password"} placeholder="Rajesh@123" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-          </label>
-          {form.ownerPhone && (
+
+        <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {fieldConfig.map(([key, label, type, placeholder]) => (
+              <label key={key} className="block text-sm font-medium text-slate-700">
+                {label}
+                <input
+                  type={type}
+                  placeholder={placeholder}
+                  value={form[key]}
+                  onChange={(e) => update(key, e.target.value)}
+                  className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            ))}
+
+            {/* Password */}
             <label className="block text-sm font-medium text-slate-700">
-              Phone OTP <span className="text-slate-400 font-normal">(optional)</span>
-              <div className="mt-2 flex gap-2">
-                <input inputMode="numeric" placeholder="123456" value={form.phoneOtp} onChange={(event) => update("phoneOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+              Password
+              <div className="mt-1.5 flex h-11 rounded-lg border border-slate-200 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Rajesh@123"
+                  value={form.password}
+                  onChange={(e) => update("password", e.target.value)}
+                  className="min-w-0 flex-1 rounded-l-lg px-3 text-sm outline-none"
+                />
                 <button
                   type="button"
-                  onClick={() => sendOtp("phone")}
-                  disabled={sendingChannel !== null}
-                  className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="grid w-11 place-items-center text-slate-400 hover:text-slate-600"
                 >
-                  {sendingChannel === "phone" ? "Sending..." : "Send"}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {otpMutation.error && otpMutation.error.message?.includes("SMS") && (
-                <p className="mt-1 text-xs text-amber-600">Phone SMS not configured. Skip phone OTP or contact support.</p>
-              )}
             </label>
+
+            {/* Confirm Password */}
+            <label className="block text-sm font-medium text-slate-700">
+              Confirm Password
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Rajesh@123"
+                value={form.confirmPassword}
+                onChange={(e) => update("confirmPassword", e.target.value)}
+                className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+
+            {/* Email OTP */}
+            <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+              Email Verification Code
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  inputMode="numeric"
+                  placeholder="123456"
+                  value={form.emailOtp}
+                  onChange={(e) => update("emailOtp", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={sendOtp}
+                  disabled={sendingOtp}
+                  className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sendingOtp ? <Loader2 size={15} className="animate-spin" /> : null}
+                  {sendingOtp ? "Sending…" : "Send code"}
+                </button>
+              </div>
+            </label>
+          </div>
+
+          {/* Messages */}
+          {validationError && (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{validationError}</p>
           )}
-          <label className="block text-sm font-medium text-slate-700">
-            Email OTP
-            <div className="mt-2 flex gap-2">
-              <input inputMode="numeric" placeholder="123456" value={form.emailOtp} onChange={(event) => update("emailOtp", event.target.value)} className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-              <button 
-                type="button" 
-                onClick={() => sendOtp("email")} 
-                disabled={sendingChannel !== null}
-                className="h-11 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingChannel === "email" ? "Sending..." : "Send"}
-              </button>
-            </div>
-          </label>
-        </div>
-        {validationError && (
-          <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
-            {validationError}
+          {otpMutation.error && (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {otpMutation.error.message || "Failed to send OTP. Please try again."}
+            </p>
+          )}
+          {successMessage && (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{successMessage}</p>
+          )}
+          {mutation.error && (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {mutation.isPending ? (
+              <><Loader2 size={16} className="animate-spin" /> Creating workspace…</>
+            ) : (
+              "Create Workspace"
+            )}
+          </button>
+
+          <p className="mt-4 text-center text-sm text-slate-600">
+            Already set up?{" "}
+            <Link className="font-semibold text-blue-600 hover:text-blue-800" to="/login">
+              Login
+            </Link>
           </p>
-        )}
-        {otpMutation.error && (
-          <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700 border border-rose-200">
-            {otpMutation.error.message}
-          </p>
-        )}
-        {successMessage && (
-          <p className="mt-4 whitespace-pre-line rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 border border-emerald-200">
-            {successMessage}
-          </p>
-        )}
-        {mutation.error ? <p className="mt-4 whitespace-pre-line rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
-        <button className="mt-6 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={mutation.isPending}>
-          Create Workspace
-        </button>
-        <p className="mt-4 text-center text-sm text-slate-600">Already set up? <Link className="font-semibold text-blue-700" to="/login">Login</Link></p>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

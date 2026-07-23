@@ -1,54 +1,68 @@
+/**
+ * OTP Service — Email-only, Redis-backed, Resend-delivered
+ *
+ * ── Security ──────────────────────────────────────────────────
+ * • 6-digit OTP generated with crypto.randomInt (CSPRNG)
+ * • OTP is hashed (HMAC-SHA256) before storing in Redis
+ * • 10-minute expiry (Redis TTL)
+ * • One-time usage: deleted from Redis on successful verify
+ * • Max 5 verify attempts per code (auto-deletes after)
+ * • Rate limited: 5 sends/hour per email, 60s cooldown
+ * ──────────────────────────────────────────────────────────────
+ */
 import crypto from "crypto";
 import { getRedis } from "../../config/redis.js";
 import { env } from "../../config/env.js";
-import { sendOtpEmail } from "../../utils/email.js";
 
-const OTP_TTL_SECONDS = 10 * 60;
-const RESEND_COOLDOWN_SECONDS = 60;
-const MAX_SENDS_PER_HOUR = 5;
-const MAX_VERIFY_ATTEMPTS = 5;
+// ─── Constants ────────────────────────────────────────────────────
+const OTP_TTL_SECONDS = 10 * 60;          // 10 minutes
+const RESEND_COOLDOWN_SECONDS = 60;       // 1 minute between resends
+const MAX_SENDS_PER_HOUR = 5;              // max OTP requests per email per hour
+const MAX_VERIFY_ATTEMPTS = 5;            // max failed attempts before code is revoked
 
 // Login rate limiting
 const LOGIN_MAX_ATTEMPTS = 10;
-const LOGIN_WINDOW_SECONDS = 15 * 60; // 15 minutes
-const LOGIN_BAN_SECONDS = 30 * 60; // 30 min ban after max attempts
+const LOGIN_WINDOW_SECONDS = 15 * 60;     // 15 minutes
+const LOGIN_BAN_SECONDS = 30 * 60;        // 30 minute ban
 
-function normalizedTarget(channel, target) {
-  const value = String(target || "").trim();
-  if (channel === "email") return value.toLowerCase();
-  if (!/^\+[1-9]\d{7,14}$/.test(value)) {
-    const error = new Error("Phone numbers must use E.164 format, for example +919823456710.");
-    error.statusCode = 400;
-    throw error;
-  }
-  return value;
+// ─── Hashing ──────────────────────────────────────────────────────
+
+function getSecret() {
+  return env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET;
 }
 
-function targetDigest(channel, target) {
-  return crypto.createHmac("sha256", env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET).update(`${channel}:${target}`).digest("hex");
+function targetDigest(email) {
+  return crypto.createHmac("sha256", getSecret())
+    .update(`email:${email.toLowerCase().trim()}`)
+    .digest("hex");
 }
 
-function otpHash(channel, target, code) {
-  return crypto.createHmac("sha256", env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET).update(`${channel}:${target}:${code}`).digest("hex");
+function otpHash(email, code) {
+  return crypto.createHmac("sha256", getSecret())
+    .update(`email:${email.toLowerCase().trim()}:${code}`)
+    .digest("hex");
 }
 
-function otpKey(channel, target) { return `otp:v2:${channel}:${targetDigest(channel, target)}`; }
-function cooldownKey(channel, target) { return `otp:v2:cooldown:${channel}:${targetDigest(channel, target)}`; }
-function sendWindowKey(channel, target) { return `otp:v2:sends:${channel}:${targetDigest(channel, target)}`; }
-function sendLockKey(channel, target) { return `otp:v2:lock:${channel}:${targetDigest(channel, target)}`; }
+// ─── Redis Keys ───────────────────────────────────────────────────
 
-// ─── Login rate limiting ───────────────────────────────────────────────
+function otpKey(email)      { return `otp:email:${targetDigest(email)}`; }
+function cooldownKey(email) { return `otp:cooldown:${targetDigest(email)}`; }
+function sendWindowKey(email) { return `otp:sends:${targetDigest(email)}`; }
+function sendLockKey(email) { return `otp:lock:${targetDigest(email)}`; }
+
+// ─── Login Rate Limiting ──────────────────────────────────────────
+
 function loginAttemptsKey(email) { return `login:attempts:${email.toLowerCase()}`; }
-function loginBanKey(email) { return `login:banned:${email.toLowerCase()}`; }
+function loginBanKey(email)      { return `login:banned:${email.toLowerCase()}`; }
 
 export async function checkLoginRateLimit(email) {
   const redis = getRedis();
   const banned = await redis.get(loginBanKey(email));
   if (banned) {
     const ttl = await redis.ttl(loginBanKey(email));
-    const error = new Error(`Too many login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`);
-    error.statusCode = 429;
-    throw error;
+    const err = new Error(`Too many login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`);
+    err.statusCode = 429;
+    throw err;
   }
 }
 
@@ -68,73 +82,102 @@ export async function recordLoginAttempt(email, success) {
   }
 }
 
-function generateOtp() { return crypto.randomInt(100000, 1000000).toString(); }
+// ─── OTP Generation ───────────────────────────────────────────────
 
-function providerError(message, statusCode = 502) {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
+function generateOtp() {
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
-async function sendEmailOtp(target, code, purpose = "verification") {
-  // email.js handles missing config gracefully (logs to console in dev, warns in prod)
-  await sendOtpEmail({ to: target, code, purpose }).catch((err) => {
-    console.error("[otp] Failed to send email OTP:", err.message);
-  });
-}
+// ─── OTP Request ──────────────────────────────────────────────────
 
-async function sendPhoneOtp(target, code) {
-  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_PHONE) {
-    // SMS is optional — silently skip delivery, OTP is still stored in Redis
-    console.log("[otp] SMS not configured — skipping phone delivery for", target);
-    return;
-  }
-  const credentials = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");
-  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ To: target, From: env.TWILIO_FROM_PHONE, Body: `Your Velora ERP verification code is ${code}. It expires in 10 minutes. Do not share it.` }),
-  });
-  if (!response.ok) console.error("[otp] Twilio send failed:", await response.text().catch(() => "unknown"));
-}
-
-export async function requestOtp({ channel, target, purpose = "verification" }) {
-  const normalized = normalizedTarget(channel, target);
+/**
+ * Generates a 6-digit OTP, stores its hash in Redis, and sends it via Resend.
+ *
+ * Rate limiting:
+ *  - 60s cooldown between requests to the same email
+ *  - Max 5 requests per hour per email
+ *
+ * @returns {{ expiresInSeconds: number, resendAfterSeconds: number }}
+ */
+export async function requestOtp({ target, purpose = "verification" }) {
+  const email = target.toLowerCase().trim();
   const redis = getRedis();
-  const cooldown = cooldownKey(channel, normalized);
-  const lock = sendLockKey(channel, normalized);
-  if (await redis.exists(cooldown)) throw providerError("Please wait 60 seconds before requesting another code.", 429);
-  const locked = await redis.set(lock, "1", "EX", 30, "NX");
-  if (!locked) throw providerError("A verification request is already in progress. Please wait a moment.", 429);
+
+  // Cooldown check
+  if (await redis.exists(cooldownKey(email))) {
+    const err = new Error("Please wait 60 seconds before requesting another code.");
+    err.statusCode = 429;
+    throw err;
+  }
+
+  // Lock to prevent concurrent requests
+  const locked = await redis.set(sendLockKey(email), "1", "EX", 30, "NX");
+  if (!locked) {
+    const err = new Error("A verification request is already in progress. Please wait a moment.");
+    err.statusCode = 429;
+    throw err;
+  }
 
   try {
-    const windowKey = sendWindowKey(channel, normalized);
+    // Hourly rate limit
+    const windowKey = sendWindowKey(email);
     const sends = await redis.incr(windowKey);
     if (sends === 1) await redis.expire(windowKey, 60 * 60);
-    if (sends > MAX_SENDS_PER_HOUR) throw providerError("Too many verification requests. Please try again in an hour.", 429);
+    if (sends > MAX_SENDS_PER_HOUR) {
+      const err = new Error("Too many verification requests. Please try again in an hour.");
+      err.statusCode = 429;
+      throw err;
+    }
 
     const code = generateOtp();
-    if (channel === "email") await sendEmailOtp(normalized, code, purpose);
-    else await sendPhoneOtp(normalized, code);
 
-    await redis.multi()
-      .set(otpKey(channel, normalized), JSON.stringify({ hash: otpHash(channel, normalized, code), attempts: 0 }), "EX", OTP_TTL_SECONDS)
-      .set(cooldown, "1", "EX", RESEND_COOLDOWN_SECONDS)
-      .del(lock)
+    // Send via Resend (or log to console in dev)
+    const { sendOtpEmail } = await import("../../utils/email.js");
+    await sendOtpEmail({ to: email, code, purpose }).catch((err) => {
+      console.error("[otp] Failed to send email:", err.message);
+    });
+
+    // Store hashed OTP in Redis with atomic transaction
+    await redis
+      .multi()
+      .set(otpKey(email), JSON.stringify({ hash: otpHash(email, code), attempts: 0 }), "EX", OTP_TTL_SECONDS)
+      .set(cooldownKey(email), "1", "EX", RESEND_COOLDOWN_SECONDS)
+      .del(sendLockKey(email))
       .exec();
+
     return { expiresInSeconds: OTP_TTL_SECONDS, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };
   } catch (error) {
-    await redis.del(lock);
+    await redis.del(sendLockKey(email));
     throw error;
   }
 }
 
-export async function verifyOtp({ channel, target, code }) {
-  const normalized = normalizedTarget(channel, target);
-  if (!/^\d{6}$/.test(String(code))) throw providerError("Verification code must contain 6 digits.", 422);
+// ─── OTP Verification ─────────────────────────────────────────────
+
+/**
+ * Verifies a 6-digit OTP using Redis Lua script for atomicity.
+ *
+ * Returns: true on success
+ * Throws:  on invalid/expired code or too many attempts
+ *
+ * Lua script return values:
+ *   1  → code matched → OTP deleted → success
+ *   0  → key not found → expired or never requested
+ *  -1  → too many failed attempts → key deleted
+ *  -2  → code didn't match → attempts incremented
+ */
+export async function verifyOtp({ target, code }) {
+  const email = target.toLowerCase().trim();
+  if (!/^\d{6}$/.test(String(code))) {
+    const err = new Error("Verification code must contain 6 digits.");
+    err.statusCode = 422;
+    throw err;
+  }
+
   const redis = getRedis();
-  const key = otpKey(channel, normalized);
-  const expectedHash = otpHash(channel, normalized, String(code));
+  const key = otpKey(email);
+  const expectedHash = otpHash(email, String(code));
+
   const result = await redis.eval(
     `local value = redis.call('GET', KEYS[1])
      if not value then return 0 end
@@ -149,7 +192,14 @@ export async function verifyOtp({ channel, target, code }) {
     expectedHash,
     String(MAX_VERIFY_ATTEMPTS),
   );
+
   if (Number(result) === 1) return true;
-  if (Number(result) === -1) throw providerError("Too many incorrect codes. Request a new verification code.", 429);
-  throw providerError("Verification code is invalid or expired.", 422);
+  if (Number(result) === -1) {
+    const err = new Error("Too many incorrect codes. Request a new verification code.");
+    err.statusCode = 429;
+    throw err;
+  }
+  const err = new Error("Verification code is invalid or expired.");
+  err.statusCode = 422;
+  throw err;
 }

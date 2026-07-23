@@ -1,22 +1,22 @@
 import { z } from "zod";
 
-const testingGstinSchema = z.string().trim().min(1).max(32).optional().or(z.literal(""));
+const gstinOptional = z.string().trim().min(1).max(32).optional().or(z.literal(""));
 
 export const requestOtpSchema = z.object({
   body: z.object({
-    channel: z.enum(["email", "phone"]),
-    target: z.string().min(5),
+    channel: z.enum(["email"]).default("email"),
+    target: z.string().email("A valid email address is required"),
     purpose: z.enum(["verification", "password-reset"]).optional().default("verification"),
   }),
 });
 
 export const registerSchema = z.object({
   body: z.object({
-    companyName: z.string().min(2),
-    gstin: testingGstinSchema,
-    ownerName: z.string().min(2),
-    ownerEmail: z.string().email(),
-    ownerPhone: z.string().min(8).optional(),
+    companyName: z.string().min(2, "Company name must be at least 2 characters"),
+    gstin: gstinOptional,
+    ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
+    ownerEmail: z.string().email("A valid email address is required"),
+    ownerPhone: z.string().optional(),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -24,8 +24,7 @@ export const registerSchema = z.object({
       .regex(/[0-9]/, "Password must contain at least one digit")
       .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
     confirmPassword: z.string(),
-    phoneOtp: z.string().length(6).optional().or(z.literal("")),
-    emailOtp: z.string().length(6),
+    emailOtp: z.string().length(6, "Email OTP must be 6 digits"),
   })
     .refine((data) => data.password === data.confirmPassword, {
       path: ["confirmPassword"],
@@ -48,7 +47,7 @@ export const refreshTokenSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.string().email("Please enter a valid email address"),
   }),
 });
 
