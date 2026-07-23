@@ -14,6 +14,7 @@ import accountsRoutes from "./modules/accounts/accounts.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import manufacturingRoutes from "./modules/manufacturing/manufacturing.routes.js";
 import crmRoutes from "./modules/crm/crm.routes.js";
+import wmsRoutes from "./modules/wms/wms.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -55,6 +56,9 @@ app.use("/api", manufacturingRoutes);
 
 // CRM (customer pipeline, 360° view, search, activities)
 app.use("/api", crmRoutes);
+
+// WMS (warehouse management, bin locations, movements)
+app.use("/api", wmsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

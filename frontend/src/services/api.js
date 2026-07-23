@@ -283,6 +283,16 @@ export const accountsApi = {
   cashBook: () => apiRequest("/accounts/cash-book"),
 };
 
+// ─── WMS (Warehouse Management) ───────────────────────────────────────────────
+
+export const wmsApi = {
+  dashboard: () => apiRequest("/wms/dashboard"),
+  warehouseDetail: (id) => apiRequest(`/wms/warehouses/${id}`),
+  locations: (p = {}) => apiRequest(`/wms/locations?${new URLSearchParams(p)}`),
+  createLocation: (input) => apiRequest("/wms/locations", { method: "POST", body: JSON.stringify(input) }),
+  movements: (p = {}) => apiRequest(`/wms/movements?${new URLSearchParams(p)}`),
+};
+
 // ─── Manufacturing ────────────────────────────────────────────────────────────
 
 export const manufacturingApi = {
