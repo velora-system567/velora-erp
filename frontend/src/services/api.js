@@ -255,6 +255,15 @@ export const inventoryApi = {
   supplierDetail: (id) => apiRequest(`/inventory/suppliers/${id}`),
 };
 
+// ─── CRM ──────────────────────────────────────────────────────────────────────
+
+export const crmApi = {
+  dashboard: () => apiRequest("/crm/dashboard"),
+  pipeline: (status) => apiRequest(`/crm/pipeline?status=${status || "ALL"}`),
+  customer360: (id) => apiRequest(`/crm/customers/${id}`),
+  search: (q) => apiRequest(`/crm/search?q=${encodeURIComponent(q)}`),
+};
+
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
 export const accountsApi = {

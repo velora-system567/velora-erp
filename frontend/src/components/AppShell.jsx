@@ -7,6 +7,7 @@ import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
 
 const navItems = [
+  { to: "/crm", label: "CRM", icon: Users },
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/company", label: "Company", icon: Building2 },
   { to: "/branches", label: "Branches", icon: MapPin },
