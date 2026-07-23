@@ -50,14 +50,17 @@ router.post("/resend-verification", validate(resendVerificationSchema), resendVe
 router.get("/diagnose", (req, res) => {
   const missingVars = checkConfig();
 
+  const fromEmail = env.OTP_FROM_EMAIL || "onboarding@resend.dev";
+
   ok(res, {
     nodeEnv: env.NODE_ENV,
     frontendUrl: env.FRONTEND_URL,
     emailConfigured: missingVars.length === 0,
+    senderEmail: fromEmail,
     missingEnvVars: missingVars,
     instructions: missingVars.length > 0
-      ? `Set ${missingVars.join(" and ")} in your Vercel environment variables or .env file to enable email delivery. In development, OTP codes are logged to the server console.`
-      : "Email delivery is fully configured with Resend.",
+      ? `Set RESEND_API_KEY in your Vercel environment variables to enable email delivery. In development, OTP codes are logged to the server console.`
+      : `Email delivery is fully configured via Resend (from: ${fromEmail}).`,
   }, "Auth system diagnostics");
 });
 

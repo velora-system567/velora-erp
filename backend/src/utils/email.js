@@ -1,77 +1,77 @@
 /**
- * Velora ERP — Email Service (Resend only)
+ * Velora ERP — Email Service (Resend SDK)
  *
- * Sends transactional emails via Resend with branded HTML templates.
+ * Uses the Resend Node.js SDK to send transactional emails.
  *
- * ── Configuration ──────────────────────────────────────────────
- *   RESEND_API_KEY    Required in production. Get one at https://resend.com
- *   OTP_FROM_EMAIL    Sender address, e.g. "noreply@yourdomain.com"
+ * ── Configuration (environment variables) ──────────────────────
+ *   RESEND_API_KEY       Required. Get one at https://resend.com
+ *   OTP_FROM_EMAIL       Sender address (default: onboarding@resend.dev)
  *
- * ── Development ────────────────────────────────────────────────
- * When Resend is not configured (RESEND_API_KEY / OTP_FROM_EMAIL missing),
- * the service logs the email contents to the server console instead of
- * sending. This lets you test the full auth flow without an email provider.
- *
- * In production, missing config causes a clear error with instructions.
- * ────────────────────────────────────────────────────────────────
+ * ── Development ───────────────────────────────────────────────
+ * When RESEND_API_KEY is not set, emails are logged to the server
+ * console instead of sent. Set the variable to enable real delivery.
+ * ───────────────────────────────────────────────────────────────
  */
 
+import { Resend } from "resend";
 import { env } from "../config/env.js";
 
-function checkConfig() {
+let resendClient = null;
+
+function getClient() {
+  if (!resendClient && env.RESEND_API_KEY) {
+    resendClient = new Resend(env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
+
+export function checkConfig() {
   const missing = [];
   if (!env.RESEND_API_KEY) missing.push("RESEND_API_KEY");
-  if (!env.OTP_FROM_EMAIL) missing.push("OTP_FROM_EMAIL");
   return missing;
 }
 
-export { checkConfig };
-
 /**
- * Core send function. Uses Resend API for delivery.
- * Falls back to console.log in development when config is missing.
+ * Core send function using Resend SDK.
+ * Falls back to console.log in development when API key is missing.
  */
 async function send({ to, subject, html }) {
-  const missing = checkConfig();
-
-  if (missing.length > 0) {
+  if (!env.RESEND_API_KEY) {
     if (env.NODE_ENV === "production") {
       throw new Error(
-        `Email delivery requires: ${missing.join(", ")}. ` +
-        "Set these in your environment variables or .env file."
+        "Email delivery requires RESEND_API_KEY. Set it in your environment variables."
       );
     }
-    // Development: log to console so flows can be tested without an email provider
     console.log("\n" + "=".repeat(60));
-    console.log("📧 DEV EMAIL — No email provider configured");
+    console.log(`📧 DEV EMAIL — No RESEND_API_KEY configured`);
     console.log(`   To:      ${to}`);
     console.log(`   Subject: ${subject}`);
     console.log(`   Body:    ${html.replace(/<[^>]*>/g, "").trim().slice(0, 300)}…`);
     console.log("=".repeat(60) + "\n");
-    console.log(`💡 To send real emails, add to your .env:\n   RESEND_API_KEY=re_...\n   OTP_FROM_EMAIL=noreply@yourdomain.com\n`);
     return null;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.OTP_FROM_EMAIL,
+  const client = getClient();
+  const from = env.OTP_FROM_EMAIL || "onboarding@resend.dev";
+
+  try {
+    const { data, error } = await client.emails.send({
+      from,
       to: [to],
       subject,
       html,
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => "");
-    throw new Error(`Resend API error (${response.status}): ${errBody}`);
+    if (error) {
+      throw new Error(`Resend error: ${error.message}${error.statusCode ? ` (${error.statusCode})` : ""}`);
+    }
+
+    console.log(`[email] ✅ Sent to ${to} — Resend ID: ${data?.id || "unknown"}`);
+    return data;
+  } catch (err) {
+    console.error(`[email] ❌ Failed to send to ${to}:`, err.message);
+    throw err;
   }
-
-  return response.json();
 }
 
 // ─── HTML Templates ─────────────────────────────────────────────

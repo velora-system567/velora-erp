@@ -69,11 +69,13 @@ export const requestOtp = asyncHandler(async (req, res) => {
   const missing = checkConfig();
   const configured = missing.length === 0;
 
-  const message = configured
-    ? "Verification code sent to your email."
-    : `OTP generated (email delivery requires: ${missing.join(", ")}). Check the server console for the code in development.`;
+  const fromEmail = env.OTP_FROM_EMAIL || "onboarding@resend.dev";
 
-  return ok(res, { ...result, delivered: configured }, message);
+  const message = configured
+    ? `Verification code sent to your email (from: ${fromEmail}).`
+    : `OTP generated (set RESEND_API_KEY to enable email delivery). Check the server console for the code in development.`;
+
+  return ok(res, { ...result, delivered: configured, sender: fromEmail }, message);
 });
 
 export const login = asyncHandler(async (req, res) => {
