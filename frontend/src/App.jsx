@@ -11,6 +11,7 @@ import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { SalesPage } from "./pages/sales/SalesPage";
+import OwnerDashboard from "./pages/sales/OwnerDashboard";
 import { PurchasePage } from "./pages/purchase/PurchasePage";
 import { InventoryPage } from "./pages/inventory/InventoryPage";
 import ProductsPage from "./pages/inventory/ProductsPage";
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/users" element={<CorePage resource="users" />} />
               <Route path="/products" element={<CorePage resource="products" />} />
               <Route path="/sales" element={<SalesPage />} />
+              <Route path="/sales/dashboard" element={<OwnerDashboard />} />
               <Route path="/purchase" element={<PurchasePage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/inventory/products" element={<ProductsPage />} />

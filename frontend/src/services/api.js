@@ -179,6 +179,7 @@ export const salesApi = {
   // Dashboard & Analytics
   dashboard: () => apiRequest("/sales/dashboard"),
   analytics: () => apiRequest("/sales/analytics"),
+  ownerDashboard: () => apiRequest("/sales/owner-dashboard"),
 
   // Reports
   outstandingReport: () => apiRequest("/sales/outstanding-report"),

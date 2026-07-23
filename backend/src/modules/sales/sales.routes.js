@@ -18,6 +18,7 @@ import {
   getOutstandingReport,
   getSalesDashboard,
   getSalesAnalytics,
+  getOwnerDashboard,
 } from "./sales.service.js";
 import {
   createLead,
@@ -275,6 +276,11 @@ router.get("/sales/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncH
 router.get("/sales/analytics", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
   const data = await getSalesAnalytics(req);
   return ok(res, data, "Sales analytics loaded");
+}));
+
+router.get("/sales/owner-dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+  const data = await getOwnerDashboard(req);
+  return ok(res, data, "Owner dashboard loaded");
 }));
 
 // ─── REPORTS ─────────────────────────────────────────────────────────────────

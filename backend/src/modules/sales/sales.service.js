@@ -317,6 +317,147 @@ export async function updateDocStatus(req, docId, status) {
 
 // ─── Sales Dashboard ──────────────────────────────────────────────────────────
 
+/**
+ * Owner's Morning Dashboard — The first thing an owner sees every day.
+ *
+ * Answers: What should I focus on today? Who should I call?
+ *          Which deals are stuck? How much money came in?
+ */
+export async function getOwnerDashboard(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const invWhere = { tenantId, companyId, documentType: "INVOICE", isDeleted: false };
+  const soWhere = { tenantId, companyId, documentType: "SALES_ORDER", isDeleted: false };
+
+  // Run all queries in parallel
+  const [
+    todayRevenue,
+    monthlyRevenue,
+    totalOutstanding,
+    pendingSOs,
+    draftQuotes,
+    overdueInvoices,
+    topProducts,
+    topSalesPeople,
+    recentWins,
+    todayFollowUps,
+    inactiveCustomers,
+    lowStockItems,
+    alerts,
+  ] = await Promise.all([
+    // Today's revenue
+    prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: todayStart, lt: todayEnd } }, _sum: { totalAmount: true }, _count: true }),
+    // Monthly revenue
+    prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
+    // Total outstanding
+    prisma.businessDocument.aggregate({ where: { ...invWhere, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true } }),
+    // Pending sales orders
+    prisma.businessDocument.count({ where: { ...soWhere, status: { in: ["DRAFT", "SUBMITTED", "APPROVED"] } } }),
+    // Draft quotations needing attention
+    prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "QUOTATION", status: "DRAFT", isDeleted: false } }),
+    // Overdue invoices (30+ days)
+    prisma.businessDocument.findMany({ where: { ...invWhere, status: { notIn: ["CANCELLED", "PAID"] }, documentDate: { lt: thirtyDaysAgo } }, take: 5, select: { id: true, documentNo: true, totalAmount: true, documentDate: true, partyId: true } }),
+    // Top 5 selling products this month
+    prisma.businessDocumentLine.groupBy({
+      by: ["itemId"],
+      where: { tenantId, companyId, document: { ...invWhere, documentDate: { gte: monthStart } }, isDeleted: false, itemId: { not: null } },
+      _sum: { quantity: true, lineTotal: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: 5,
+    }),
+    // Top sales people (by user who created invoices)
+    prisma.businessDocument.groupBy({
+      by: ["createdBy"],
+      where: { ...invWhere, documentDate: { gte: monthStart } },
+      _sum: { totalAmount: true },
+      _count: { id: true },
+      orderBy: { _sum: { totalAmount: "desc" } },
+      take: 5,
+    }),
+    // Recently created invoices (wins)
+    prisma.businessDocument.findMany({ where: { ...invWhere, createdAt: { gte: thirtyDaysAgo } }, orderBy: { createdAt: "desc" }, take: 5, select: { id: true, documentNo: true, totalAmount: true, documentDate: true, partyId: true, createdBy: true } }),
+    // Today's follow-ups from leads
+    prisma.lead.findMany({ where: { tenantId, companyId, isDeleted: false, nextFollowUp: { gte: todayStart, lt: todayEnd } }, take: 10, orderBy: { nextFollowUp: "asc" } }),
+    // Customers inactive for 60+ days
+    prisma.customer.findMany({
+      where: { tenantId, companyId, isDeleted: false, id: { notIn: (await prisma.businessDocument.findMany({ where: { ...invWhere, documentDate: { gte: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000) }, isDeleted: false }, select: { partyId: true }, distinct: ["partyId"] })).map((d) => d.partyId).filter(Boolean) } },
+      take: 5, select: { id: true, name: true },
+    }),
+    // Low stock items
+    prisma.$queryRaw`SELECT i.id, i.name, i.item_code, COALESCE(SUM(sb.qty_remaining), 0) as on_hand, i.reorder_level
+      FROM items i LEFT JOIN stock_batches sb ON sb.item_id = i.id AND sb.is_deleted = false
+      WHERE i.tenant_id = ${tenantId}::uuid AND i.company_id = ${companyId}::uuid AND i.is_deleted = false AND i.is_active = true
+      GROUP BY i.id HAVING COALESCE(SUM(sb.qty_remaining), 0) <= i.reorder_level AND i.reorder_level IS NOT NULL
+      ORDER BY on_hand ASC LIMIT 5`,
+    // Generate business insights
+    Promise.resolve(generateInsights(prisma, { tenantId, companyId, invWhere })),
+  ]);
+
+  // Enrich IDs with names
+  const customerIds = [...new Set([...overdueInvoices.map((i) => i.partyId), ...recentWins.map((w) => w.partyId), ...inactiveCustomers.map((c) => c.id)].filter(Boolean))];
+  const customers = customerIds.length ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, phone: true } }) : [];
+  const customerMap = new Map(customers.map((c) => [c.id, c]));
+
+  const itemIds = topProducts.map((p) => p.itemId).filter(Boolean);
+  const items = itemIds.length ? await prisma.item.findMany({ where: { id: { in: itemIds } }, select: { id: true, name: true, itemCode: true } }) : [];
+  const itemMap = new Map(items.map((i) => [i.id, i]));
+
+  return {
+    today: {
+      revenue: todayRevenue._sum.totalAmount || 0,
+      invoiceCount: todayRevenue._count || 0,
+      followUps: todayFollowUps.map((l) => ({ id: l.id, name: l.name, contactPerson: l.contactPerson, phone: l.phone, value: l.value, time: l.nextFollowUp })),
+      topOpportunities: todayFollowUps.filter((l) => l.value > 0).sort((a, b) => b.value - a.value).slice(0, 3),
+    },
+    kpis: {
+      monthlyRevenue: monthlyRevenue._sum.totalAmount || 0,
+      outstandingPaise: totalOutstanding._sum.totalAmount || 0,
+      pendingOrders: pendingSOs,
+      draftQuotes,
+    },
+    focus: {
+      overdueInvoices: overdueInvoices.map((i) => ({ id: i.id, documentNo: i.documentNo, amount: i.totalAmount, daysOverdue: Math.floor((now - new Date(i.documentDate)) / 86400000), customer: customerMap.get(i.partyId)?.name || "Unknown" })),
+      inactiveCustomers: inactiveCustomers.map((c) => ({ id: c.id, name: c.name })),
+      lowStockItems: (lowStockItems || []).map((i) => ({ id: i.id, name: i.name, itemCode: i.item_code, onHand: Number(i.on_hand), reorderLevel: Number(i.reorder_level) })),
+    },
+    performance: {
+      topProducts: topProducts.map((p) => ({ itemId: p.itemId, name: itemMap.get(p.itemId)?.name || "Unknown", quantity: p._sum.quantity || 0, revenue: p._sum.lineTotal || 0 })),
+      recentWins: recentWins.map((w) => ({ id: w.id, documentNo: w.documentNo, amount: w.totalAmount, date: w.documentDate, customer: customerMap.get(w.partyId)?.name || "Unknown" })),
+    },
+    insights: await alerts,
+  };
+}
+
+async function generateInsights(prisma, { tenantId, companyId, invWhere }) {
+  const insights = [];
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  try {
+    // Revenue comparison
+    const [thisMonth, lastMonth] = await Promise.all([
+      prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
+      prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: lastMonthStart, lt: monthStart } }, _sum: { totalAmount: true } }),
+    ]);
+    const thisVal = thisMonth._sum.totalAmount || 0;
+    const lastVal = lastMonth._sum.totalAmount || 0;
+    if (lastVal > 0) {
+      const pct = Math.round(((thisVal - lastVal) / lastVal) * 100);
+      if (pct > 0) insights.push({ type: "positive", icon: "trendingUp", message: `Revenue increased ${pct}% compared to last month.`, value: `${pct}%` });
+      else if (pct < 0) insights.push({ type: "warning", icon: "trendingDown", message: `Revenue dropped ${Math.abs(pct)}% from last month. Focus on closing pending deals.`, value: `${pct}%` });
+    }
+  } catch { /* skip insight */ }
+
+  return insights;
+}
+
 export async function getSalesDashboard(req) {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
