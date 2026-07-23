@@ -283,6 +283,15 @@ export const accountsApi = {
   cashBook: () => apiRequest("/accounts/cash-book"),
 };
 
+// ─── BI (Business Intelligence) ────────────────────────────────────────────────
+
+export const biApi = {
+  executiveDashboard: () => apiRequest("/bi/executive-dashboard"),
+  departments: () => apiRequest("/bi/departments"),
+  insights: () => apiRequest("/bi/insights"),
+  revenueAnalytics: () => apiRequest("/bi/revenue-analytics"),
+};
+
 // ─── WMS (Warehouse Management) ───────────────────────────────────────────────
 
 export const wmsApi = {

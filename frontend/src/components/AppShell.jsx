@@ -8,6 +8,7 @@ import { authApi } from "../services/api";
 
 const navItems = [
   { to: "/crm", label: "CRM", icon: Users },
+  { to: "/executive", label: "Executive", icon: BarChart3 },
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/company", label: "Company", icon: Building2 },
   { to: "/branches", label: "Branches", icon: MapPin },
