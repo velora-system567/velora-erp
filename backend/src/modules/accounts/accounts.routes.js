@@ -12,10 +12,17 @@ import {
   getTrialBalance,
   getProfitLoss,
   getBalanceSheet,
+  getFinanceDashboard,
 } from "./accounting.service.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+
+// ─── Finance Dashboard ────────────────────────────────────────────────────────
+router.get("/accounts/dashboard", requirePermission(PERMISSIONS.ACCOUNTS_READ), asyncHandler(async (req, res) => {
+  const data = await getFinanceDashboard(req);
+  return ok(res, data, "Finance dashboard loaded");
+}));
 
 // ─── Chart of Accounts ────────────────────────────────────────────────────────
 router.get("/accounts/chart-of-accounts", requirePermission(PERMISSIONS.ACCOUNTS_READ), asyncHandler(async (req, res) => {

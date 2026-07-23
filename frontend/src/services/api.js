@@ -267,6 +267,7 @@ export const crmApi = {
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
 export const accountsApi = {
+  dashboard: () => apiRequest("/accounts/dashboard"),
   chartOfAccounts: () => apiRequest("/accounts/chart-of-accounts"),
   createAccount: (input) => apiRequest("/accounts/chart-of-accounts", { method: "POST", body: JSON.stringify(input) }),
   journalEntries: (p = {}) => apiRequest(`/accounts/journal-entries?${new URLSearchParams(p)}`),

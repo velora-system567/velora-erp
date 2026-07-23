@@ -10,8 +10,54 @@
  *   2100 Output CGST | 2110 Output SGST | 2120 Output IGST
  *   4000 Sales | 5000 Purchases
  */
+import { getPrisma } from "../../config/db.js";
 import { nextDocNumber } from "../../utils/doc-number.js";
 import { writeAudit } from "../../utils/audit.js";
+
+// ─── Finance Dashboard ─────────────────────────────────────────────────────────
+
+export async function getFinanceDashboard(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [trialBalance, receivables, payables, gstPayable, invoicing, purchasing] = await Promise.all([
+    getTrialBalance(req),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", status: { notIn: ["CANCELLED", "PAID"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", status: { notIn: ["CANCELLED", "PAID"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
+    prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, account: { code: { in: ["2100", "2110", "2120"] } } }, _sum: { credit: true } }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
+  ]);
+
+  // Compute balances from trial balance
+  const incomeTotal = trialBalance.rows.filter((r) => r.type === "INCOME").reduce((s, r) => s + r.balance, 0);
+  const expenseTotal = trialBalance.rows.filter((r) => r.type === "EXPENSE").reduce((s, r) => s + Math.abs(r.balance), 0);
+
+  // Cash & bank balances
+  const cashBalance = trialBalance.rows.filter((r) => r.code.startsWith("1000")).reduce((s, r) => s + r.balance, 0);
+  const bankBalance = trialBalance.rows.filter((r) => r.code.startsWith("1010")).reduce((s, r) => s + r.balance, 0);
+
+  return {
+    kpis: {
+      cashBalance: Math.abs(cashBalance),
+      bankBalance: Math.abs(bankBalance),
+      totalCash: Math.abs(cashBalance) + Math.abs(bankBalance),
+      receivables: receivables._sum.totalAmount || 0,
+      payables: payables._sum.totalAmount || 0,
+      revenue: incomeTotal,
+      expenses: expenseTotal,
+      netProfit: incomeTotal - expenseTotal,
+      gstPayable: Math.abs(gstPayable._sum.credit || 0),
+      monthlyRevenue: invoicing._sum.totalAmount || 0,
+      monthlyExpenses: purchasing._sum.totalAmount || 0,
+      outstandingInvoices: receivables._count || 0,
+      outstandingBills: payables._count || 0,
+    },
+    chartOfAccounts: trialBalance.rows.map((r) => ({ id: r.accountId, code: r.code, name: r.name, type: r.type, balance: r.balance })),
+  };
+}
 
 // ─── Helper: find or create account by code ──────────────────────────────────
 

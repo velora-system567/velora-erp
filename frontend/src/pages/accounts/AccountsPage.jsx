@@ -6,8 +6,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonTable } from "../../components/Skeleton";
 import { formatRupees } from "../../utils/money";
+import FinanceDashboard from "./FinanceDashboard";
 
-const TABS = ["Trial Balance", "P&L", "Balance Sheet", "Journal Entries", "GSTR-3B", "Debtor Aging"];
+const TABS = ["Dashboard", "Trial Balance", "P&L", "Balance Sheet", "Journal Entries", "GSTR-3B", "Debtor Aging"];
 
 function TabBar({ active, onChange }) {
   return (
@@ -268,8 +269,9 @@ function DebtorAgingTab() {
 }
 
 export function AccountsPage() {
-  const [activeTab, setActiveTab] = useState("Trial Balance");
+  const [activeTab, setActiveTab] = useState("Dashboard");
   const tabContent = {
+    Dashboard: <FinanceDashboard />,
     "Trial Balance": <TrialBalanceTab />,
     "P&L": <ProfitLossTab />,
     "Balance Sheet": <BalanceSheetTab />,
