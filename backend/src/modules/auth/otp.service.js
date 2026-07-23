@@ -131,11 +131,21 @@ export async function requestOtp({ target, purpose = "verification" }) {
 
     const code = generateOtp();
 
-    // Send via Resend (or log to console in dev)
-    const { sendOtpEmail } = await import("../../utils/email.js");
-    await sendOtpEmail({ to: email, code, purpose }).catch((err) => {
-      console.error("[otp] Failed to send email:", err.message);
-    });
+    // Send via Resend
+    const { sendOtpEmail, checkConfig } = await import("../../utils/email.js");
+    const missing = checkConfig();
+    if (missing.length > 0) {
+      console.warn(`[otp] ⚠️ Email delivery not configured. Missing: ${missing.join(", ")}`);
+      console.warn(`[otp] 💡 OTP for ${email}: ${code}`);
+      console.warn(`[otp] 📧 To enable email delivery, set ${missing.join(" and ")} in your environment.`);
+    } else {
+      try {
+        const result = await sendOtpEmail({ to: email, code, purpose });
+        console.log(`[otp] ✅ Email sent to ${email} via Resend:`, result?.id || "unknown");
+      } catch (err) {
+        console.error(`[otp] ❌ Failed to send email to ${email}:`, err.message);
+      }
+    }
 
     // Store hashed OTP in Redis with atomic transaction
     await redis
