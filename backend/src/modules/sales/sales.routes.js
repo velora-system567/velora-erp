@@ -16,6 +16,8 @@ import {
   getSalesDoc,
   updateDocStatus,
   getOutstandingReport,
+  getSalesDashboard,
+  getSalesAnalytics,
 } from "./sales.service.js";
 import {
   createLead,
@@ -263,6 +265,17 @@ router.post("/payment-receipts", requirePermission(PERMISSIONS.SALES_PAYMENT),
     const payment = await recordPaymentReceipt(req, req.validated.body);
     return created(res, payment, "Payment receipt recorded");
   }));
+
+// ─── SALES DASHBOARD ─────────────────────────────────────────────────────────
+router.get("/sales/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+  const data = await getSalesDashboard(req);
+  return ok(res, data, "Sales dashboard loaded");
+}));
+
+router.get("/sales/analytics", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+  const data = await getSalesAnalytics(req);
+  return ok(res, data, "Sales analytics loaded");
+}));
 
 // ─── REPORTS ─────────────────────────────────────────────────────────────────
 router.get("/sales/outstanding-report", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {

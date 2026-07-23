@@ -176,6 +176,10 @@ export const salesApi = {
   receipts: () => apiRequest("/payment-receipts"),
   createReceipt: (input) => apiRequest("/payment-receipts", { method: "POST", body: JSON.stringify(input) }),
 
+  // Dashboard & Analytics
+  dashboard: () => apiRequest("/sales/dashboard"),
+  analytics: () => apiRequest("/sales/analytics"),
+
   // Reports
   outstandingReport: () => apiRequest("/sales/outstanding-report"),
   customerLedger: (id) => apiRequest(`/customers/${id}/ledger`),

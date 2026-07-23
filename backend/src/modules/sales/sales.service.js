@@ -315,6 +315,69 @@ export async function updateDocStatus(req, docId, status) {
   return doc;
 }
 
+// ─── Sales Dashboard ──────────────────────────────────────────────────────────
+
+export async function getSalesDashboard(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const invWhere = { tenantId, companyId, documentType: "INVOICE", isDeleted: false };
+  const soWhere = { tenantId, companyId, documentType: "SALES_ORDER", isDeleted: false };
+  const dnWhere = { tenantId, companyId, documentType: "DELIVERY_NOTE", isDeleted: false };
+  const payWhere = { tenantId, companyId, paymentType: "RECEIPT", isDeleted: false };
+
+  const [totalInvoices, monthlyInvoices, totalSOs, pendingSOs, totalDNs, monthlyReceipts, topCustomers, recentActivity] = await Promise.all([
+    prisma.businessDocument.aggregate({ where: invWhere, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.count({ where: soWhere }),
+    prisma.businessDocument.count({ where: { ...soWhere, status: { in: ["DRAFT", "SUBMITTED", "APPROVED"] } } }),
+    prisma.businessDocument.count({ where: dnWhere }),
+    prisma.payment.aggregate({ where: { ...payWhere, paymentDate: { gte: monthStart } }, _sum: { amount: true } }),
+    prisma.businessDocument.groupBy({ by: ["partyId"], where: { ...invWhere, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: { id: true }, orderBy: { _sum: { totalAmount: "desc" } }, take: 5 }),
+    prisma.businessDocument.findMany({ where: { ...soWhere }, orderBy: { updatedAt: "desc" }, take: 10, select: { id: true, documentNo: true, status: true, totalAmount: true, updatedAt: true, partyId: true } }),
+  ]);
+
+  const customerIds = [...new Set([...topCustomers.map((c) => c.partyId), ...recentActivity.map((a) => a.partyId)].filter(Boolean))];
+  const customers = customerIds.length ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true } }) : [];
+  const customerMap = new Map(customers.map((c) => [c.id, c]));
+
+  return {
+    kpis: {
+      totalRevenue: totalInvoices._sum.totalAmount || 0,
+      totalInvoices: totalInvoices._count || 0,
+      monthlyRevenue: monthlyInvoices._sum.totalAmount || 0,
+      monthlyInvoices: monthlyInvoices._count || 0,
+      pendingSOs,
+      totalSOs,
+      totalDNs,
+      monthlyCollections: monthlyReceipts._sum.amount || 0,
+    },
+    topCustomers: topCustomers.map((c) => ({ id: c.partyId, name: customerMap.get(c.partyId)?.name || "Unknown", totalAmount: c._sum.totalAmount || 0, orderCount: c._count.id || 0 })),
+    recentActivity: recentActivity.map((a) => ({ ...a, customerName: customerMap.get(a.partyId)?.name || "Unknown" })),
+  };
+}
+
+export async function getSalesAnalytics(req) {
+  const prisma = getPrisma();
+  const { tenantId, companyId } = req;
+  const months = 12;
+  const result = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const start = new Date(); start.setMonth(start.getMonth() - i); start.setDate(1); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setMonth(end.getMonth() + 1);
+    const [inv, so, pay] = await Promise.all([
+      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: start, lt: end } }, _sum: { totalAmount: true }, _count: true }),
+      prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "SALES_ORDER", isDeleted: false, createdAt: { gte: start, lt: end } } }),
+      prisma.payment.aggregate({ where: { tenantId, companyId, paymentType: "RECEIPT", isDeleted: false, paymentDate: { gte: start, lt: end } }, _sum: { amount: true } }),
+    ]);
+    result.push({ month: start.toLocaleString("en-US", { month: "short", year: "2-digit" }), revenue: inv._sum.totalAmount || 0, invoices: inv._count || 0, orders: so, collections: pay._sum.amount || 0 });
+  }
+  return result;
+}
+
 export async function getOutstandingReport(req) {
   const prisma = getPrisma();
   const invoices = await prisma.businessDocument.findMany({
