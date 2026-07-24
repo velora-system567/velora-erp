@@ -14,7 +14,6 @@ const navItems = [
   { to: "/company", label: "Company", icon: Building2 },
   { to: "/branches", label: "Branches", icon: MapPin },
   { to: "/users", label: "Users", icon: Users },
-  { to: "/products", label: "Products", icon: Package },
   { to: "/sales", label: "Sales", icon: ShoppingCart },
   { to: "/purchase", label: "Purchase", icon: ShoppingBag },
   { to: "/inventory", label: "Inventory", icon: Package },
