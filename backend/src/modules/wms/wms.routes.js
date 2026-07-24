@@ -122,7 +122,7 @@ router.get("/wms/movements", requirePermission(PERMISSIONS.INVENTORY_READ),
   validate(z.object({
     query: z.object({
       page: z.coerce.number().min(1).default(1),
-      limit: z.coerce.number().min(1).max(100).default(50),
+      limit: z.coerce.number().min(1).default(50).transform(v => Math.min(v, 500)),
       warehouseId: z.string().uuid().optional(),
       itemId: z.string().uuid().optional(),
       transactionType: z.string().optional(),

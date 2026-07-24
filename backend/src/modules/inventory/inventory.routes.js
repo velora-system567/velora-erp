@@ -26,7 +26,7 @@ router.use(requireAuth, requireTenant);
 const listQuery = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
+    limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
     warehouseId: z.string().uuid().optional(),
     itemId: z.string().uuid().optional(),
   }),
@@ -35,7 +35,7 @@ const listQuery = z.object({
 const ledgerQuery = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(50),
+    limit: z.coerce.number().min(1).default(50).transform(v => Math.min(v, 500)),
     itemId: z.string().uuid().optional(),
     warehouseId: z.string().uuid().optional(),
     transactionType: z.enum(["PURCHASE", "SALE", "TRANSFER_IN", "TRANSFER_OUT", "ADJUSTMENT", "OPENING", "PRODUCTION_IN", "PRODUCTION_OUT"]).optional(),

@@ -53,8 +53,8 @@ export function InventoryPage() {
     queryKey: ["inventory-masters"],
     queryFn: async () => {
       const [whRes, itemRes] = await Promise.all([
-        coreApi.list("warehouses", { limit: 200 }),
-        coreApi.list("items", { limit: 500 }),
+        coreApi.list("warehouses", { limit: 100 }),
+        coreApi.list("items", { limit: 100 }),
       ]);
       return { warehouses: whRes.data || [], items: itemRes.data || [] };
     },

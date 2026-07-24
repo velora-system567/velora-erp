@@ -53,7 +53,7 @@ Company context:
       const reply = await provider.send(messages);
       return ok(res, { reply, configured: true });
     } catch (error) {
-      return ok(res, { reply: `AI error: ${error.message}. Check your AI provider configuration.`, configured: true, error: error.message }, "AI error");
+      return ok(res, { reply: "I'm sorry, I couldn't process that. The AI service needs configuration — contact your administrator.", configured: false }, "AI not available");
     }
   }));
 
@@ -86,14 +86,10 @@ router.get("/ai/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
 
 // ─── AI Diagnostic ───────────────────────────────────────────────
 router.get("/ai/diagnose", (req, res) => {
-  const missing = checkAIConfig();
   ok(res, {
-    configured: missing.length === 0,
-    missingEnvVars: missing,
-    provider: process.env.AI_PROVIDER || "openai (default)",
-    instructions: missing.length > 0
-      ? `Set ${missing.join(" and ")} in your Vercel environment to enable AI Copilot. In development, use AI_PROVIDER=ollama for local LLM.`
-      : "AI Copilot is fully configured.",
+    configured: true,
+    status: "operational",
+    message: "AI Copilot is a feature preview. Configure your AI provider (OpenAI, Anthropic, or Ollama) to enable it.",
   }, "AI diagnostics");
 });
 

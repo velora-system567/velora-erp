@@ -51,7 +51,7 @@ const docHeaderSchema = z.object({
 const listQuery = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
+    limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
     status: z.string().optional(),
     q: z.string().optional(),
   }),

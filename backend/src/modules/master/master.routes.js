@@ -28,7 +28,7 @@ const prismaModelByResource = {
 const listSchema = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
+    limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
     q: z.string().optional(),
   }),
   params: z.object({ resource: z.string() }),
