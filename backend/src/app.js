@@ -19,6 +19,9 @@ import biRoutes from "./modules/bi/bi.routes.js";
 import aiRoutes from "./modules/ai/ai.routes.js";
 import hrmsRoutes from "./modules/hrms/hrms.routes.js";
 import eamRoutes from "./modules/eam/eam.routes.js";
+import platformRoutes from "./modules/platform/platform.routes.js";
+import portalRoutes from "./modules/supplier-portal/portal.routes.js";
+import flowRoutes from "./modules/flow/flow.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();

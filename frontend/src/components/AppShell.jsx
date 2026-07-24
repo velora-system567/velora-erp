@@ -23,6 +23,7 @@ const navItems = [
   { to: "/inventory/suppliers", label: "  Suppliers", icon: Building2 },
   { to: "/accounts", label: "Accounts", icon: BarChart3 },
   { to: "/hrms", label: "HR", icon: Users },
+  { to: "/supplier-portal", label: "Suppliers", icon: ShoppingBag },
   { to: "/eam", label: "EAM", icon: Cpu },
   { to: "/wms", label: "WMS", icon: Package },
   { to: "/manufacturing", label: "Manufacturing", icon: Cpu },

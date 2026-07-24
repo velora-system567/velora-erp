@@ -322,6 +322,47 @@ export const biApi = {
   revenueAnalytics: () => apiRequest("/bi/revenue-analytics"),
 };
 
+// ─── Flow (workflow automation) ─────────────────────────────────────────────────
+
+export const flowApi = {
+  dashboard: () => apiRequest("/flow/dashboard"),
+  workflows: () => apiRequest("/flow/workflows"),
+  createWorkflow: (input) => apiRequest("/flow/workflows", { method: "POST", body: JSON.stringify(input) }),
+  logs: () => apiRequest("/flow/logs"),
+  templates: () => apiRequest("/flow/templates"),
+  reference: () => apiRequest("/flow/reference"),
+  trigger: (trigger, context) => apiRequest("/flow/trigger", { method: "POST", body: JSON.stringify({ trigger, context }) }),
+};
+
+// ─── Platform (developer portal, webhooks, API keys) ───────────────────────────
+
+export const platformApi = {
+  monitoring: () => apiRequest("/platform/monitoring"),
+  apiKeys: () => apiRequest("/platform/api-keys"),
+  createApiKey: (name) => apiRequest("/platform/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
+  deleteApiKey: (id) => apiRequest("/platform/api-keys/" + id, { method: "DELETE" }),
+  webhooks: () => apiRequest("/platform/webhooks"),
+  createWebhook: (input) => apiRequest("/platform/webhooks", { method: "POST", body: JSON.stringify(input) }),
+  deleteWebhook: (id) => apiRequest("/platform/webhooks/" + id, { method: "DELETE" }),
+  testWebhook: (input) => apiRequest("/platform/webhooks/test", { method: "POST", body: JSON.stringify(input) }),
+  events: () => apiRequest("/platform/events"),
+  exportData: (mod, fmt) => apiRequest("/platform/export", { method: "POST", body: JSON.stringify({ module: mod, format: fmt }) }),
+};
+
+// ─── Supplier Portal ─────────────────────────────────────────────────────────
+
+export const supplierPortalApi = {
+  dashboard: (p) => apiRequest("/supplier-portal/dashboard?" + new URLSearchParams(p)),
+  purchaseOrders: (p) => apiRequest("/supplier-portal/purchase-orders?" + new URLSearchParams(p)),
+  invoices: (p) => apiRequest("/supplier-portal/invoices?" + new URLSearchParams(p)),
+  payments: (p) => apiRequest("/supplier-portal/payments?" + new URLSearchParams(p)),
+  vendors: () => apiRequest("/supplier-portal/vendors"),
+};
+
+// ─── EAM (Enterprise Asset Management) ─────────────────────────────────────────
+
+// ─── HRMS ──────────────────────────────────────────────────────────────────────
+
 // ─── WMS (Warehouse Management) ───────────────────────────────────────────────
 
 export const wmsApi = {
