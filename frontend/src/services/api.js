@@ -283,6 +283,28 @@ export const accountsApi = {
   cashBook: () => apiRequest("/accounts/cash-book"),
 };
 
+// ─── EAM (Enterprise Asset Management) ─────────────────────────────────────────
+
+export const eamApi = {
+  dashboard: () => apiRequest("/eam/dashboard"),
+  assets: (p = {}) => apiRequest(`/eam/assets?${new URLSearchParams(p)}`),
+  assetDetail: (id) => apiRequest(`/eam/assets/${id}`),
+  createAsset: (input) => apiRequest("/eam/assets", { method: "POST", body: JSON.stringify(input) }),
+  updateAsset: (id, input) => apiRequest(`/eam/assets/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  maintenance: (p = {}) => apiRequest(`/eam/maintenance?${new URLSearchParams(p)}`),
+  createMaintenance: (input) => apiRequest("/eam/maintenance", { method: "POST", body: JSON.stringify(input) }),
+  statuses: () => apiRequest("/eam/statuses"),
+};
+
+// ─── HRMS ──────────────────────────────────────────────────────────────────────
+
+export const hrmsApi = {
+  dashboard: () => apiRequest("/hrms/dashboard"),
+  employees: (p = {}) => apiRequest(`/hrms/employees?${new URLSearchParams(p)}`),
+  employeeDetail: (id) => apiRequest(`/hrms/employees/${id}`),
+  roles: () => apiRequest("/hrms/roles"),
+};
+
 // ─── AI Copilot ────────────────────────────────────────────────────────────────
 
 export const aiApi = {

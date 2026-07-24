@@ -22,6 +22,8 @@ import { ManufacturingPage } from "./pages/manufacturing/ManufacturingPage";
 import { CrmPage } from "./pages/crm/CrmPage";
 import { WmsPage } from "./pages/wms/WmsPage";
 import ExecutiveDashboard from "./pages/bi/ExecutiveDashboard";
+import { HrmsPage } from "./pages/hrms/HrmsPage";
+import { EamPage } from "./pages/eam/EamPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +67,8 @@ export default function App() {
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/wms" element={<WmsPage />} />
               <Route path="/executive" element={<ExecutiveDashboard />} />
+              <Route path="/hrms" element={<HrmsPage />} />
+              <Route path="/eam" element={<EamPage />} />
               <Route path="/activity" element={<AuditLogPage />} />
             </Route>
           </Route>

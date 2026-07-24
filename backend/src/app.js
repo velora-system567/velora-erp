@@ -17,6 +17,8 @@ import crmRoutes from "./modules/crm/crm.routes.js";
 import wmsRoutes from "./modules/wms/wms.routes.js";
 import biRoutes from "./modules/bi/bi.routes.js";
 import aiRoutes from "./modules/ai/ai.routes.js";
+import hrmsRoutes from "./modules/hrms/hrms.routes.js";
+import eamRoutes from "./modules/eam/eam.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -67,6 +69,12 @@ app.use("/api", biRoutes);
 
 // AI Copilot (chat, insights, diagnostics)
 app.use("/api", aiRoutes);
+
+// HRMS (employees, roles, attendance, payroll)
+app.use("/api", hrmsRoutes);
+
+// EAM (enterprise asset management)
+app.use("/api", eamRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

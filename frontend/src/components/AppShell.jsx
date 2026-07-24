@@ -22,6 +22,8 @@ const navItems = [
   { to: "/inventory/reports", label: "  Reports", icon: FileText },
   { to: "/inventory/suppliers", label: "  Suppliers", icon: Building2 },
   { to: "/accounts", label: "Accounts", icon: BarChart3 },
+  { to: "/hrms", label: "HR", icon: Users },
+  { to: "/eam", label: "EAM", icon: Cpu },
   { to: "/wms", label: "WMS", icon: Package },
   { to: "/manufacturing", label: "Manufacturing", icon: Cpu },
   { to: "/activity", label: "Audit Log", icon: Activity },
