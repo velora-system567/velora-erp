@@ -56,29 +56,38 @@ function loginAttemptsKey(email) { return `login:attempts:${email.toLowerCase()}
 function loginBanKey(email)      { return `login:banned:${email.toLowerCase()}`; }
 
 export async function checkLoginRateLimit(email) {
-  const redis = getRedis();
-  const banned = await redis.get(loginBanKey(email));
-  if (banned) {
-    const ttl = await redis.ttl(loginBanKey(email));
-    const err = new Error(`Too many login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`);
-    err.statusCode = 429;
-    throw err;
+  try {
+    const redis = getRedis();
+    const banned = await redis.get(loginBanKey(email));
+    if (banned) {
+      const ttl = await redis.ttl(loginBanKey(email));
+      const err = new Error(`Too many login attempts. Try again in ${Math.ceil(ttl / 60)} minutes.`);
+      err.statusCode = 429;
+      throw err;
+    }
+  } catch (err) {
+    if (err.statusCode === 429) throw err;
+    // Redis unavailable — allow login (no rate limiting)
   }
 }
 
 export async function recordLoginAttempt(email, success) {
-  const redis = getRedis();
-  if (success) {
-    await redis.del(loginAttemptsKey(email));
-    await redis.del(loginBanKey(email));
-    return;
-  }
-  const key = loginAttemptsKey(email);
-  const attempts = await redis.incr(key);
-  if (attempts === 1) await redis.expire(key, LOGIN_WINDOW_SECONDS);
-  if (attempts >= LOGIN_MAX_ATTEMPTS) {
-    await redis.set(loginBanKey(email), "1", "EX", LOGIN_BAN_SECONDS);
-    await redis.del(key);
+  try {
+    const redis = getRedis();
+    if (success) {
+      await redis.del(loginAttemptsKey(email));
+      await redis.del(loginBanKey(email));
+      return;
+    }
+    const key = loginAttemptsKey(email);
+    const attempts = await redis.incr(key);
+    if (attempts === 1) await redis.expire(key, LOGIN_WINDOW_SECONDS);
+    if (attempts >= LOGIN_MAX_ATTEMPTS) {
+      await redis.set(loginBanKey(email), "1", "EX", LOGIN_BAN_SECONDS);
+      await redis.del(key);
+    }
+  } catch {
+    // Redis unavailable — skip rate limiting
   }
 }
 

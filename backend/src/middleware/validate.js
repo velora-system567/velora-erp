@@ -16,9 +16,11 @@ const _UUID_SENTINELS = new Set([
 
 /**
  * Check whether a key name looks like it holds a UUID value.
- * Matches: id, itemId, warehouseId, machineId, customerId, etc.
+ * Only matches keys ENDING with 'id', 'Id', or 'uuid' —
+ * NOT keys that merely contain 'id' as a substring (e.g. 'page', 'valid', 'requested').
+ * Matches: id, itemId, warehouseId, machineId, customerId, accountId, etc.
  */
-const _UUID_KEY_RE = /\b(id|uuid)\b/i;
+const _UUID_KEY_RE = /(Id|id|uuid)$/;
 
 function sanitizeUuidValue(value) {
   if (value == null) return value;
@@ -28,19 +30,21 @@ function sanitizeUuidValue(value) {
 }
 
 /**
- * Recursively sanitize UUID-looking fields in an object.
+ * Sanitize UUID-looking fields in an object.
  * Only touches params and query (never body — body is validated by Zod schemas).
+ * Removes sentinel values entirely (sets to undefined) so Zod sees them as missing
+ * and handles them with .optional() or .default() as appropriate.
  */
 function sanitizeParams(obj) {
   if (!obj || typeof obj !== "object") return obj;
-  const clean = { ...obj };
-  for (const [key, value] of Object.entries(clean)) {
+  const clean = {};
+  for (const [key, value] of Object.entries(obj)) {
     if (_UUID_KEY_RE.test(key)) {
-      clean[key] = sanitizeUuidValue(value);
-    } else if (Array.isArray(value)) {
-      clean[key] = value.map((v) =>
-        _UUID_KEY_RE.test(key) ? sanitizeUuidValue(v) : v
-      );
+      const sanitized = sanitizeUuidValue(value);
+      if (sanitized !== undefined) clean[key] = sanitized;
+      // If sentinel detected, key is omitted → Zod sees undefined → falls to optional/default
+    } else {
+      clean[key] = value;
     }
   }
   return clean;

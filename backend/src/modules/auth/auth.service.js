@@ -168,13 +168,18 @@ export async function loginUser(email, password, meta = {}) {
 }
 
 export async function refreshAccessToken(refreshToken, meta = {}) {
-  // Check Redis blacklist first
-  const redis = getRedis();
-  const isBlacklisted = await redis.get(`rt:blacklist:${hashToken(refreshToken)}`);
-  if (isBlacklisted) {
-    const error = new Error("Token has been revoked");
-    error.statusCode = 401;
-    throw error;
+  // Check Redis blacklist first — skip if Redis is unavailable
+  try {
+    const redis = getRedis();
+    const isBlacklisted = await redis.get(`rt:blacklist:${hashToken(refreshToken)}`);
+    if (isBlacklisted) {
+      const error = new Error("Token has been revoked");
+      error.statusCode = 401;
+      throw error;
+    }
+  } catch (err) {
+    if (err.statusCode === 401) throw err;
+    // Redis unavailable — allow refresh (no blacklist check)
   }
 
   let payload;

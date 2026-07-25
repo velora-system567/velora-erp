@@ -37,11 +37,12 @@ app.get("/api/health", (req, res) => ok(res, { status: "ok", version: "1.5.0" },
 // Auth
 app.use("/api/auth", authRoutes);
 
-// Core (company, branches, users, products, audit)
-app.use("/api", coreRoutes);
+// ─── Named module routes (MUST come before the generic master catch-all) ────
+// These have specific prefixes that would otherwise be swallowed by
+// masterRoutes' /:resource and /:resource/:id patterns.
 
-// Master data (items, customers, vendors, COA, etc.)
-app.use("/api", masterRoutes);
+// Dashboard KPIs
+app.use("/api/dashboard", dashboardRoutes);
 
 // Sales (leads, quotations, SO, DN, invoices, receipts)
 app.use("/api", salesRoutes);
@@ -55,9 +56,6 @@ app.use("/api", inventoryRoutes);
 // Accounts (COA, journal entries, reports, GST)
 app.use("/api", accountsRoutes);
 
-// Dashboard KPIs
-app.use("/api/dashboard", dashboardRoutes);
-
 // Manufacturing (BOM, production orders, work orders, machines, maintenance, QC)
 app.use("/api", manufacturingRoutes);
 
@@ -67,17 +65,33 @@ app.use("/api", crmRoutes);
 // WMS (warehouse management, bin locations, movements)
 app.use("/api", wmsRoutes);
 
+// HRMS (employees, roles, attendance, payroll)
+app.use("/api", hrmsRoutes);
+
+// EAM (enterprise asset management)
+app.use("/api", eamRoutes);
+
 // BI (executive dashboard, analytics, insights)
 app.use("/api", biRoutes);
 
 // AI Copilot (chat, insights, diagnostics)
 app.use("/api", aiRoutes);
 
-// HRMS (employees, roles, attendance, payroll)
-app.use("/api", hrmsRoutes);
+// Platform (developer portal, webhooks, API keys)
+app.use("/api", platformRoutes);
 
-// EAM (enterprise asset management)
-app.use("/api", eamRoutes);
+// Supplier Portal
+app.use("/api", portalRoutes);
+
+// Flow (workflow automation)
+app.use("/api", flowRoutes);
+
+// Core (company, branches, users, products, audit)
+app.use("/api", coreRoutes);
+
+// ─── Generic master data catch-all (MUST be last — /:resource swallows all) ─
+// Master data (items, customers, vendors, COA, etc.)
+app.use("/api", masterRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
