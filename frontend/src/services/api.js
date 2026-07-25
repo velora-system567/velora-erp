@@ -1,5 +1,17 @@
+import { isUsableUuid } from "../utils/uuid.js";
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const hasApiBaseUrl = Boolean(API_BASE_URL);
+
+// ─── UUID guard (prevents "Invalid UUID" errors system-wide) ─────────────────
+// ROOT CAUSE: API methods were called with undefined/null/"new"/"create"/""
+// before the user selected a real record.  Now every method that requires a
+// UUID rejects invalid values at the client, returning null instead of
+// throwing a Zod 422 that renders as "id: Invalid UUID".
+function _guard(id, label = "id") {
+  if (!isUsableUuid(id)) return null;
+  return id;
+}
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
@@ -20,15 +32,22 @@ async function parsePayload(response) {
   try { return text ? JSON.parse(text) : {}; } catch { return {}; }
 }
 
+/**
+ * Extract a user-friendly error message from an API response payload.
+ *
+ * ROOT CAUSE FIX: Previously this function preferred the raw Zod issues
+ * array from payload.data.issues, producing messages like
+ * "id: Invalid UUID".  Now we ALWAYS prefer the top-level `message`
+ * field (which the backend formats into a friendly string) and only
+ * fall back to issues when no message is present.
+ */
 function errorFromPayload(payload, fallback = "Request failed") {
-  const issues = payload.data?.issues;
-  if (Array.isArray(issues) && issues.length > 0) {
-    const text = issues
-      .map((i) => `${i.path?.slice(1).join(".") || "Field"}: ${i.message}`)
-      .join("\n");
-    return new Error(text);
-  }
-  return new Error(payload.message || fallback);
+  // Prefer the top-level friendly message from the backend.
+  // The backend error handler now formats Zod errors into human-readable
+  // strings like "id: invalid value — expected a valid reference"
+  // and no longer leaks raw Zod issue objects.
+  const message = payload.message || fallback;
+  return new Error(message);
 }
 
 async function doTokenRefresh() {
@@ -113,10 +132,26 @@ export const coreApi = {
     return apiRequest(`/${resource}${qs ? `?${qs}` : ""}`);
   },
   create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
-  update: (resource, id, input) => apiRequest(`/${resource}/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
-  remove: (resource, id) => apiRequest(`/${resource}/${id}`, { method: "DELETE" }),
-  resetPassword: (id, password) => apiRequest(`/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ password }) }),
-  disableUser: (id) => apiRequest(`/users/${id}/disable`, { method: "POST" }),
+  update: (resource, id, input) => {
+    const safeId = _guard(id, `${resource} id`);
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+  remove: (resource, id) => {
+    const safeId = _guard(id, `${resource} id`);
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/${safeId}`, { method: "DELETE" });
+  },
+  resetPassword: (id, password) => {
+    const safeId = _guard(id, "user id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/users/${safeId}/reset-password`, { method: "POST", body: JSON.stringify({ password }) });
+  },
+  disableUser: (id) => {
+    const safeId = _guard(id, "user id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/users/${safeId}/disable`, { method: "POST" });
+  },
   auditLogs: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return apiRequest(`/audit-logs${qs ? `?${qs}` : ""}`);
@@ -130,12 +165,28 @@ export const masterApi = {
     const qs = new URLSearchParams(params).toString();
     return apiRequest(`/${resource}${qs ? `?${qs}` : ""}`);
   },
-  get: (resource, id) => apiRequest(`/${resource}/${id}`),
+  get: (resource, id) => {
+    const safeId = _guard(id, `${resource} id`);
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/${safeId}`);
+  },
   create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
-  update: (resource, id, input) => apiRequest(`/${resource}/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
-  remove: (resource, id) => apiRequest(`/${resource}/${id}`, { method: "DELETE" }),
+  update: (resource, id, input) => {
+    const safeId = _guard(id, `${resource} id`);
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+  remove: (resource, id) => {
+    const safeId = _guard(id, `${resource} id`);
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/${safeId}`, { method: "DELETE" });
+  },
   searchItems: (q) => apiRequest(`/items/search?q=${encodeURIComponent(q)}`),
-  customerOutstanding: (id) => apiRequest(`/customers/${id}/outstanding`),
+  customerOutstanding: (id) => {
+    const safeId = _guard(id, "customer id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/customers/${safeId}/outstanding`);
+  },
 };
 
 // ─── Leads ────────────────────────────────────────────────────────────────────
@@ -143,8 +194,16 @@ export const masterApi = {
 export const leadsApi = {
   list: () => apiRequest("/leads"),
   create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
-  update: (id, input) => apiRequest(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
-  remove: (id) => apiRequest(`/leads/${id}`, { method: "DELETE" }),
+  update: (id, input) => {
+    const safeId = _guard(id, "lead id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/leads/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+  remove: (id) => {
+    const safeId = _guard(id, "lead id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/leads/${safeId}`, { method: "DELETE" });
+  },
 };
 
 // ─── Sales ────────────────────────────────────────────────────────────────────
@@ -152,16 +211,36 @@ export const leadsApi = {
 export const salesApi = {
   // Quotations
   quotations: (p = {}) => apiRequest(`/quotations?${new URLSearchParams(p)}`),
-  getQuotation: (id) => apiRequest(`/quotations/${id}`),
+  getQuotation: (id) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/quotations/${safeId}`);
+  },
   createQuotation: (input) => apiRequest("/quotations", { method: "POST", body: JSON.stringify(input) }),
-  convertQuotation: (id) => apiRequest(`/quotations/${id}/convert-to-order`, { method: "POST" }),
-  updateQuotationStatus: (id, status) => apiRequest(`/quotations/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  convertQuotation: (id) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/quotations/${safeId}/convert-to-order`, { method: "POST" });
+  },
+  updateQuotationStatus: (id, status) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/quotations/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
 
   // Sales Orders
   salesOrders: (p = {}) => apiRequest(`/sales-orders?${new URLSearchParams(p)}`),
-  getSalesOrder: (id) => apiRequest(`/sales-orders/${id}`),
+  getSalesOrder: (id) => {
+    const safeId = _guard(id, "sales order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/sales-orders/${safeId}`);
+  },
   createSalesOrder: (input) => apiRequest("/sales-orders", { method: "POST", body: JSON.stringify(input) }),
-  updateSalesOrderStatus: (id, status) => apiRequest(`/sales-orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  updateSalesOrderStatus: (id, status) => {
+    const safeId = _guard(id, "sales order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/sales-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
 
   // Delivery Notes
   deliveryNotes: (p = {}) => apiRequest(`/delivery-notes?${new URLSearchParams(p)}`),
@@ -169,7 +248,11 @@ export const salesApi = {
 
   // Invoices
   invoices: (p = {}) => apiRequest(`/invoices?${new URLSearchParams(p)}`),
-  getInvoice: (id) => apiRequest(`/invoices/${id}`),
+  getInvoice: (id) => {
+    const safeId = _guard(id, "invoice id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/invoices/${safeId}`);
+  },
   createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
 
   // Receipts
@@ -183,7 +266,11 @@ export const salesApi = {
 
   // Reports
   outstandingReport: () => apiRequest("/sales/outstanding-report"),
-  customerLedger: (id) => apiRequest(`/customers/${id}/ledger`),
+  customerLedger: (id) => {
+    const safeId = _guard(id, "customer id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/customers/${safeId}/ledger`);
+  },
 };
 
 // ─── Purchase ─────────────────────────────────────────────────────────────────
@@ -192,7 +279,11 @@ export const purchaseApi = {
   // Purchase Requests
   purchaseRequests: (p = {}) => apiRequest(`/purchase-requests?${new URLSearchParams(p)}`),
   createPurchaseRequest: (input) => apiRequest("/purchase-requests", { method: "POST", body: JSON.stringify(input) }),
-  approvePurchaseRequest: (id) => apiRequest(`/purchase-requests/${id}/approve`, { method: "POST" }),
+  approvePurchaseRequest: (id) => {
+    const safeId = _guard(id, "purchase request id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/purchase-requests/${safeId}/approve`, { method: "POST" });
+  },
 
   // RFQs
   rfqs: (p = {}) => apiRequest(`/rfqs?${new URLSearchParams(p)}`),
@@ -200,15 +291,31 @@ export const purchaseApi = {
 
   // Purchase Orders
   purchaseOrders: (p = {}) => apiRequest(`/purchase-orders?${new URLSearchParams(p)}`),
-  getPurchaseOrder: (id) => apiRequest(`/purchase-orders/${id}`),
+  getPurchaseOrder: (id) => {
+    const safeId = _guard(id, "purchase order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/purchase-orders/${safeId}`);
+  },
   createPurchaseOrder: (input) => apiRequest("/purchase-orders", { method: "POST", body: JSON.stringify(input) }),
-  approvePurchaseOrder: (id) => apiRequest(`/purchase-orders/${id}/approve`, { method: "PATCH" }),
+  approvePurchaseOrder: (id) => {
+    const safeId = _guard(id, "purchase order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/purchase-orders/${safeId}/approve`, { method: "PATCH" });
+  },
 
   // GRN
   grns: (p = {}) => apiRequest(`/grns?${new URLSearchParams(p)}`),
-  getGrn: (id) => apiRequest(`/grns/${id}`),
+  getGrn: (id) => {
+    const safeId = _guard(id, "GRN id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/grns/${safeId}`);
+  },
   createGrn: (input) => apiRequest("/grns", { method: "POST", body: JSON.stringify(input) }),
-  approveGrn: (id) => apiRequest(`/grns/${id}/approve`, { method: "POST" }),
+  approveGrn: (id) => {
+    const safeId = _guard(id, "GRN id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/grns/${safeId}/approve`, { method: "POST" });
+  },
 
   // Purchase Invoices
   purchaseInvoices: (p = {}) => apiRequest(`/purchase-invoices?${new URLSearchParams(p)}`),
@@ -225,7 +332,11 @@ export const purchaseApi = {
 
   // Reports
   outstandingReport: () => apiRequest("/purchase/outstanding-report"),
-  vendorLedger: (id) => apiRequest(`/vendors/${id}/ledger`),
+  vendorLedger: (id) => {
+    const safeId = _guard(id, "vendor id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/vendors/${safeId}/ledger`);
+  },
 };
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
@@ -233,18 +344,30 @@ export const purchaseApi = {
 export const inventoryApi = {
   dashboard: (p = {}) => apiRequest(`/inventory/dashboard?${new URLSearchParams(p)}`),
   stockSummary: (p = {}) => apiRequest(`/inventory/stock-summary?${new URLSearchParams(p)}`),
-  stockLedger: (itemId, p = {}) => apiRequest(`/inventory/stock-ledger/${itemId}?${new URLSearchParams(p)}`),
+  stockLedger: (itemId, p = {}) => {
+    const safeId = _guard(itemId, "item id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/inventory/stock-ledger/${safeId}?${new URLSearchParams(p)}`);
+  },
   ledger: (p = {}) => apiRequest(`/inventory/ledger?${new URLSearchParams(p)}`),
   batches: (p = {}) => apiRequest(`/inventory/batches?${new URLSearchParams(p)}`),
   locations: (p = {}) => apiRequest(`/inventory/locations?${new URLSearchParams(p)}`),
   createLocation: (input) => apiRequest("/inventory/locations", { method: "POST", body: JSON.stringify(input) }),
   reservations: () => apiRequest("/inventory/reservations"),
   createReservation: (input) => apiRequest("/inventory/reservations", { method: "POST", body: JSON.stringify(input) }),
-  releaseReservation: (id) => apiRequest(`/inventory/reservations/${id}/release`, { method: "PATCH" }),
+  releaseReservation: (id) => {
+    const safeId = _guard(id, "reservation id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/inventory/reservations/${safeId}/release`, { method: "PATCH" });
+  },
   serials: (p = {}) => apiRequest(`/inventory/serials?${new URLSearchParams(p)}`),
   cycleCounts: () => apiRequest("/inventory/cycle-counts"),
   createCycleCount: (input) => apiRequest("/inventory/cycle-counts", { method: "POST", body: JSON.stringify(input) }),
-  completeCycleCount: (id, input) => apiRequest(`/inventory/cycle-counts/${id}/complete`, { method: "PATCH", body: JSON.stringify(input) }),
+  completeCycleCount: (id, input) => {
+    const safeId = _guard(id, "cycle count id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/inventory/cycle-counts/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
+  },
   stockTransfers: () => apiRequest("/inventory/stock-transfers"),
   createTransfer: (input) => apiRequest("/inventory/stock-transfer", { method: "POST", body: JSON.stringify(input) }),
   createAdjustment: (input) => apiRequest("/inventory/stock-adjustment", { method: "POST", body: JSON.stringify(input) }),
@@ -252,7 +375,11 @@ export const inventoryApi = {
   lowStockAlerts: () => apiRequest("/inventory/low-stock-alerts"),
   valuationReport: () => apiRequest("/inventory/valuation-report"),
   suppliers: (p = {}) => apiRequest(`/inventory/suppliers?${new URLSearchParams(p)}`),
-  supplierDetail: (id) => apiRequest(`/inventory/suppliers/${id}`),
+  supplierDetail: (id) => {
+    const safeId = _guard(id, "supplier id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/inventory/suppliers/${safeId}`);
+  },
 };
 
 // ─── CRM ──────────────────────────────────────────────────────────────────────
@@ -260,7 +387,11 @@ export const inventoryApi = {
 export const crmApi = {
   dashboard: () => apiRequest("/crm/dashboard"),
   pipeline: (status) => apiRequest(`/crm/pipeline?status=${status || "ALL"}`),
-  customer360: (id) => apiRequest(`/crm/customers/${id}`),
+  customer360: (id) => {
+    const safeId = _guard(id, "customer id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/crm/customers/${safeId}`);
+  },
   search: (q) => apiRequest(`/crm/search?q=${encodeURIComponent(q)}`),
 };
 
@@ -275,7 +406,11 @@ export const accountsApi = {
   trialBalance: () => apiRequest("/accounts/trial-balance"),
   profitLoss: (p = {}) => apiRequest(`/accounts/profit-loss?${new URLSearchParams(p)}`),
   balanceSheet: () => apiRequest("/accounts/balance-sheet"),
-  generalLedger: (accountId) => apiRequest(`/accounts/general-ledger/${accountId}`),
+  generalLedger: (accountId) => {
+    const safeId = _guard(accountId, "account id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/accounts/general-ledger/${safeId}`);
+  },
   gstr1: () => apiRequest("/accounts/gstr1-report"),
   gstr3b: () => apiRequest("/accounts/gstr3b-summary"),
   debtorAging: () => apiRequest("/accounts/debtor-aging"),
@@ -288,9 +423,17 @@ export const accountsApi = {
 export const eamApi = {
   dashboard: () => apiRequest("/eam/dashboard"),
   assets: (p = {}) => apiRequest(`/eam/assets?${new URLSearchParams(p)}`),
-  assetDetail: (id) => apiRequest(`/eam/assets/${id}`),
+  assetDetail: (id) => {
+    const safeId = _guard(id, "asset id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/eam/assets/${safeId}`);
+  },
   createAsset: (input) => apiRequest("/eam/assets", { method: "POST", body: JSON.stringify(input) }),
-  updateAsset: (id, input) => apiRequest(`/eam/assets/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  updateAsset: (id, input) => {
+    const safeId = _guard(id, "asset id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/eam/assets/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
   maintenance: (p = {}) => apiRequest(`/eam/maintenance?${new URLSearchParams(p)}`),
   createMaintenance: (input) => apiRequest("/eam/maintenance", { method: "POST", body: JSON.stringify(input) }),
   statuses: () => apiRequest("/eam/statuses"),
@@ -301,7 +444,11 @@ export const eamApi = {
 export const hrmsApi = {
   dashboard: () => apiRequest("/hrms/dashboard"),
   employees: (p = {}) => apiRequest(`/hrms/employees?${new URLSearchParams(p)}`),
-  employeeDetail: (id) => apiRequest(`/hrms/employees/${id}`),
+  employeeDetail: (id) => {
+    const safeId = _guard(id, "employee id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/hrms/employees/${safeId}`);
+  },
   roles: () => apiRequest("/hrms/roles"),
 };
 
@@ -340,10 +487,18 @@ export const platformApi = {
   monitoring: () => apiRequest("/platform/monitoring"),
   apiKeys: () => apiRequest("/platform/api-keys"),
   createApiKey: (name) => apiRequest("/platform/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
-  deleteApiKey: (id) => apiRequest("/platform/api-keys/" + id, { method: "DELETE" }),
+  deleteApiKey: (id) => {
+    const safeId = _guard(id, "API key id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest("/platform/api-keys/" + safeId, { method: "DELETE" });
+  },
   webhooks: () => apiRequest("/platform/webhooks"),
   createWebhook: (input) => apiRequest("/platform/webhooks", { method: "POST", body: JSON.stringify(input) }),
-  deleteWebhook: (id) => apiRequest("/platform/webhooks/" + id, { method: "DELETE" }),
+  deleteWebhook: (id) => {
+    const safeId = _guard(id, "webhook id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest("/platform/webhooks/" + safeId, { method: "DELETE" });
+  },
   testWebhook: (input) => apiRequest("/platform/webhooks/test", { method: "POST", body: JSON.stringify(input) }),
   events: () => apiRequest("/platform/events"),
   exportData: (mod, fmt) => apiRequest("/platform/export", { method: "POST", body: JSON.stringify({ module: mod, format: fmt }) }),
@@ -367,7 +522,11 @@ export const supplierPortalApi = {
 
 export const wmsApi = {
   dashboard: () => apiRequest("/wms/dashboard"),
-  warehouseDetail: (id) => apiRequest(`/wms/warehouses/${id}`),
+  warehouseDetail: (id) => {
+    const safeId = _guard(id, "warehouse id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/wms/warehouses/${safeId}`);
+  },
   locations: (p = {}) => apiRequest(`/wms/locations?${new URLSearchParams(p)}`),
   createLocation: (input) => apiRequest("/wms/locations", { method: "POST", body: JSON.stringify(input) }),
   movements: (p = {}) => apiRequest(`/wms/movements?${new URLSearchParams(p)}`),
@@ -382,30 +541,58 @@ export const manufacturingApi = {
 
   // BOMs
   boms: (p = {}) => apiRequest(`/manufacturing/boms?${new URLSearchParams(p)}`),
-  getBom: (id) => apiRequest(`/manufacturing/boms/${id}`),
+  getBom: (id) => {
+    const safeId = _guard(id, "BOM id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/boms/${safeId}`);
+  },
   createBom: (input) => apiRequest("/manufacturing/boms", { method: "POST", body: JSON.stringify(input) }),
-  deleteBom: (id) => apiRequest(`/manufacturing/boms/${id}`, { method: "DELETE" }),
+  deleteBom: (id) => {
+    const safeId = _guard(id, "BOM id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/boms/${safeId}`, { method: "DELETE" });
+  },
 
   // Production Orders
   productionOrders: (p = {}) => apiRequest(`/manufacturing/production-orders?${new URLSearchParams(p)}`),
-  getProductionOrder: (id) => apiRequest(`/manufacturing/production-orders/${id}`),
+  getProductionOrder: (id) => {
+    const safeId = _guard(id, "production order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/production-orders/${safeId}`);
+  },
   createProductionOrder: (input) => apiRequest("/manufacturing/production-orders", { method: "POST", body: JSON.stringify(input) }),
-  updateProductionOrderStatus: (id, input) => apiRequest(`/manufacturing/production-orders/${id}/status`, { method: "PATCH", body: JSON.stringify(input) }),
+  updateProductionOrderStatus: (id, input) => {
+    const safeId = _guard(id, "production order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/production-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify(input) });
+  },
 
   // Work Orders
   workOrders: (p = {}) => apiRequest(`/manufacturing/work-orders?${new URLSearchParams(p)}`),
   createWorkOrder: (input) => apiRequest("/manufacturing/work-orders", { method: "POST", body: JSON.stringify(input) }),
-  completeWorkOrder: (id, input) => apiRequest(`/manufacturing/work-orders/${id}/complete`, { method: "PATCH", body: JSON.stringify(input) }),
+  completeWorkOrder: (id, input) => {
+    const safeId = _guard(id, "work order id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/work-orders/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
+  },
 
   // Machines
   machines: (p = {}) => apiRequest(`/manufacturing/machines?${new URLSearchParams(p)}`),
   createMachine: (input) => apiRequest("/manufacturing/machines", { method: "POST", body: JSON.stringify(input) }),
-  updateMachineStatus: (id, status) => apiRequest(`/manufacturing/machines/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  updateMachineStatus: (id, status) => {
+    const safeId = _guard(id, "machine id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/machines/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
 
   // Maintenance
   maintenance: (p = {}) => apiRequest(`/manufacturing/maintenance?${new URLSearchParams(p)}`),
   createMaintenance: (input) => apiRequest("/manufacturing/maintenance", { method: "POST", body: JSON.stringify(input) }),
-  completeMaintenance: (id, input) => apiRequest(`/manufacturing/maintenance/${id}/complete`, { method: "PATCH", body: JSON.stringify(input) }),
+  completeMaintenance: (id, input) => {
+    const safeId = _guard(id, "maintenance id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/manufacturing/maintenance/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
+  },
 
   // Quality
   qualityChecks: (p = {}) => apiRequest(`/manufacturing/quality-checks?${new URLSearchParams(p)}`),
@@ -427,7 +614,11 @@ export const operationsApi = {
     if (resource === "purchase") return purchaseApi.createPurchaseOrder(input);
     return apiRequest(`/${resource}/records`, { method: "POST", body: JSON.stringify(input) });
   },
-  remove: (resource, id) => apiRequest(`/${resource}/records/${id}`, { method: "DELETE" }),
+  remove: (resource, id) => {
+    const safeId = _guard(id, "record id");
+    if (!safeId) return Promise.resolve(null);
+    return apiRequest(`/${resource}/records/${safeId}`, { method: "DELETE" });
+  },
 };
 
 // Legacy module access (used by ManufacturingPage)

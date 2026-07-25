@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getPrisma } from "../../config/db.js";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { writeAudit } from "../../utils/audit.js";
@@ -14,7 +14,11 @@ import { updateTenantRecord } from "../../utils/tenant-record.js";
 const router = Router();
 router.use(requireAuth, requireTenant);
 
-const idParams = z.object({ id: z.string().uuid() });
+// FIX: Use sanitizeUuid preprocessor to reject sentinel values like
+// "new", "create", "temp", "0", "" BEFORE they reach z.string().uuid().
+// The validate() middleware sanitizes params/query, but body fields
+// still need explicit sanitization via z.preprocess.
+const idParams = z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) });
 const listQuery = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
@@ -55,7 +59,7 @@ const userSchema = z.object({
     phone: z.string().optional().or(z.literal("")),
     password: z.string().min(8).optional(),
     role: z.enum(["OWNER", "ADMIN", "ACCOUNTANT", "SALES_MANAGER", "SALESMAN", "STORE_KEEPER", "PURCHASE_MANAGER", "PRODUCTION_OPERATOR", "HR_MANAGER"]).default("ADMIN"),
-    branchIds: z.array(z.string().uuid()).default([]),
+    branchIds: z.array(z.preprocess(sanitizeUuid, z.string().uuid())).default([]),
     isActive: z.boolean().default(true),
   }),
 });

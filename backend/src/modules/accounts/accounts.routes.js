@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -84,7 +84,7 @@ router.post("/accounts/journal-entries", requirePermission(PERMISSIONS.ACCOUNTS_
       narration: z.string().min(3),
       entryDate: z.string().optional(),
       lines: z.array(z.object({
-        accountId: z.string().uuid(),
+        accountId: z.preprocess(sanitizeUuid, z.string().uuid()),
         debit: z.coerce.number().min(0).default(0),
         credit: z.coerce.number().min(0).default(0),
       })).min(2),
@@ -123,7 +123,7 @@ router.get("/accounts/balance-sheet", requirePermission(PERMISSIONS.ACCOUNTS_REP
 }));
 
 router.get("/accounts/general-ledger/:accountId", requirePermission(PERMISSIONS.ACCOUNTS_READ),
-  validate(z.object({ params: z.object({ accountId: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ accountId: z.preprocess(sanitizeUuid, z.string().uuid()) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const lines = await prisma.journalEntryLine.findMany({

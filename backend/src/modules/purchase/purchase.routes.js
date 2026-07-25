@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
@@ -20,8 +20,12 @@ import { updateTenantRecord } from "../../utils/tenant-record.js";
 const router = Router();
 router.use(requireAuth, requireTenant);
 
+// UUID helpers that reject sentinel values before Prisma
+const uuid = () => z.preprocess(sanitizeUuid, z.string().uuid());
+const optionalUuid = () => z.preprocess(sanitizeUuid, z.string().uuid()).optional();
+
 const lineSchema = z.object({
-  itemId: z.string().uuid().optional(),
+  itemId: optionalUuid(),
   description: z.string().optional().or(z.literal("")),
   quantity: z.coerce.number().positive(),
   rate: z.coerce.number().min(0),
@@ -37,7 +41,7 @@ const listQuery = z.object({
   }),
 });
 
-const idParam = z.object({ params: z.object({ id: z.string().uuid() }) });
+const idParam = z.object({ params: z.object({ id: uuid() }) });
 
 // ─── PURCHASE REQUESTS ────────────────────────────────────────────────────────
 router.get("/purchase-requests", requirePermission(PERMISSIONS.PURCHASE_READ), validate(listQuery), asyncHandler(async (req, res) => {
@@ -51,7 +55,7 @@ router.post("/purchase-requests", requirePermission(PERMISSIONS.PURCHASE_CREATE)
       requiredBy: z.string().optional(),
       notes: z.string().optional().or(z.literal("")),
       lines: z.array(z.object({
-        itemId: z.string().uuid(),
+        itemId: uuid(),
         description: z.string().optional().or(z.literal("")),
         quantity: z.coerce.number().positive(),
         estimatedRate: z.coerce.number().min(0).default(0),
@@ -77,11 +81,11 @@ router.get("/rfqs", requirePermission(PERMISSIONS.PURCHASE_READ), validate(listQ
 router.post("/rfqs", requirePermission(PERMISSIONS.PURCHASE_CREATE),
   validate(z.object({
     body: z.object({
-      vendorId: z.string().uuid(),
+      vendorId: uuid(),
       validUntil: z.string().optional(),
       notes: z.string().optional().or(z.literal("")),
       lines: z.array(z.object({
-        itemId: z.string().uuid(),
+        itemId: uuid(),
         description: z.string().optional().or(z.literal("")),
         quantity: z.coerce.number().positive(),
         quotedRate: z.coerce.number().min(0).default(0),
@@ -103,7 +107,7 @@ router.get("/purchase-orders", requirePermission(PERMISSIONS.PURCHASE_READ), val
 router.post("/purchase-orders", requirePermission(PERMISSIONS.PURCHASE_CREATE),
   validate(z.object({
     body: z.object({
-      vendorId: z.string().uuid().optional(),
+      vendorId: optionalUuid(),
       documentDate: z.string().optional(),
       gstTreatment: z.enum(["INTRA_STATE", "INTER_STATE"]).default("INTRA_STATE"),
       terms: z.string().optional().or(z.literal("")),
@@ -144,13 +148,13 @@ router.get("/grns", requirePermission(PERMISSIONS.PURCHASE_READ), validate(listQ
 router.post("/grns", requirePermission(PERMISSIONS.PURCHASE_CREATE),
   validate(z.object({
     body: z.object({
-      vendorId: z.string().uuid(),
-      warehouseId: z.string().uuid(),
-      poId: z.string().uuid().optional(),
+      vendorId: uuid(),
+      warehouseId: uuid(),
+      poId: optionalUuid(),
       receiptDate: z.string().optional(),
       notes: z.string().optional().or(z.literal("")),
       lines: z.array(z.object({
-        itemId: z.string().uuid(),
+        itemId: uuid(),
         orderedQty: z.coerce.number().positive(),
         receivedQty: z.coerce.number().positive(),
         acceptedQty: z.coerce.number().positive(),
@@ -190,7 +194,7 @@ router.get("/purchase-invoices", requirePermission(PERMISSIONS.PURCHASE_READ), v
 router.post("/purchase-invoices", requirePermission(PERMISSIONS.PURCHASE_CREATE),
   validate(z.object({
     body: z.object({
-      vendorId: z.string().uuid().optional(),
+      vendorId: optionalUuid(),
       documentDate: z.string().optional(),
       gstTreatment: z.enum(["INTRA_STATE", "INTER_STATE"]).default("INTRA_STATE"),
       terms: z.string().optional().or(z.literal("")),
@@ -215,14 +219,14 @@ router.get("/vendor-payments", requirePermission(PERMISSIONS.PURCHASE_READ), asy
 router.post("/vendor-payments", requirePermission(PERMISSIONS.PURCHASE_PAYMENT),
   validate(z.object({
     body: z.object({
-      vendorId: z.string().uuid().optional(),
+      vendorId: optionalUuid(),
       amount: z.coerce.number().positive(),
       mode: z.enum(["CASH", "CHEQUE", "NEFT", "RTGS", "UPI", "CARD"]),
       referenceNo: z.string().optional().or(z.literal("")),
       bankName: z.string().optional().or(z.literal("")),
       narration: z.string().optional().or(z.literal("")),
       paymentDate: z.string().optional(),
-      allocations: z.array(z.object({ invoiceId: z.string().uuid(), amount: z.coerce.number().positive() })).optional(),
+      allocations: z.array(z.object({ invoiceId: uuid(), amount: z.coerce.number().positive() })).optional(),
     }),
   })),
   asyncHandler(async (req, res) => {

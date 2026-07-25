@@ -1,16 +1,22 @@
 /**
  * Velora CRM — The operating system for customer relationships.
  *
- * Tabs: Dashboard | Pipeline | Customers | Search
+ * Tabs: Dashboard | Pipeline | Customers | Search | Customer360
+ *
+ * FIX: Previously navigated to `/crm/customer/${id}` which doesn't exist
+ * as a route.  Now uses an in-page "customer360" tab to show the customer
+ * 360° view, avoiding the need for a new route and preventing the
+ * "Invalid UUID" error when navigating with undefined IDs.
  */
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3, Globe, Phone, Mail, MapPin, Building2, Users,
-  Search, RefreshCw, ArrowUpRight, Calendar,
+  Search, RefreshCw, ArrowUpRight, Calendar, ArrowLeft,
+  WalletCards, FileText, Activity,
 } from "lucide-react";
 import { crmApi, coreApi } from "../../services/api";
+import { isUsableUuid } from "../../utils/uuid.js";
 import { formatRupees } from "../../utils/money";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
@@ -26,9 +32,9 @@ const TABS = [
 ];
 
 export function CrmPage() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState(localStorage.getItem("crm_tab") || "dashboard");
-  const switchTab = (t) => { setTab(t); localStorage.setItem("crm_tab", t); };
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const switchTab = (t) => { setTab(t); setSelectedCustomerId(null); localStorage.setItem("crm_tab", t); };
 
   const dashQuery = useQuery({
     queryKey: ["crm-dashboard"],
@@ -43,6 +49,13 @@ export function CrmPage() {
     staleTime: 60 * 1000,
     enabled: tab === "customers",
   });
+
+  // Guard: only fetch customer 360 if we have a valid UUID
+  const viewCustomer = (id) => {
+    if (isUsableUuid(id)) {
+      setSelectedCustomerId(id);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
@@ -59,10 +72,111 @@ export function CrmPage() {
         ))}
       </div>
 
-      {tab === "dashboard" && <DashboardTab data={dashQuery} onViewCustomer={(id) => navigate(`/crm/customer/${id}`)} />}
-      {tab === "pipeline" && <PipelineTab />}
-      {tab === "customers" && <CustomersTab query={customersQuery} onSelect={(id) => navigate(`/crm/customer/${id}`)} />}
-      {tab === "search" && <SearchTab onSelect={(path) => navigate(path)} />}
+      {selectedCustomerId ? (
+        <Customer360View customerId={selectedCustomerId} onBack={() => setSelectedCustomerId(null)} />
+      ) : (
+        <>
+          {tab === "dashboard" && <DashboardTab data={dashQuery} onViewCustomer={viewCustomer} />}
+          {tab === "pipeline" && <PipelineTab />}
+          {tab === "customers" && <CustomersTab query={customersQuery} onSelect={viewCustomer} />}
+          {tab === "search" && <SearchTab onSelect={viewCustomer} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Customer 360° View (in-page) ────────────────────────────────
+
+function Customer360View({ customerId, onBack }) {
+  const query = useQuery({
+    queryKey: ["crm-customer-360", customerId],
+    queryFn: () => crmApi.customer360(customerId),
+    staleTime: 60 * 1000,
+    enabled: isUsableUuid(customerId),
+  });
+
+  if (query.isPending) return <SkeletonTable rows={8} cols={4} />;
+  if (query.isError) return <ErrorState error={query.error} />;
+  const data = query.data?.data;
+  if (!data) return <EmptyState title="Customer not found" />;
+
+  const { customer, summary, recentInvoices, recentPayments, timeline } = data;
+
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800">
+        <ArrowLeft size={16} /> Back to Customers
+      </button>
+
+      <Card>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-950">{customer.name}</h2>
+            <p className="mt-1 text-sm text-slate-600">{customer.gstin || "No GSTIN"} · {customer.email || "No email"}</p>
+          </div>
+          <Building2 size={22} className="text-blue-600" />
+        </div>
+      </Card>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label="Total Invoiced" value={formatRupees(summary.totalInvoiced)} tone="blue" icon={BarChart3} />
+        <KpiTile label="Total Paid" value={formatRupees(summary.totalPaid)} tone="emerald" icon={ArrowUpRight} />
+        <KpiTile label="Outstanding" value={formatRupees(summary.outstanding)} tone={summary.outstanding > 0 ? "rose" : "emerald"} icon={WalletCards} />
+        <KpiTile label="Invoices" value={summary.invoiceCount} tone="slate" icon={FileText} />
+      </section>
+
+      {recentInvoices?.length > 0 && (
+        <Card>
+          <SectionHeader title="Recent Invoices" icon={FileText} />
+          <TableShell>
+            <Head><th className="px-4 py-3">Invoice #</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Status</th></Head>
+            <tbody className="divide-y divide-slate-100">
+              {recentInvoices.map((inv) => (
+                <tr key={inv.id} className="hover:bg-slate-50">
+                  <Cell className="font-mono text-xs">{inv.documentNo}</Cell>
+                  <Cell className="text-sm text-slate-600">{date(inv.documentDate)}</Cell>
+                  <Cell className="font-semibold">{formatRupees(inv.totalAmount)}</Cell>
+                  <Cell><StatusPill status={inv.status} /></Cell>
+                </tr>
+              ))}
+            </tbody>
+          </TableShell>
+        </Card>
+      )}
+
+      {recentPayments?.length > 0 && (
+        <Card>
+          <SectionHeader title="Recent Payments" icon={ArrowUpRight} />
+          {recentPayments.map((p) => (
+            <div key={p.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+              <div>
+                <p className="font-medium text-slate-950">{p.paymentNumber}</p>
+                <p className="text-xs text-slate-500">{date(p.paymentDate)} · {p.mode}</p>
+              </div>
+              <p className="font-semibold text-emerald-700">{formatRupees(p.amount)}</p>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {timeline?.length > 0 && (
+        <Card>
+          <SectionHeader title="Activity Timeline" icon={Activity} />
+          {timeline.slice(0, 15).map((t, i) => (
+            <div key={i} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+              <div>
+                <p className="font-medium text-slate-950">{t.title}</p>
+                <p className="text-xs text-slate-500">{date(t.date)} · {t.type}</p>
+              </div>
+              <div className="text-right">
+                {t.amount ? <p className="font-semibold tabular-nums">{formatRupees(t.amount)}</p> : null}
+                {t.status ? <StatusPill status={t.status} /> : null}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }
@@ -239,7 +353,7 @@ function SearchTab({ onSelect }) {
             <Card>
               <SectionHeader title="Customers" icon={Building2} description={`${results.customers.length} results`} />
               {results.customers.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-50 px-2 rounded-lg" onClick={() => onSelect(`/crm/customer/${c.id}`)}>
+                <div key={c.id} className="flex items-center justify-between py-2 cursor-pointer hover:bg-slate-50 px-2 rounded-lg" onClick={() => onSelect(c.id)}>
                   <div><p className="font-medium">{c.name}</p><p className="text-xs text-slate-500">{c.gstin || c.panNumber || ""}</p></div>
                   <ArrowUpRight size={16} className="text-slate-400" />
                 </div>

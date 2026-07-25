@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
@@ -30,9 +30,13 @@ import {
 const router = Router();
 router.use(requireAuth, requireTenant);
 
+// ─── UUID helper: sanitize before .uuid() validation ─────────────────────────
+const uuid = () => z.preprocess(sanitizeUuid, z.string().uuid());
+const optionalUuid = () => z.preprocess(sanitizeUuid, z.string().uuid()).optional();
+
 // ─── Line schema ──────────────────────────────────────────────────────────────
 const lineSchema = z.object({
-  itemId: z.string().uuid().optional(),
+  itemId: optionalUuid(),
   description: z.string().optional().or(z.literal("")),
   quantity: z.coerce.number().positive(),
   rate: z.coerce.number().min(0),
@@ -41,7 +45,7 @@ const lineSchema = z.object({
 });
 
 const docHeaderSchema = z.object({
-  customerId: z.string().uuid().optional(),
+  customerId: optionalUuid(),
   documentDate: z.string().optional(),
   gstTreatment: z.enum(["INTRA_STATE", "INTER_STATE"]).default("INTRA_STATE"),
   terms: z.string().optional().or(z.literal("")),
@@ -86,14 +90,14 @@ router.post("/leads", requirePermission(PERMISSIONS.SALES_CREATE), validate(lead
 }));
 
 router.patch("/leads/:id", requirePermission(PERMISSIONS.SALES_UPDATE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }), body: leadSchema.shape.body.partial() })),
+  validate(z.object({ params: z.object({ id: uuid() }), body: leadSchema.shape.body.partial() })),
   asyncHandler(async (req, res) => {
     const lead = await updateLead(req, req.params.id, req.validated.body);
     return ok(res, lead, "Lead updated");
   }));
 
 router.delete("/leads/:id", requirePermission(PERMISSIONS.SALES_DELETE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const lead = await deleteLead(req, req.params.id);
     return ok(res, lead, "Lead deleted");
@@ -113,21 +117,21 @@ router.post("/quotations", requirePermission(PERMISSIONS.SALES_CREATE),
   }));
 
 router.get("/quotations/:id", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const doc = await getSalesDoc(req, req.params.id);
     return ok(res, doc, "Quotation loaded");
   }));
 
 router.post("/quotations/:id/convert-to-order", requirePermission(PERMISSIONS.SALES_APPROVE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const so = await convertQuotationToOrder(req, req.params.id);
     return created(res, so, "Sales Order created from Quotation");
   }));
 
 router.patch("/quotations/:id/status", requirePermission(PERMISSIONS.SALES_APPROVE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }), body: z.object({ status: z.enum(["SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"]) }) })),
+  validate(z.object({ params: z.object({ id: uuid() }), body: z.object({ status: z.enum(["SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"]) }) })),
   asyncHandler(async (req, res) => {
     const doc = await updateDocStatus(req, req.params.id, req.validated.body.status);
     return ok(res, doc, "Status updated");
@@ -168,14 +172,14 @@ router.post("/sales-orders", requirePermission(PERMISSIONS.SALES_CREATE),
   }));
 
 router.get("/sales-orders/:id", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const doc = await getSalesDoc(req, req.params.id);
     return ok(res, doc, "Sales order loaded");
   }));
 
 router.patch("/sales-orders/:id/status", requirePermission(PERMISSIONS.SALES_APPROVE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }), body: z.object({ status: z.enum(["SUBMITTED", "APPROVED", "CANCELLED", "CLOSED"]) }) })),
+  validate(z.object({ params: z.object({ id: uuid() }), body: z.object({ status: z.enum(["SUBMITTED", "APPROVED", "CANCELLED", "CLOSED"]) }) })),
   asyncHandler(async (req, res) => {
     const doc = await updateDocStatus(req, req.params.id, req.validated.body.status);
     return ok(res, doc, "Status updated");
@@ -184,12 +188,12 @@ router.patch("/sales-orders/:id/status", requirePermission(PERMISSIONS.SALES_APP
 // ─── DELIVERY NOTES ──────────────────────────────────────────────────────────
 const dnSchema = z.object({
   body: z.object({
-    customerId: z.string().uuid().optional(),
-    salesOrderId: z.string().uuid().optional(),
-    warehouseId: z.string().uuid().optional(),
+    customerId: optionalUuid(),
+    salesOrderId: optionalUuid(),
+    warehouseId: optionalUuid(),
     documentDate: z.string().optional(),
     lines: z.array(z.object({
-      itemId: z.string().uuid().optional(),
+      itemId: optionalUuid(),
       description: z.string().optional().or(z.literal("")),
       quantity: z.coerce.number().positive(),
       rate: z.coerce.number().min(0).default(0),
@@ -210,7 +214,7 @@ router.post("/delivery-notes", requirePermission(PERMISSIONS.SALES_CREATE),
   }));
 
 router.get("/delivery-notes/:id", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const doc = await getSalesDoc(req, req.params.id);
     return ok(res, doc, "Delivery note loaded");
@@ -230,7 +234,7 @@ router.post("/invoices", requirePermission(PERMISSIONS.SALES_CREATE),
   }));
 
 router.get("/invoices/:id", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const doc = await getSalesDoc(req, req.params.id);
     return ok(res, doc, "Invoice loaded");
@@ -239,14 +243,14 @@ router.get("/invoices/:id", requirePermission(PERMISSIONS.SALES_READ),
 // ─── PAYMENT RECEIPTS ─────────────────────────────────────────────────────────
 const receiptSchema = z.object({
   body: z.object({
-    customerId: z.string().uuid().optional(),
+    customerId: optionalUuid(),
     amount: z.coerce.number().positive(),
     mode: z.enum(["CASH", "CHEQUE", "NEFT", "RTGS", "UPI", "CARD"]),
     referenceNo: z.string().optional().or(z.literal("")),
     bankName: z.string().optional().or(z.literal("")),
     narration: z.string().optional().or(z.literal("")),
     paymentDate: z.string().optional(),
-    allocations: z.array(z.object({ invoiceId: z.string().uuid(), amount: z.coerce.number().positive() })).optional(),
+    allocations: z.array(z.object({ invoiceId: uuid(), amount: z.coerce.number().positive() })).optional(),
   }),
 });
 
@@ -290,7 +294,7 @@ router.get("/sales/outstanding-report", requirePermission(PERMISSIONS.SALES_READ
 }));
 
 router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const rows = await getOutstandingReport(req);
     const filtered = rows.filter((r) => r.partyId === req.params.id);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -11,6 +12,8 @@ import { writeAudit } from "../../utils/audit.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 // ─── EAM Dashboard ───────────────────────────────────────────────
 router.get("/eam/dashboard", requirePermission(PERMISSIONS.MFG_READ), asyncHandler(async (req, res) => {
@@ -54,7 +57,7 @@ router.get("/eam/assets", requirePermission(PERMISSIONS.MFG_READ),
 
 // ─── Asset Detail ────────────────────────────────────────────────
 router.get("/eam/assets/:id", requirePermission(PERMISSIONS.MFG_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const asset = await prisma.machine.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
@@ -83,7 +86,7 @@ router.post("/eam/assets", requirePermission(PERMISSIONS.MFG_CREATE),
 
 // ─── Update Asset ────────────────────────────────────────────────
 router.patch("/eam/assets/:id", requirePermission(PERMISSIONS.MFG_UPDATE),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }), body: z.object({ name: z.string().min(2).optional(), type: z.string().optional(), location: z.string().optional(), status: z.string().optional(), healthScore: z.coerce.number().min(0).max(100).optional(), utilizationPct: z.coerce.number().min(0).max(100).optional(), operatingHours: z.coerce.number().min(0).optional() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }), body: z.object({ name: z.string().min(2).optional(), type: z.string().optional(), location: z.string().optional(), status: z.string().optional(), healthScore: z.coerce.number().min(0).max(100).optional(), utilizationPct: z.coerce.number().min(0).max(100).optional(), operatingHours: z.coerce.number().min(0).optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const asset = await prisma.machine.update({ where: { id: req.params.id }, data: { ...req.validated.body, updatedBy: req.user.sub } });
@@ -93,7 +96,7 @@ router.patch("/eam/assets/:id", requirePermission(PERMISSIONS.MFG_UPDATE),
 
 // ─── Maintenance Tasks ───────────────────────────────────────────
 router.get("/eam/maintenance", requirePermission(PERMISSIONS.MFG_READ),
-  validate(z.object({ query: z.object({ page: z.coerce.number().min(1).default(1), limit: z.coerce.number().min(1).max(100).default(50), status: z.string().optional(), machineId: z.string().uuid().optional() }) })),
+  validate(z.object({ query: z.object({ page: z.coerce.number().min(1).default(1), limit: z.coerce.number().min(1).max(100).default(50), status: z.string().optional(), machineId: optionalUuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { page, limit, status, machineId } = req.validated.query;
@@ -109,7 +112,7 @@ router.get("/eam/maintenance", requirePermission(PERMISSIONS.MFG_READ),
   }));
 
 router.post("/eam/maintenance", requirePermission(PERMISSIONS.MFG_CREATE),
-  validate(z.object({ body: z.object({ machineId: z.string().uuid(), taskType: z.string().min(2), description: z.string().min(5), scheduledDate: z.string(), priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"), assignedTo: z.string().optional() }) })),
+  validate(z.object({ body: z.object({ machineId: uuid(), taskType: z.string().min(2), description: z.string().min(5), scheduledDate: z.string(), priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"), assignedTo: z.string().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { machineId, ...input } = req.validated.body;

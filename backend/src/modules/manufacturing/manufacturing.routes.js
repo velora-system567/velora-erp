@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -18,6 +19,8 @@ import { updateTenantRecord } from "../../utils/tenant-record.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 const listQuery = z.object({
   query: z.object({
@@ -28,7 +31,7 @@ const listQuery = z.object({
   }),
 });
 
-const idParam = z.object({ params: z.object({ id: z.string().uuid() }) });
+const idParam = z.object({ params: z.object({ id: uuid() }) });
 
 // ─── MODULE ACCESS CHECK ─────────────────────────────────────────────────────
 router.get("/manufacturing/access", requirePermission(PERMISSIONS.MFG_READ), asyncHandler(async (req, res) => {
@@ -58,14 +61,14 @@ router.get("/manufacturing/boms", requirePermission(PERMISSIONS.MFG_READ), valid
 router.post("/manufacturing/boms", requirePermission(PERMISSIONS.MFG_CREATE),
   validate(z.object({
     body: z.object({
-      itemId: z.string().uuid(),
+      itemId: uuid(),
       version: z.string().default("v1.0"),
       isDefault: z.boolean().default(false),
       notes: z.string().optional().or(z.literal("")),
       lines: z.array(z.object({
-        componentId: z.string().uuid(),
+        componentId: uuid(),
         quantity: z.coerce.number().positive(),
-        unitOfMeasureId: z.string().uuid().optional(),
+        unitOfMeasureId: optionalUuid(),
         scrapPercent: z.coerce.number().int().min(0).max(100).default(0),
       })).min(1),
     }),
@@ -143,14 +146,14 @@ router.get("/manufacturing/production-orders", requirePermission(PERMISSIONS.MFG
 router.post("/manufacturing/production-orders", requirePermission(PERMISSIONS.MFG_CREATE),
   validate(z.object({
     body: z.object({
-      itemId: z.string().uuid(),
-      bomId: z.string().uuid().optional(),
+      itemId: uuid(),
+      bomId: optionalUuid(),
       quantity: z.coerce.number().positive(),
       plannedStart: z.string().optional(),
       plannedEnd: z.string().optional(),
       priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
       assignedTo: z.string().optional().or(z.literal("")),
-      warehouseId: z.string().uuid().optional(),
+      warehouseId: optionalUuid(),
       notes: z.string().optional().or(z.literal("")),
     }),
   })),
@@ -211,7 +214,7 @@ router.get("/manufacturing/production-orders/:id", requirePermission(PERMISSIONS
 
 router.patch("/manufacturing/production-orders/:id/status", requirePermission(PERMISSIONS.MFG_UPDATE),
   validate(z.object({
-    params: z.object({ id: z.string().uuid() }),
+    params: z.object({ id: uuid() }),
     body: z.object({
       status: z.enum(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
       progress: z.coerce.number().min(0).max(100).optional(),
@@ -252,9 +255,9 @@ router.get("/manufacturing/work-orders", requirePermission(PERMISSIONS.MFG_READ)
 router.post("/manufacturing/work-orders", requirePermission(PERMISSIONS.MFG_CREATE),
   validate(z.object({
     body: z.object({
-      productionOrderId: z.string().uuid(),
+      productionOrderId: uuid(),
       operationName: z.string().min(2),
-      machineId: z.string().uuid().optional(),
+      machineId: optionalUuid(),
       plannedQty: z.coerce.number().positive(),
       assignedTo: z.string().optional().or(z.literal("")),
       notes: z.string().optional().or(z.literal("")),
@@ -290,7 +293,7 @@ router.post("/manufacturing/work-orders", requirePermission(PERMISSIONS.MFG_CREA
 
 router.patch("/manufacturing/work-orders/:id/complete", requirePermission(PERMISSIONS.MFG_UPDATE),
   validate(z.object({
-    params: z.object({ id: z.string().uuid() }),
+    params: z.object({ id: uuid() }),
     body: z.object({
       completedQty: z.coerce.number().positive(),
       scrapQty: z.coerce.number().min(0).default(0),
@@ -349,7 +352,7 @@ router.post("/manufacturing/machines", requirePermission(PERMISSIONS.MFG_CREATE)
 
 router.patch("/manufacturing/machines/:id/status", requirePermission(PERMISSIONS.MFG_UPDATE),
   validate(z.object({
-    params: z.object({ id: z.string().uuid() }),
+    params: z.object({ id: uuid() }),
     body: z.object({ status: z.enum(["RUNNING", "IDLE", "MAINTENANCE", "BREAKDOWN"]) }),
   })),
   asyncHandler(async (req, res) => {
@@ -382,7 +385,7 @@ router.get("/manufacturing/maintenance", requirePermission(PERMISSIONS.MFG_READ)
 router.post("/manufacturing/maintenance", requirePermission(PERMISSIONS.MFG_CREATE),
   validate(z.object({
     body: z.object({
-      machineId: z.string().uuid(),
+      machineId: uuid(),
       taskType: z.enum(["PREVENTIVE", "CORRECTIVE", "PREDICTIVE"]),
       description: z.string().min(3),
       scheduledDate: z.string(),
@@ -420,7 +423,7 @@ router.post("/manufacturing/maintenance", requirePermission(PERMISSIONS.MFG_CREA
 
 router.patch("/manufacturing/maintenance/:id/complete", requirePermission(PERMISSIONS.MFG_UPDATE),
   validate(z.object({
-    params: z.object({ id: z.string().uuid() }),
+    params: z.object({ id: uuid() }),
     body: z.object({
       actualCost: z.coerce.number().min(0).default(0),
       notes: z.string().optional().or(z.literal("")),
@@ -455,7 +458,7 @@ router.get("/manufacturing/quality-checks", requirePermission(PERMISSIONS.MFG_RE
 router.post("/manufacturing/quality-checks", requirePermission(PERMISSIONS.MFG_QUALITY),
   validate(z.object({
     body: z.object({
-      workOrderId: z.string().uuid(),
+      workOrderId: uuid(),
       inspectedQty: z.coerce.number().positive(),
       passedQty: z.coerce.number().min(0),
       failedQty: z.coerce.number().min(0),

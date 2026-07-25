@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -10,6 +11,8 @@ import { PERMISSIONS } from "../../utils/permissions.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 // ─── HR Dashboard ────────────────────────────────────────────────
 router.get("/hrms/dashboard", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
@@ -59,7 +62,7 @@ router.get("/hrms/employees", requirePermission(PERMISSIONS.USER_READ), asyncHan
 
 // ─── Employee Detail ─────────────────────────────────────────────
 router.get("/hrms/employees/:id", requirePermission(PERMISSIONS.USER_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const user = await prisma.user.findFirst({

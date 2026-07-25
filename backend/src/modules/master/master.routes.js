@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { getPrisma } from "../../config/db.js";
 import { created, ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
@@ -35,7 +35,7 @@ const listSchema = z.object({
 });
 
 const idSchema = z.object({
-  params: z.object({ resource: z.string(), id: z.string().uuid() }),
+  params: z.object({ resource: z.string(), id: z.preprocess(sanitizeUuid, z.string().uuid()) }),
 });
 
 const writeSchema = z.object({
@@ -93,7 +93,7 @@ router.get("/items/search", requirePermission(PERMISSIONS.MASTER_READ), validate
   return ok(res, rows, "Items found");
 }));
 
-router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ), validate(z.object({ params: z.object({ id: z.string().uuid() }) })), asyncHandler(async (req, res) => {
+router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ), validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }) })), asyncHandler(async (req, res) => {
   return ok(res, { customerId: req.params.id, outstandingPaise: 0 }, "Customer outstanding");
 }));
 
@@ -134,6 +134,11 @@ router.get("/:resource/:id", requirePermission(PERMISSIONS.MASTER_READ), validat
   const row = await prisma[model].findFirst({
     where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },
   });
+  if (!row) {
+    const error = new Error(`${req.validated.params.resource} not found`);
+    error.statusCode = 404;
+    throw error;
+  }
   return ok(res, row, "Record loaded");
 }));
 

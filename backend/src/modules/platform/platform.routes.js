@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -13,6 +14,8 @@ import { writeAudit } from "../../utils/audit.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 // ─── API Monitoring Dashboard ────────────────────────────────────
 router.get("/platform/monitoring", requirePermission(PERMISSIONS.ADMIN), asyncHandler(async (req, res) => {
@@ -49,7 +52,7 @@ router.post("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN),
   }));
 
 router.delete("/platform/api-keys/:id", requirePermission(PERMISSIONS.ADMIN),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     try { await prisma.apiKey.update({ where: { id: req.params.id }, data: { isDeleted: true, updatedBy: req.user.sub } }); } catch { /* ignore */ }
@@ -82,7 +85,7 @@ router.post("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN),
   }));
 
 router.delete("/platform/webhooks/:id", requirePermission(PERMISSIONS.ADMIN),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     try { await prisma.webhook.update({ where: { id: req.params.id }, data: { isActive: false, updatedBy: req.user.sub } }); } catch { /* ignore */ }

@@ -1,6 +1,22 @@
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
 /**
+ * Sanitize error messages before displaying to users.
+ * Hides internal UUID references and raw Zod errors.
+ */
+function sanitizeErrorMessage(message) {
+  if (!message) return "An unexpected error occurred.";
+  // Hide raw UUID values from display
+  const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  let clean = message.replace(uuidPattern, "the selected record");
+  // Hide raw Zod path references
+  clean = clean.replace(/params\.\w+:?\s*/gi, "");
+  clean = clean.replace(/query\.\w+:?\s*/gi, "");
+  clean = clean.replace(/body\.\w+:?\s*/gi, "");
+  return clean || "An unexpected error occurred.";
+}
+
+/**
  * Renders a standardized error state with an optional retry button.
  */
 export function ErrorState({ error, onRetry, title = "Something went wrong" }) {
@@ -8,15 +24,24 @@ export function ErrorState({ error, onRetry, title = "Something went wrong" }) {
     error?.message?.toLowerCase().includes("failed to fetch") ||
     error?.message?.toLowerCase().includes("network");
 
+  const isInvalidRef =
+    error?.message?.toLowerCase().includes("invalid") &&
+    (error?.message?.toLowerCase().includes("reference") ||
+     error?.message?.toLowerCase().includes("uuid"));
+
   const Icon = isNetworkError ? WifiOff : AlertTriangle;
-  const message = error?.message || "An unexpected error occurred.";
+  const message = isInvalidRef
+    ? "No record selected. Please choose a valid record to continue."
+    : sanitizeErrorMessage(error?.message);
+
+  const displayTitle = isInvalidRef ? "No Record Selected" : title;
 
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-rose-100 bg-rose-50 px-6 py-10 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
         <Icon size={22} className="text-rose-600" />
       </div>
-      <p className="mt-3 text-base font-semibold text-slate-950">{title}</p>
+      <p className="mt-3 text-base font-semibold text-slate-950">{displayTitle}</p>
       <p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-600">{message}</p>
       {onRetry && (
         <button
@@ -39,7 +64,7 @@ export function ErrorBanner({ error }) {
   return (
     <div className="flex items-start gap-2.5 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
       <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-      <span>{error?.message || String(error)}</span>
+      <span>{sanitizeErrorMessage(error?.message)}</span>
     </div>
   );
 }

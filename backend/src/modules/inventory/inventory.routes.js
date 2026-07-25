@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
-import { validate } from "../../middleware/validate.js";
+import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -27,8 +27,8 @@ const listQuery = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
-    warehouseId: z.string().uuid().optional(),
-    itemId: z.string().uuid().optional(),
+    warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(),
+    itemId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(),
   }),
 });
 
@@ -36,8 +36,8 @@ const ledgerQuery = z.object({
   query: z.object({
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).default(50).transform(v => Math.min(v, 500)),
-    itemId: z.string().uuid().optional(),
-    warehouseId: z.string().uuid().optional(),
+    itemId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(),
+    warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(),
     transactionType: z.enum(["PURCHASE", "SALE", "TRANSFER_IN", "TRANSFER_OUT", "ADJUSTMENT", "OPENING", "PRODUCTION_IN", "PRODUCTION_OUT"]).optional(),
     fromDate: z.string().date().optional(),
     toDate: z.string().date().optional(),
@@ -59,7 +59,7 @@ async function assertTenantInventoryReference(prisma, req, { itemId, warehouseId
 
 // ─── Inventory Control Tower ────────────────────────────────────────────────
 router.get("/inventory/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ query: z.object({ warehouseId: z.string().uuid().optional() }) })),
+  validate(z.object({ query: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional() }) })),
   asyncHandler(async (req, res) => {
     const data = await getInventoryControlTower(getPrisma(), {
       tenantId: req.tenantId,
@@ -104,7 +104,7 @@ router.get("/inventory/stock-summary", requirePermission(PERMISSIONS.INVENTORY_R
 
 // ─── Stock Ledger for item ────────────────────────────────────────────────────
 router.get("/inventory/stock-ledger/:itemId", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ params: z.object({ itemId: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ itemId: z.preprocess(sanitizeUuid, z.string().uuid()) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { page = 1, limit = 50 } = req.query;
@@ -136,7 +136,7 @@ router.get("/inventory/ledger", requirePermission(PERMISSIONS.INVENTORY_READ), v
 }));
 
 router.get("/inventory/batches", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ query: z.object({ warehouseId: z.string().uuid().optional(), status: z.enum(["ALL", "ACTIVE", "EXPIRED", "EXPIRING"]).default("ALL") }) })),
+  validate(z.object({ query: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), status: z.enum(["ALL", "ACTIVE", "EXPIRED", "EXPIRING"]).default("ALL") }) })),
   asyncHandler(async (req, res) => {
     const rows = await getBatchTraceabilityReport(getPrisma(), {
       tenantId: req.tenantId,
@@ -148,7 +148,7 @@ router.get("/inventory/batches", requirePermission(PERMISSIONS.INVENTORY_READ),
 
 // ─── Warehouse locations, reservations, and cycle counts ───────────────────
 router.get("/inventory/locations", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ query: z.object({ warehouseId: z.string().uuid().optional() }) })),
+  validate(z.object({ query: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional() }) })),
   asyncHandler(async (req, res) => {
     const rows = await getPrisma().inventoryLocation.findMany({
       where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false, ...(req.validated.query.warehouseId ? { warehouseId: req.validated.query.warehouseId } : {}) },
@@ -158,7 +158,7 @@ router.get("/inventory/locations", requirePermission(PERMISSIONS.INVENTORY_READ)
   }));
 
 router.post("/inventory/locations", requirePermission(PERMISSIONS.INVENTORY_CREATE),
-  validate(z.object({ body: z.object({ warehouseId: z.string().uuid(), parentId: z.string().uuid().optional(), code: z.string().min(1).max(60), name: z.string().min(2).max(120), zone: z.string().max(60).optional(), bin: z.string().max(60).optional(), capacity: z.coerce.number().positive().optional() }) })),
+  validate(z.object({ body: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()), parentId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), code: z.string().min(1).max(60), name: z.string().min(2).max(120), zone: z.string().max(60).optional(), bin: z.string().max(60).optional(), capacity: z.coerce.number().positive().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { warehouseId, ...input } = req.validated.body;
@@ -175,7 +175,7 @@ router.get("/inventory/reservations", requirePermission(PERMISSIONS.INVENTORY_RE
 }));
 
 router.post("/inventory/reservations", requirePermission(PERMISSIONS.INVENTORY_UPDATE),
-  validate(z.object({ body: z.object({ itemId: z.string().uuid(), warehouseId: z.string().uuid(), locationId: z.string().uuid().optional(), quantity: z.coerce.number().positive(), referenceId: z.string().uuid().optional(), referenceType: z.string().max(80).optional(), expiresAt: z.coerce.date().optional() }) })),
+  validate(z.object({ body: z.object({ itemId: z.preprocess(sanitizeUuid, z.string().uuid()), warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()), locationId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), quantity: z.coerce.number().positive(), referenceId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), referenceType: z.string().max(80).optional(), expiresAt: z.coerce.date().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma(); const input = req.validated.body;
     await assertTenantInventoryReference(prisma, req, { itemId: input.itemId, warehouseIds: [input.warehouseId] });
@@ -190,7 +190,7 @@ router.post("/inventory/reservations", requirePermission(PERMISSIONS.INVENTORY_U
     return created(res, row, "Stock reserved");
   }));
 
-router.patch("/inventory/reservations/:id/release", requirePermission(PERMISSIONS.INVENTORY_UPDATE), validate(z.object({ params: z.object({ id: z.string().uuid() }) })), asyncHandler(async (req, res) => {
+router.patch("/inventory/reservations/:id/release", requirePermission(PERMISSIONS.INVENTORY_UPDATE), validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }) })), asyncHandler(async (req, res) => {
   const row = await getPrisma().inventoryReservation.updateMany({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, data: { status: "RELEASED", updatedBy: req.user.sub } });
   if (!row.count) { const error = new Error("Reservation not found"); error.statusCode = 404; throw error; }
   await writeAudit(req, { tableName: "inventory_reservations", recordId: req.validated.params.id, action: "STOCK_RESERVATION_RELEASED", newValue: { status: "RELEASED" } });
@@ -198,7 +198,7 @@ router.patch("/inventory/reservations/:id/release", requirePermission(PERMISSION
 }));
 
 router.get("/inventory/serials", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ query: z.object({ itemId: z.string().uuid().optional(), warehouseId: z.string().uuid().optional(), status: z.string().max(40).optional(), q: z.string().max(120).optional() }) })),
+  validate(z.object({ query: z.object({ itemId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional(), status: z.string().max(40).optional(), q: z.string().max(120).optional() }) })),
   asyncHandler(async (req, res) => {
     const { q, ...filters } = req.validated.query;
     const rows = await getPrisma().productSerial.findMany({
@@ -214,7 +214,7 @@ router.get("/inventory/cycle-counts", requirePermission(PERMISSIONS.INVENTORY_RE
 }));
 
 router.post("/inventory/cycle-counts", requirePermission(PERMISSIONS.INVENTORY_CREATE),
-  validate(z.object({ body: z.object({ warehouseId: z.string().uuid(), scheduledAt: z.coerce.date().optional(), notes: z.string().max(2000).optional() }) })),
+  validate(z.object({ body: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()), scheduledAt: z.coerce.date().optional(), notes: z.string().max(2000).optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma(); const input = req.validated.body;
     const warehouse = await prisma.warehouse.findFirst({ where: { id: input.warehouseId, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, select: { id: true } });
@@ -231,7 +231,7 @@ router.post("/inventory/cycle-counts", requirePermission(PERMISSIONS.INVENTORY_C
   }));
 
 router.patch("/inventory/cycle-counts/:id/complete", requirePermission(PERMISSIONS.INVENTORY_ADJUST),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }), body: z.object({ lines: z.array(z.object({ lineId: z.string().uuid(), countedQty: z.coerce.number().min(0), notes: z.string().max(500).optional() })).min(1) }) })),
+  validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }), body: z.object({ lines: z.array(z.object({ lineId: z.preprocess(sanitizeUuid, z.string().uuid()), countedQty: z.coerce.number().min(0), notes: z.string().max(500).optional() })).min(1) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma(); const input = req.validated.body;
     const count = await prisma.cycleCount.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
@@ -254,9 +254,9 @@ router.patch("/inventory/cycle-counts/:id/complete", requirePermission(PERMISSIO
 router.post("/inventory/opening-stock", requirePermission(PERMISSIONS.INVENTORY_CREATE),
   validate(z.object({
     body: z.object({
-      warehouseId: z.string().uuid(),
+      warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()),
       items: z.array(z.object({
-        itemId: z.string().uuid(),
+        itemId: z.preprocess(sanitizeUuid, z.string().uuid()),
         quantity: z.coerce.number().positive(),
         costRate: z.coerce.number().min(0),
         batchNumber: z.string().optional().or(z.literal("")),
@@ -303,9 +303,9 @@ router.get("/inventory/stock-transfers", requirePermission(PERMISSIONS.INVENTORY
 router.post("/inventory/stock-transfer", requirePermission(PERMISSIONS.INVENTORY_TRANSFER),
   validate(z.object({
     body: z.object({
-      itemId: z.string().uuid(),
-      fromWarehouseId: z.string().uuid(),
-      toWarehouseId: z.string().uuid(),
+      itemId: z.preprocess(sanitizeUuid, z.string().uuid()),
+      fromWarehouseId: z.preprocess(sanitizeUuid, z.string().uuid()),
+      toWarehouseId: z.preprocess(sanitizeUuid, z.string().uuid()),
       quantity: z.coerce.number().positive(),
     }),
   })),
@@ -341,8 +341,8 @@ router.post("/inventory/stock-transfer", requirePermission(PERMISSIONS.INVENTORY
 router.post("/inventory/stock-adjustment", requirePermission(PERMISSIONS.INVENTORY_ADJUST),
   validate(z.object({
     body: z.object({
-      itemId: z.string().uuid(),
-      warehouseId: z.string().uuid(),
+      itemId: z.preprocess(sanitizeUuid, z.string().uuid()),
+      warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()),
       adjustmentQty: z.coerce.number(),
       reason: z.string().min(3),
       costRate: z.coerce.number().min(0).optional(),
@@ -437,7 +437,7 @@ router.get("/inventory/suppliers", requirePermission(PERMISSIONS.INVENTORY_READ)
 }));
 
 router.get("/inventory/suppliers/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const vendor = await prisma.vendor.findFirst({

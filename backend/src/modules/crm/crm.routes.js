@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -10,6 +11,8 @@ import { PERMISSIONS } from "../../utils/permissions.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 // ─── CRM Dashboard ───────────────────────────────────────────────
 router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
@@ -62,7 +65,7 @@ router.get("/crm/pipeline", requirePermission(PERMISSIONS.SALES_READ), asyncHand
 
 // ─── CRM Customer 360° ──────────────────────────────────────────
 router.get("/crm/customers/:id", requirePermission(PERMISSIONS.SALES_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { tenantId, companyId } = req;

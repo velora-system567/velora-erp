@@ -150,7 +150,7 @@ export function Dashboard() {
                 <div key={i} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-slate-50">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-700">{i + 1}</span>
-                    <span className="text-sm font-medium text-slate-950 truncate">{r.item?.name || r.item?.id || "Unknown"}</span>
+                    <span className="text-sm font-medium text-slate-950 truncate">{r.item?.name || "Unknown item"}</span>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-slate-950">{formatRupeesCompact(r.totalSalesPaise)}</span>
                 </div>

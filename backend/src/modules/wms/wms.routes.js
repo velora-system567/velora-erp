@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
+import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
@@ -11,6 +12,8 @@ import { getStockBalances } from "../inventory/inventory.service.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
+const uuid = _uuid;
+const optionalUuid = _optUuid;
 
 // ─── WMS Dashboard ───────────────────────────────────────────────
 router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyncHandler(async (req, res) => {
@@ -63,7 +66,7 @@ router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyn
 
 // ─── Warehouse Detail ─────────────────────────────────────────────
 router.get("/wms/warehouses/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
+  validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { tenantId, companyId } = req;
@@ -83,7 +86,7 @@ router.get("/wms/warehouses/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
 
 // ─── Inventory Locations ─────────────────────────────────────────
 router.get("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_READ),
-  validate(z.object({ query: z.object({ warehouseId: z.string().uuid().optional(), zone: z.string().optional() }) })),
+  validate(z.object({ query: z.object({ warehouseId: optionalUuid(), zone: z.string().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
     const { warehouseId, zone } = req.validated.query;
@@ -97,8 +100,8 @@ router.get("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_READ),
 router.post("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_CREATE),
   validate(z.object({
     body: z.object({
-      warehouseId: z.string().uuid(),
-      parentId: z.string().uuid().optional(),
+      warehouseId: uuid(),
+      parentId: optionalUuid(),
       code: z.string().min(1).max(60),
       name: z.string().min(2).max(120),
       zone: z.string().max(60).optional(),
@@ -123,8 +126,8 @@ router.get("/wms/movements", requirePermission(PERMISSIONS.INVENTORY_READ),
     query: z.object({
       page: z.coerce.number().min(1).default(1),
       limit: z.coerce.number().min(1).default(50).transform(v => Math.min(v, 500)),
-      warehouseId: z.string().uuid().optional(),
-      itemId: z.string().uuid().optional(),
+      warehouseId: optionalUuid(),
+      itemId: optionalUuid(),
       transactionType: z.string().optional(),
     }),
   })),
