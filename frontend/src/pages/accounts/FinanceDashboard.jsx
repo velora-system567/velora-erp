@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { accountsApi } from "../../services/api";
 import { formatRupees } from "../../utils/money";
+import { EmptyState } from "../../components/EmptyState";
 import { Card, KpiTile, SectionHeader, number } from "../inventory/components/shared";
 import { SkeletonCards } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
@@ -21,7 +22,7 @@ export default function FinanceDashboard() {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const data = query.data?.data;
-  if (!data) return null;
+  if (!data) return <EmptyState title="No financial data" description="Post journal entries or invoices to see your financial position." />;
   const { kpis, chartOfAccounts } = data;
 
   return (

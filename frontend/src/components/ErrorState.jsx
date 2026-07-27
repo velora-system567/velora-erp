@@ -34,7 +34,11 @@ export function ErrorState({ error, onRetry, title = "Something went wrong" }) {
     ? "No record selected. Please choose a valid record to continue."
     : sanitizeErrorMessage(error?.message);
 
-  const displayTitle = isInvalidRef ? "No Record Selected" : title;
+  const displayTitle = isInvalidRef
+    ? "No Record Selected"
+    : isNetworkError
+    ? "Connection failed"
+    : title;
 
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-rose-100 bg-rose-50 px-6 py-10 text-center">

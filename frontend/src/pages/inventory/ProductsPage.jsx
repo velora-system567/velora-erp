@@ -15,7 +15,7 @@ import {
   Barcode, Tag, Hash,
 } from "lucide-react";
 import { coreApi } from "../../services/api";
-import { ErrorBanner } from "../../components/ErrorState";
+import { ErrorBanner, ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";
 import { SkeletonPage, SkeletonTable } from "../../components/Skeleton";
@@ -162,6 +162,19 @@ export default function ProductsPage() {
   const isLoading = productsQuery.isPending || mastersQuery.isPending;
 
   if (isLoading && !products.length) return <SkeletonPage cards={0} tableRows={10} />;
+
+  // Handle error states
+  if (productsQuery.isError || mastersQuery.isError) {
+    const err = productsQuery.error || mastersQuery.error;
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:py-6 xl:p-8">
+        <ErrorState error={err} title="Could not load products" onRetry={() => {
+          qc.invalidateQueries({ queryKey: ["products"] });
+          qc.invalidateQueries({ queryKey: ["product-masters"] });
+        }} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">

@@ -450,8 +450,10 @@ model Item {
   updatedAt       DateTime @updatedAt @map("updated_at")
   isDeleted       Boolean  @default(false) @map("is_deleted")
 
-  unitOfMeasure UnitOfMeasure? @relation(fields: [unitOfMeasureId], references: [id])
-  category      ItemCategory?  @relation(fields: [itemCategoryId], references: [id])
+  unitOfMeasure UnitOfMeasure?       @relation(fields: [unitOfMeasureId], references: [id])
+  category      ItemCategory?        @relation(fields: [itemCategoryId], references: [id])
+  stockLedger   StockLedger[]
+  stockBatch    StockBatch[]
 
   @@unique([tenantId, itemCode])
   @@index([tenantId, companyId, isDeleted])
@@ -561,6 +563,9 @@ model Warehouse {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   isDeleted Boolean  @default(false) @map("is_deleted")
+
+  stockLedger StockLedger[]
+  stockBatch  StockBatch[]
 
   @@index([tenantId, companyId, isDeleted])
   @@unique([tenantId, companyId, code])
@@ -841,6 +846,9 @@ model StockLedger {
   createdAt       DateTime             @default(now()) @map("created_at")
   updatedAt       DateTime             @updatedAt @map("updated_at")
   isDeleted       Boolean              @default(false) @map("is_deleted")
+
+  item      Item      @relation(fields: [itemId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
 
   @@index([tenantId, itemId, warehouseId])
   @@map("stock_ledger")
@@ -1136,6 +1144,9 @@ model StockBatch {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   isDeleted    Boolean   @default(false) @map("is_deleted")
+
+  item      Item      @relation(fields: [itemId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
 
   @@index([tenantId, itemId, warehouseId, isDeleted])
   @@index([tenantId, itemId, warehouseId, receivedDate])

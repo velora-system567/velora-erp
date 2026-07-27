@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Building2, RefreshCw, BarChart3, UserCheck } from "lucide-react";
 import { hrmsApi } from "../../services/api";
 import { ErrorState } from "../../components/ErrorState";

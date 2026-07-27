@@ -1,9 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { SkeletonTable } from "../../components/Skeleton";
 import { coreApi } from "../../services/api";
 
 export function AuditLogPage() {
+  const qc = useQueryClient();
   const query = useQuery({ queryKey: ["audit-logs"], queryFn: coreApi.auditLogs });
+
+  if (query.isPending) return <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:py-6 xl:p-8"><SkeletonTable rows={8} cols={4} /></div>;
+  if (query.isError) return <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:py-6 xl:p-8"><ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["audit-logs"] })} /></div>;
+
   const rows = query.data?.data || [];
 
   return (

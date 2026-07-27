@@ -6,8 +6,8 @@ import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader, SecondaryButton } from "../../components/PageHeader";
 import { SkeletonCards, SkeletonTable } from "../../components/Skeleton";
-import { Card, Cell, Head, KpiTile, Pill, SectionHeader, StatusPill, TableShell, date, number, formatRupees } from "../inventory/components/shared";
-import { formatRupees as fmtRupees } from "../../utils/money";
+import { Card, Cell, Head, KpiTile, Pill, SectionHeader, StatusPill, TableShell, date, number } from "../inventory/components/shared";
+import { formatRupees } from "../../utils/money";
 
 const TABS = [
   ["dashboard", BarChart3, "Dashboard"],
@@ -83,7 +83,7 @@ function DashboardTab({ data: query }) {
       <KpiTile label="Pending Orders" value={d.kpis.pendingPOs} tone="amber" icon={ShoppingBag} />
       <KpiTile label="Approved Orders" value={d.kpis.approvedPOs} tone="emerald" icon={ShoppingBag} detail={`${d.kpis.completedPOs} completed`} />
       <KpiTile label="Invoices" value={d.kpis.totalInvoices} tone="blue" icon={FileText} />
-      <KpiTile label="Payments" value={d.kpis.totalPayments} tone="purple" icon={DollarSign} detail={fmtRupees(d.kpis.pendingAmount)} />
+      <KpiTile label="Payments" value={d.kpis.totalPayments} tone="purple" icon={DollarSign} detail={formatRupees(d.kpis.pendingAmount)} />
     </section>
   );
 }
@@ -104,7 +104,7 @@ function PoTab({ query }) {
               <Cell className="font-mono text-xs font-semibold text-blue-700">{d.documentNo}</Cell>
               <Cell className="text-slate-600">{date(d.documentDate)}</Cell>
               <Cell className="text-slate-700">{d.vendorName}</Cell>
-              <Cell className="text-right font-semibold tabular-nums">{fmtRupees(d.totalAmount)}</Cell>
+              <Cell className="text-right font-semibold tabular-nums">{formatRupees(d.totalAmount)}</Cell>
               <Cell><StatusPill status={d.status} /></Cell>
             </tr>
           ))}</tbody>
@@ -128,9 +128,9 @@ function InvoiceTab({ query }) {
             <tr key={d.id} className="hover:bg-slate-50">
               <Cell className="font-mono text-xs text-blue-700">{d.documentNo}</Cell>
               <Cell className="text-slate-600">{date(d.documentDate)}</Cell>
-              <Cell className="text-right tabular-nums">{fmtRupees(d.taxableAmount)}</Cell>
-              <Cell className="text-right tabular-nums">{fmtRupees((d.cgstAmount||0)+(d.sgstAmount||0)+(d.igstAmount||0))}</Cell>
-              <Cell className="text-right font-semibold tabular-nums">{fmtRupees(d.totalAmount)}</Cell>
+              <Cell className="text-right tabular-nums">{formatRupees(d.taxableAmount)}</Cell>
+              <Cell className="text-right tabular-nums">{formatRupees((d.cgstAmount||0)+(d.sgstAmount||0)+(d.igstAmount||0))}</Cell>
+              <Cell className="text-right font-semibold tabular-nums">{formatRupees(d.totalAmount)}</Cell>
               <Cell><StatusPill status={d.status} /></Cell>
             </tr>
           ))}</tbody>
@@ -154,7 +154,7 @@ function PaymentTab({ query }) {
             <tr key={p.id} className="hover:bg-slate-50">
               <Cell className="font-mono text-xs">{p.paymentNumber}</Cell>
               <Cell className="text-slate-600">{date(p.paymentDate)}</Cell>
-              <Cell className="text-right font-semibold tabular-nums">{fmtRupees(p.amount)}</Cell>
+              <Cell className="text-right font-semibold tabular-nums">{formatRupees(p.amount)}</Cell>
               <Cell><Pill tone="blue">{p.mode}</Pill></Cell>
             </tr>
           ))}</tbody>

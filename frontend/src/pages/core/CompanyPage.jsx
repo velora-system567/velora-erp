@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ErrorState } from "../../components/ErrorState";
+import { SkeletonCards } from "../../components/Skeleton";
 import { coreApi } from "../../services/api";
 
 const placeholders = {
@@ -33,6 +35,21 @@ export function CompanyPage() {
       setForm((current) => ({ ...current, [key]: value }));
     }
   }
+
+  if (query.isPending) return (
+    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">
+      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <h1 className="text-2xl font-semibold text-slate-950">Company</h1>
+        <p className="mt-1 text-sm leading-6 text-slate-600">Loading company profile...</p>
+      </header>
+      <SkeletonCards count={4} />
+    </div>
+  );
+  if (query.isError) return (
+    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">
+      <ErrorState error={query.error} title="Could not load company" onRetry={() => query.refetch()} />
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">

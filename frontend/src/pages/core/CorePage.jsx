@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { SkeletonTable } from "../../components/Skeleton";
 import { coreApi } from "../../services/api";
 
 const configs = {
@@ -152,7 +154,20 @@ export function CorePage({ resource }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [resource] }),
   });
 
-  const formValues = useMemo(() => form, [form]);
+  if (query.isPending) return (
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div className="h-6 w-48 animate-pulse rounded bg-slate-200" />
+        <div className="mt-2 h-4 w-96 animate-pulse rounded bg-slate-100" />
+      </div>
+      <SkeletonTable rows={6} cols={5} />
+    </div>
+  );
+  if (query.isError) return (
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
+      <ErrorState error={query.error} title={`Could not load ${resource}`} onRetry={() => queryClient.invalidateQueries({ queryKey: [resource] })} />
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
@@ -187,13 +202,13 @@ export function CorePage({ resource }) {
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
                 {selectOptions[key] ? (
-                  <select value={formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
+                  <select value={form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
                     {selectOptions[key].map(([value, optionLabel]) => (
                       <option key={value} value={value}>{optionLabel}</option>
                     ))}
                   </select>
                 ) : (
-                  <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? formValues[key.split(".")[0]]?.[key.split(".")[1]] || "" : formValues[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                  <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? form[key.split(".")[0]]?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
                 )}
               </label>
             ))}

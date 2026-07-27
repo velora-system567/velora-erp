@@ -35,8 +35,6 @@ export function PurchasePage() {
 
   const switchTab = (t) => { setTab(t); setPage(1); localStorage.setItem("purchase_tab", t); };
 
-  const switchTabRef = switchTab;
-
   // Masters
   const masters = useQuery({
     queryKey: ["purchase-masters"],

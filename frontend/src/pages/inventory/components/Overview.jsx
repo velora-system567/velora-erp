@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, ArrowDownUp, BarChart3, Box, Boxes, FileClock,
-  Layers, RefreshCw, Sparkles, Truck, Warehouse, Zap,
+  AlertTriangle, ArrowDownUp, BarChart3, Box, Boxes, Download,
+  FileClock, Layers, RefreshCw, Sparkles, Truck, Warehouse, Zap,
 } from "lucide-react";
 import { inventoryApi } from "../../../services/api";
 import { formatRupees, formatRupeesCompact } from "../../../utils/money";

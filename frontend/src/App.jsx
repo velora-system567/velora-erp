@@ -25,6 +25,7 @@ import ExecutiveDashboard from "./pages/bi/ExecutiveDashboard";
 import { HrmsPage } from "./pages/hrms/HrmsPage";
 import { SupplierPortalPage } from "./pages/supplier-portal/SupplierPortalPage";
 import { EamPage } from "./pages/eam/EamPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="/eam" element={<EamPage />} />
               <Route path="/supplier-portal" element={<SupplierPortalPage />} />
               <Route path="/activity" element={<AuditLogPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
         </Routes>

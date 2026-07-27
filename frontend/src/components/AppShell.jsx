@@ -1,45 +1,63 @@
+import { useState } from "react";
 import {
-  Activity, BarChart3, Building2, FileText, Home, LogOut,
-  MapPin, Package, ShoppingCart, Users, Cpu, ShoppingBag,
+  Activity, BarChart3, Building2, LogOut, Package, Settings,
+  ShoppingBag, ShoppingCart, Users, Warehouse,
 } from "lucide-react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
 import AICopilot from "./AICopilot";
 
-const navItems = [
-  { to: "/crm", label: "CRM", icon: Users },
-  { to: "/executive", label: "Executive", icon: BarChart3 },
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/company", label: "Company", icon: Building2 },
-  { to: "/branches", label: "Branches", icon: MapPin },
-  { to: "/users", label: "Users", icon: Users },
-  { to: "/sales", label: "Sales", icon: ShoppingCart },
-  { to: "/purchase", label: "Purchase", icon: ShoppingBag },
-  { to: "/inventory", label: "Inventory", icon: Package },
-  { to: "/inventory/products", label: "  Products", icon: Package },
-  { to: "/inventory/reports", label: "  Reports", icon: FileText },
-  { to: "/inventory/suppliers", label: "  Vendors", icon: Building2 },
-  { to: "/accounts", label: "Accounts", icon: BarChart3 },
-  { to: "/hrms", label: "HR", icon: Users },
-  { to: "/supplier-portal", label: "Supplier Portal", icon: ShoppingBag },
-  { to: "/eam", label: "EAM", icon: Cpu },
-  { to: "/wms", label: "WMS", icon: Package },
-  { to: "/manufacturing", label: "Manufacturing", icon: Cpu },
-  { to: "/activity", label: "Audit Log", icon: Activity },
+// ─── 5 Primary Navigation Sections ──────────────────────────────────
+const sections = [
+  {
+    to: "/",
+    label: "Dashboard",
+    icon: BarChart3,
+    activeRoutes: ["/", "/executive"],
+  },
+  {
+    to: "/sales",
+    label: "Sales",
+    icon: ShoppingCart,
+    activeRoutes: ["/sales", "/crm"],
+  },
+  {
+    to: "/inventory",
+    label: "Inventory",
+    icon: Warehouse,
+    activeRoutes: ["/inventory", "/wms", "/manufacturing", "/eam", "/products"],
+  },
+  {
+    to: "/purchase",
+    label: "Procurement",
+    icon: ShoppingBag,
+    activeRoutes: ["/purchase", "/supplier-portal"],
+  },
+  {
+    to: "/accounts",
+    label: "Finance",
+    icon: BarChart3,
+    activeRoutes: ["/accounts"],
+  },
 ];
 
-// Bottom nav shows 5 most-used routes on mobile
+// Mobile bottom nav shows the same 5 sections
 const mobileNav = [
-  { to: "/", label: "Home", icon: Home },
+  { to: "/", label: "Home", icon: Package },
   { to: "/sales", label: "Sales", icon: ShoppingCart },
-  { to: "/purchase", label: "Purchase", icon: ShoppingBag },
-  { to: "/inventory", label: "Inventory", icon: Package },
-  { to: "/accounts", label: "Accounts", icon: BarChart3 },
+  { to: "/purchase", label: "Buy", icon: ShoppingBag },
+  { to: "/inventory", label: "Stock", icon: Warehouse },
+  { to: "/accounts", label: "Money", icon: BarChart3 },
 ];
+
+// Settings-related routes for active state in the profile bar
+const SETTINGS_ROUTES = ["/settings", "/company", "/branches", "/users", "/hrms", "/activity"];
 
 export function AppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const pathname = location.pathname;
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
 
@@ -54,9 +72,20 @@ export function AppShell() {
     navigate("/login");
   }
 
+  function isSectionActive(section) {
+    return section.activeRoutes.some((route) => {
+      if (route === "/") return pathname === "/";
+      return pathname.startsWith(route);
+    });
+  }
+
+  const isSettingsActive = SETTINGS_ROUTES.some((route) => {
+    return pathname === route || pathname.startsWith(route + "/");
+  });
+
   return (
     <div className="min-h-dvh bg-slate-50 lg:grid lg:grid-cols-[272px_1fr]">
-      {/* Desktop Sidebar */}
+      {/* ─── Desktop Sidebar ────────────────────────────────── */}
       <aside className="hidden border-r border-slate-200 bg-white lg:block">
         <div className="sticky top-0 flex h-screen flex-col p-5">
           {/* Brand */}
@@ -65,61 +94,105 @@ export function AppShell() {
               <Building2 size={20} />
             </div>
             <div>
-              <p className="font-semibold text-slate-950">{user?.name || "Your Company"}</p>
-              <p className="text-xs text-slate-500">{user?.email || "Velora ERP"}</p>
+              <p className="font-semibold text-slate-950">
+                {user?.name || "Your Company"}
+              </p>
+              <p className="text-xs text-slate-500">Velora ERP</p>
             </div>
           </div>
 
-          {/* Nav */}
-          <nav className="mt-8 space-y-0.5">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) =>
-                  `flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
-                    isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`
-                }
-              >
-                <item.icon size={17} />
-                {item.label}
-              </NavLink>
-            ))}
+          {/* Navigation — 5 sections only */}
+          <nav className="mt-8 space-y-1">
+            {sections.map((section) => {
+              const active = isSectionActive(section);
+              return (
+                <Link
+                  key={section.to}
+                  to={section.to}
+                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                    active
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                  }`}
+                >
+                  <section.icon size={18} />
+                  {section.label}
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* Logout */}
+          {/* Profile bar at bottom */}
           <div className="mt-auto">
-            <button
-              onClick={logout}
-              className="inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <LogOut size={16} /> Logout
-            </button>
+            <div className="border-t border-slate-200 pt-4 space-y-1">
+              {/* Settings link */}
+              <Link
+                to="/settings"
+                className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                  isSettingsActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                }`}
+              >
+                <Settings size={18} />
+                Settings
+              </Link>
+
+              {/* User info */}
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                  {user?.name?.charAt(0)?.toUpperCase() || "V"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-950">
+                    {user?.name || "User"}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {user?.email || ""}
+                  </p>
+                </div>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={logout}
+                className="inline-flex w-full min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ─── Main Content ───────────────────────────────────── */}
       <section className="min-w-0">
         {/* Mobile Header */}
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">
-              <Building2 size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-950">{user?.name || "Your Company"}</p>
-              <p className="text-xs text-slate-500">Velora ERP</p>
-            </div>
-            <button
-              onClick={logout}
-              className="ml-auto rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
-            >
-              <LogOut size={17} />
-            </button>
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">
+            <Building2 size={18} />
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-950">
+              {user?.name || "Your Company"}
+            </p>
+            <p className="text-xs text-slate-500">Velora ERP</p>
+          </div>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `rounded-lg p-2 transition ${isActive ? "text-blue-700 bg-blue-50" : "text-slate-600 hover:bg-slate-50"}`
+            }
+          >
+            <Settings size={18} />
+          </NavLink>
+          <button
+            onClick={logout}
+            className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+          >
+            <LogOut size={17} />
+          </button>
         </header>
 
         {/* Page content */}
@@ -128,7 +201,7 @@ export function AppShell() {
           <AICopilot />
         </main>
 
-        {/* Mobile Bottom Nav */}
+        {/* Mobile Bottom Nav — 5 sections */}
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
           <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
             {mobileNav.map((item) => (

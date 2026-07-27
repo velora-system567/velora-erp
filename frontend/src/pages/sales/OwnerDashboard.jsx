@@ -14,6 +14,7 @@ import { salesApi } from "../../services/api";
 import { formatRupees } from "../../utils/money";
 import { KpiTile, Card, SectionHeader, Pill, StatusPill } from "../inventory/components/shared";
 import { SkeletonCards, SkeletonTable } from "../../components/Skeleton";
+import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 
 export default function OwnerDashboard() {
@@ -28,7 +29,7 @@ export default function OwnerDashboard() {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const data = query.data?.data;
-  if (!data) return null;
+  if (!data) return <EmptyState title="No dashboard data" description="Create sales orders and invoices to see your owner dashboard." />;
 
   const { today, kpis, focus, performance, insights } = data;
 

@@ -35,7 +35,9 @@ export function errorHandler(error, req, res, next) {
   }
 
   const statusCode = error.statusCode || 500;
-  const message = statusCode === 500 ? "Something went wrong" : error.message;
-  if (statusCode >= 500) console.error(error);
+  const message = statusCode === 500
+    ? `Internal error: ${error.message || "Something went wrong"}`
+    : error.message;
+  if (statusCode >= 500) console.error(`[${statusCode}] ${error.stack || error.message}`);
   return fail(res, statusCode, message);
 }
