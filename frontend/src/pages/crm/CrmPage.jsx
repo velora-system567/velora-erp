@@ -99,7 +99,7 @@ function Customer360View({ customerId, onBack }) {
   if (query.isPending) return <SkeletonTable rows={8} cols={4} />;
   if (query.isError) return <ErrorState error={query.error} />;
   const data = query.data?.data;
-  if (!data) return <EmptyState title="Customer not found" />;
+  if (!data || !data.customer) return <EmptyState title="Customer not found" />;
 
   const { customer, summary, recentInvoices, recentPayments, timeline } = data;
 

@@ -22,7 +22,7 @@ export default function Overview({ warehouseId, onJump }) {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const data = query.data?.data;
-  if (!data) return <EmptyState title="No data available" description="The inventory dashboard returned an empty payload." />;
+  if (!data || !data.kpis) return <EmptyState title="No data available" description="The inventory dashboard returned an empty payload." />;
 
   const k = data.kpis;
   const isFresh = k.inventoryValuePaise > 0 || k.totalStock > 0;

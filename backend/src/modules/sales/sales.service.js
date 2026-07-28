@@ -356,13 +356,13 @@ export async function getOwnerDashboard(req) {
     // Monthly revenue
     prisma.businessDocument.aggregate({ where: { ...invWhere, documentDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
     // Total outstanding
-    prisma.businessDocument.aggregate({ where: { ...invWhere, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true } }),
+    prisma.businessDocument.aggregate({ where: { ...invWhere, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true } }),
     // Pending sales orders
     prisma.businessDocument.count({ where: { ...soWhere, status: { in: ["DRAFT", "SUBMITTED", "APPROVED"] } } }),
     // Draft quotations needing attention
     prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "QUOTATION", status: "DRAFT", isDeleted: false } }),
     // Overdue invoices (30+ days)
-    prisma.businessDocument.findMany({ where: { ...invWhere, status: { notIn: ["CANCELLED", "PAID"] }, documentDate: { lt: thirtyDaysAgo } }, take: 5, select: { id: true, documentNo: true, totalAmount: true, documentDate: true, partyId: true } }),
+    prisma.businessDocument.findMany({ where: { ...invWhere, status: { notIn: ["CANCELLED"] }, documentDate: { lt: thirtyDaysAgo } }, take: 5, select: { id: true, documentNo: true, totalAmount: true, documentDate: true, partyId: true } }),
     // Top 5 selling products this month
     prisma.businessDocumentLine.groupBy({
       by: ["itemId"],

@@ -29,7 +29,7 @@ export default function OwnerDashboard() {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const data = query.data?.data;
-  if (!data) return <EmptyState title="No dashboard data" description="Create sales orders and invoices to see your owner dashboard." />;
+  if (!data || !data.today || !data.kpis) return <EmptyState title="No dashboard data" description="Create sales orders and invoices to see your owner dashboard." />;
 
   const { today, kpis, focus, performance, insights } = data;
 

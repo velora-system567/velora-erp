@@ -24,8 +24,8 @@ export async function getFinanceDashboard(req) {
 
   const [trialBalance, receivables, payables, gstPayable, invoicing, purchasing] = await Promise.all([
     getTrialBalance(req),
-    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", status: { notIn: ["CANCELLED", "PAID"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
-    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", status: { notIn: ["CANCELLED", "PAID"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", status: { notIn: ["CANCELLED"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", status: { notIn: ["CANCELLED"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
     prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, account: { code: { in: ["2100", "2110", "2120"] } } }, _sum: { credit: true } }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),

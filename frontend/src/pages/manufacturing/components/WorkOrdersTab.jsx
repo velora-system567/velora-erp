@@ -75,7 +75,7 @@ export function WorkOrdersTab() {
             { id: "kanban", label: "Kanban Board", icon: Kanban },
             { id: "table", label: "Data Table", icon: Table },
             { id: "calendar", label: "Shift Calendar", icon: Calendar },
-            { id: "timeline", label: "Gantt Timeline", icon: Milestones },
+            { id: "timeline", label: "Gantt Timeline", icon: Milestone },
           ].map((v) => (
             <button
               key={v.id}

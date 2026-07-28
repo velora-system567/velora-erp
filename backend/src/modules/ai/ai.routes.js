@@ -74,7 +74,7 @@ router.get("/ai/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
   if (lm > 0) insights.push({ type: tm > lm ? "positive" : "warning", title: "Revenue", message: `Revenue ${tm > lm ? "increased" : "decreased"} ${Math.round(Math.abs((tm - lm) / lm * 100))}% this month.` });
 
   // Overdue insight
-  const overdue = await prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] }, documentDate: { lt: new Date(Date.now() - 30 * 86400000) } } });
+  const overdue = await prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] }, documentDate: { lt: new Date(Date.now() - 30 * 86400000) } } });
   if (overdue > 0) insights.push({ type: "warning", title: "Overdue Invoices", message: `${overdue} invoice${overdue > 1 ? "s are" : " is"} overdue.` });
 
   // Low stock insight
@@ -119,8 +119,8 @@ async function gatherContext(prisma, { tenantId, companyId }, query) {
 
   if (q.includes("invoice") || q.includes("overdue") || q.includes("outstanding") || q.includes("pay") || q.includes("receive")) {
     const [receivables, payables] = await Promise.all([
-      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true }, _count: true }),
-      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true }, _count: true }),
+      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
+      prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
     ]);
     data.financial = { receivables: receivables._sum.totalAmount || 0, receivableCount: receivables._count || 0, payables: payables._sum.totalAmount || 0, payableCount: payables._count || 0 };
   }

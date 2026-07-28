@@ -39,7 +39,7 @@ export default function ExecutiveDashboard() {
   if (execQuery.isError) return <ErrorState error={execQuery.error} onRetry={() => qc.invalidateQueries({ queryKey: ["bi"] })} />;
 
   const data = execQuery.data?.data;
-  if (!data) return <EmptyState title="No executive data" description="Connect your backend API to see business insights." />;
+  if (!data || !data.kpis) return <EmptyState title="No executive data" description="Connect your backend API to see business insights." />;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-4 sm:px-6 md:py-6 xl:p-8">

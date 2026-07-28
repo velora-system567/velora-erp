@@ -22,7 +22,7 @@ export default function FinanceDashboard() {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const data = query.data?.data;
-  if (!data) return <EmptyState title="No financial data" description="Post journal entries or invoices to see your financial position." />;
+  if (!data || !data.kpis) return <EmptyState title="No financial data" description="Post journal entries or invoices to see your financial position." />;
   const { kpis, chartOfAccounts } = data;
 
   return (

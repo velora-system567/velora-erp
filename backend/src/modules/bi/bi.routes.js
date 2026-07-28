@@ -38,8 +38,8 @@ router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_RE
     prisma.customer.count({ where: { tenantId, companyId, isDeleted: false, createdAt: { gte: monthStart } } }),
     prisma.customer.count({ where: { tenantId, companyId, isDeleted: false } }),
     prisma.lead.count({ where: { tenantId, companyId, isDeleted: false } }),
-    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true }, _count: true }),
-    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
+    prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
     prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, account: { code: { in: ["2100", "2110", "2120"] } } }, _sum: { credit: true } }),
     prisma.stockBatch.aggregate({ where: { tenantId, companyId, isDeleted: false, qtyRemaining: { gt: 0 } }, _sum: { qtyRemaining: true } }),
     prisma.warehouse.count({ where: { tenantId, companyId, isDeleted: false, isActive: true } }),
@@ -173,7 +173,7 @@ router.get("/bi/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
 
   try {
     // Overdue invoices
-    const overdue = await prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED", "PAID"] }, documentDate: { lt: new Date(now.getTime() - 30 * 86400000) } } });
+    const overdue = await prisma.businessDocument.count({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] }, documentDate: { lt: new Date(now.getTime() - 30 * 86400000) } } });
     if (overdue > 0) insights.push({ type: "warning", icon: "alert", title: "Overdue", message: `${overdue} invoice${overdue > 1 ? "s are" : " is"} overdue by more than 30 days.` });
   } catch { /* skip */ }
 
