@@ -22,6 +22,7 @@ import eamRoutes from "./modules/eam/eam.routes.js";
 import platformRoutes from "./modules/platform/platform.routes.js";
 import portalRoutes from "./modules/supplier-portal/portal.routes.js";
 import flowRoutes from "./modules/flow/flow.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -88,6 +89,9 @@ app.use("/api", flowRoutes);
 
 // Core (company, branches, users, products, audit)
 app.use("/api", coreRoutes);
+
+// Admin (roles, permissions, system health)
+app.use("/api", adminRoutes);
 
 // ─── Generic master data catch-all (MUST be last — /:resource swallows all) ─
 // Master data (items, customers, vendors, COA, etc.)

@@ -12,6 +12,9 @@ import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { SalesPage } from "./pages/sales/SalesPage";
 import OwnerDashboard from "./pages/sales/OwnerDashboard";
+import { AdminPage } from "./pages/admin/AdminPage";
+import { PermissionGuard } from "./components/PermissionGuard";
+import { AccessDenied } from "./components/AccessDenied";
 import { PurchasePage } from "./pages/purchase/PurchasePage";
 import { InventoryPage } from "./pages/inventory/InventoryPage";
 import ProductsPage from "./pages/inventory/ProductsPage";
@@ -74,6 +77,10 @@ export default function App() {
               <Route path="/supplier-portal" element={<SupplierPortalPage />} />
               <Route path="/activity" element={<AuditLogPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route element={<PermissionGuard module="admin" requiredPermission="admin:view" />}>
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
+              <Route path="/access-denied" element={<AccessDenied />} />
             </Route>
           </Route>
         </Routes>

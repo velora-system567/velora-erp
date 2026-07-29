@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { getPrisma } from "../config/db.js";
+import { loadUserPermissions } from "../utils/permission-engine.js";
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -14,7 +16,23 @@ export function requireAuth(req, res, next) {
     req.tenantId = req.user.tenantId;
     req.companyId = req.user.companyId;
     req.branchId = req.headers["x-branch-id"] || null;
-    return next();
+
+    // Load permissions from DB (overrides JWT-stored permissions)
+    // Use nextTick to avoid blocking the request
+    const prisma = getPrisma();
+    loadUserPermissions(prisma, {
+      userId: req.user.sub,
+      tenantId: req.tenantId,
+      companyId: req.companyId,
+    }).then((dbPermissions) => {
+      req.user.permissions = dbPermissions;
+      next();
+    }).catch((err) => {
+      // Fallback to JWT permissions if DB fails
+      console.error("[auth] Failed to load DB permissions, using JWT fallback:", err.message);
+      req.user.permissions = req.user.permissions || [];
+      next();
+    });
   } catch {
     const error = new Error("Invalid or expired token");
     error.statusCode = 401;

@@ -1,55 +1,60 @@
 import { useState } from "react";
 import {
   Activity, BarChart3, Building2, LogOut, Package, Settings,
-  ShoppingBag, ShoppingCart, Users, Warehouse,
+  ShoppingBag, ShoppingCart, Users, Warehouse, Shield,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
+import { usePermissionStore, useVisibleModules } from "../hooks/usePermissions";
 import AICopilot from "./AICopilot";
 
-// ─── 5 Primary Navigation Sections ──────────────────────────────────
-const sections = [
-  {
-    to: "/",
-    label: "Dashboard",
-    icon: BarChart3,
-    activeRoutes: ["/", "/executive"],
-  },
-  {
-    to: "/sales",
-    label: "Sales",
-    icon: ShoppingCart,
-    activeRoutes: ["/sales", "/crm"],
-  },
-  {
-    to: "/inventory",
-    label: "Inventory",
-    icon: Warehouse,
-    activeRoutes: ["/inventory", "/wms", "/manufacturing", "/eam", "/products"],
-  },
-  {
-    to: "/purchase",
-    label: "Procurement",
-    icon: ShoppingBag,
-    activeRoutes: ["/purchase", "/supplier-portal"],
-  },
-  {
-    to: "/accounts",
-    label: "Finance",
-    icon: BarChart3,
-    activeRoutes: ["/accounts"],
-  },
-];
+// Icon map for modules
+const ICON_MAP = {
+  LayoutDashboard: BarChart3,
+  ShoppingCart,
+  Warehouse,
+  Package: ShoppingBag,
+  DollarSign: BarChart3,
+  Factory: Package,
+  Users,
+  UserCheck: Users,
+  Tool: Package,
+  BarChart3,
+  ClipboardCheck: Activity,
+  Settings,
+  Shield,
+};
 
-// Mobile bottom nav shows the same 5 sections
-const mobileNav = [
-  { to: "/", label: "Home", icon: Package },
-  { to: "/sales", label: "Sales", icon: ShoppingCart },
-  { to: "/purchase", label: "Buy", icon: ShoppingBag },
-  { to: "/inventory", label: "Stock", icon: Warehouse },
-  { to: "/accounts", label: "Money", icon: BarChart3 },
-];
+// ─── Navigation Sections (filtered by permissions) ─────────────────────
+function useNavigationSections() {
+  const modules = useVisibleModules();
+  return modules.map((mod) => ({
+    to: mod.path,
+    label: mod.label,
+    icon: ICON_MAP[mod.icon] || Package,
+    activeRoutes: getActiveRoutes(mod.key),
+  }));
+}
+
+function getActiveRoutes(key) {
+  const map = {
+    dashboard: ["/", "/executive"],
+    sales: ["/sales", "/crm"],
+    inventory: ["/inventory", "/wms", "/manufacturing", "/eam", "/products"],
+    purchase: ["/purchase", "/supplier-portal"],
+    manufacturing: ["/manufacturing"],
+    accounts: ["/accounts"],
+    crm: ["/crm"],
+    hrms: ["/hrms"],
+    eam: ["/eam"],
+    reports: ["/reports", "/executive"],
+    audit: ["/activity"],
+    settings: ["/settings"],
+    admin: ["/admin"],
+  };
+  return map[key] || [mod.path];
+}
 
 // Settings-related routes for active state in the profile bar
 const SETTINGS_ROUTES = ["/settings", "/company", "/branches", "/users", "/hrms", "/activity"];
@@ -60,6 +65,22 @@ export function AppShell() {
   const pathname = location.pathname;
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const permissions = usePermissionStore((s) => s.permissions);
+  const sections = useNavigationSections();
+
+  // Init permissions from JWT on first load
+  useState(() => {
+    const store = usePermissionStore.getState();
+    if (!store.loaded) {
+      try {
+        const token = localStorage.getItem("velora_access_token");
+        if (token) {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          if (payload.permissions) store.setPermissions(payload.permissions);
+        }
+      } catch { /* ignore */ }
+    }
+  });
 
   async function logout() {
     try {
@@ -79,9 +100,16 @@ export function AppShell() {
     });
   }
 
-  const isSettingsActive = SETTINGS_ROUTES.some((route) => {
-    return pathname === route || pathname.startsWith(route + "/");
-  });
+  const isSuperAdmin = permissions.includes("*");
+  const canViewAdmin = isSuperAdmin || permissions.includes("admin:view");
+  const canViewSettings = isSuperAdmin || permissions.includes("settings:view");
+
+  // Mobile nav items (derived from sections, limited to 5)
+  const mobileNav = sections.slice(0, 5).map((s) => ({
+    to: s.to,
+    label: s.label?.slice(0, 8) || "Home",
+    icon: s.icon,
+  }));
 
   return (
     <div className="min-h-dvh bg-slate-50 lg:grid lg:grid-cols-[272px_1fr]">
@@ -101,8 +129,8 @@ export function AppShell() {
             </div>
           </div>
 
-          {/* Navigation — 5 sections only */}
-          <nav className="mt-8 space-y-1">
+          {/* Navigation — filtered by permissions */}
+          <nav className="mt-8 flex-1 space-y-1 overflow-y-auto">
             {sections.map((section) => {
               const active = isSectionActive(section);
               return (
@@ -125,18 +153,35 @@ export function AppShell() {
           {/* Profile bar at bottom */}
           <div className="mt-auto">
             <div className="border-t border-slate-200 pt-4 space-y-1">
-              {/* Settings link */}
-              <Link
-                to="/settings"
-                className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
-                  isSettingsActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                }`}
-              >
-                <Settings size={18} />
-                Settings
-              </Link>
+              {/* Administration (only if permitted) */}
+              {canViewAdmin && (
+                <Link
+                  to="/admin"
+                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                    pathname.startsWith("/admin")
+                      ? "bg-purple-50 text-purple-700"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                  }`}
+                >
+                  <Shield size={18} />
+                  Administration
+                </Link>
+              )}
+
+              {/* Settings */}
+              {canViewSettings && (
+                <Link
+                  to="/settings"
+                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                    pathname.startsWith("/settings")
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                  }`}
+                >
+                  <Settings size={18} />
+                  Settings
+                </Link>
+              )}
 
               {/* User info */}
               <div className="flex items-center gap-3 rounded-lg px-3 py-2">
@@ -179,14 +224,16 @@ export function AppShell() {
             </p>
             <p className="text-xs text-slate-500">Velora ERP</p>
           </div>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `rounded-lg p-2 transition ${isActive ? "text-blue-700 bg-blue-50" : "text-slate-600 hover:bg-slate-50"}`
-            }
-          >
-            <Settings size={18} />
-          </NavLink>
+          {canViewSettings && (
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                `rounded-lg p-2 transition ${isActive ? "text-blue-700 bg-blue-50" : "text-slate-600 hover:bg-slate-50"}`
+              }
+            >
+              <Settings size={18} />
+            </NavLink>
+          )}
           <button
             onClick={logout}
             className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
@@ -201,7 +248,7 @@ export function AppShell() {
           <AICopilot />
         </main>
 
-        {/* Mobile Bottom Nav — 5 sections */}
+        {/* Mobile Bottom Nav */}
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
           <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
             {mobileNav.map((item) => (
