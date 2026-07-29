@@ -185,8 +185,10 @@ export default function SalesTable({
   const totalPages = Math.ceil((meta.total || data.length) / limit);
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
-      <div className="overflow-x-auto">
+    <div className={`relative rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+      {/* Mobile scroll hint */}
+      <div className="pointer-events-none absolute -right-0.5 top-0 hidden h-full w-8 bg-gradient-to-l from-blue-50/40 to-transparent sm:hidden" />
+      <div className="overflow-x-auto scroll-hint">
         <table className="min-w-full text-left text-sm">
           {/* Sticky Header */}
           <thead className="sticky top-0 z-10">
