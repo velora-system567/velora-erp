@@ -31,13 +31,16 @@ export async function getFinanceDashboard(req) {
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
   ]);
 
+  // trialBalance is returned as an array from getTrialBalance (not { rows: [...] })
+  const tbRows = Array.isArray(trialBalance) ? trialBalance : (trialBalance?.rows || []);
+
   // Compute balances from trial balance
-  const incomeTotal = trialBalance.rows.filter((r) => r.type === "INCOME").reduce((s, r) => s + r.balance, 0);
-  const expenseTotal = trialBalance.rows.filter((r) => r.type === "EXPENSE").reduce((s, r) => s + Math.abs(r.balance), 0);
+  const incomeTotal = tbRows.filter((r) => r.type === "INCOME").reduce((s, r) => s + r.balance, 0);
+  const expenseTotal = tbRows.filter((r) => r.type === "EXPENSE").reduce((s, r) => s + Math.abs(r.balance), 0);
 
   // Cash & bank balances
-  const cashBalance = trialBalance.rows.filter((r) => r.code.startsWith("1000")).reduce((s, r) => s + r.balance, 0);
-  const bankBalance = trialBalance.rows.filter((r) => r.code.startsWith("1010")).reduce((s, r) => s + r.balance, 0);
+  const cashBalance = tbRows.filter((r) => r.code.startsWith("1000")).reduce((s, r) => s + r.balance, 0);
+  const bankBalance = tbRows.filter((r) => r.code.startsWith("1010")).reduce((s, r) => s + r.balance, 0);
 
   return {
     kpis: {
@@ -55,7 +58,7 @@ export async function getFinanceDashboard(req) {
       outstandingInvoices: receivables._count || 0,
       outstandingBills: payables._count || 0,
     },
-    chartOfAccounts: trialBalance.rows.map((r) => ({ id: r.accountId, code: r.code, name: r.name, type: r.type, balance: r.balance })),
+    chartOfAccounts: tbRows.map((r) => ({ id: r.accountId, code: r.code, name: r.name, type: r.type, balance: r.balance })),
   };
 }
 
