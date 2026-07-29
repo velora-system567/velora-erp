@@ -6,6 +6,7 @@ import { env } from "./config/env.js";
 import { errorHandler, notFound } from "./middleware/error-handler.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import coreRoutes from "./modules/core/core.routes.js";
+import searchRoutes from "./modules/core/search.routes.js";
 import masterRoutes from "./modules/master/master.routes.js";
 import salesRoutes from "./modules/sales/sales.routes.js";
 import purchaseRoutes from "./modules/purchase/purchase.routes.js";
@@ -89,6 +90,9 @@ app.use("/api", flowRoutes);
 
 // Core (company, branches, users, products, audit)
 app.use("/api", coreRoutes);
+
+// Global Search
+app.use("/api", searchRoutes);
 
 // Admin (roles, permissions, system health)
 app.use("/api", adminRoutes);

@@ -140,6 +140,53 @@ export async function registerTenant(input, meta = {}) {
   });
 }
 
+export async function loginWithPhone(phone, meta = {}, password = null) {
+  const prisma = getPrisma();
+  const normalizedPhone = phone.replace(/[^\d+]/g, "");
+
+  const where = { phone: { contains: normalizedPhone.slice(-10) }, isDeleted: false, isActive: true };
+
+  // If password is provided, verify it
+  if (password) {
+    const user = await prisma.user.findFirst({
+      where: { ...where, tenantId: meta.tenantId || undefined },
+      include: { userRoles: { include: { role: true } } },
+    });
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      const error = new Error("Invalid phone number or password");
+      error.statusCode = 401;
+      throw error;
+    }
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    await storeRefreshToken(prisma, {
+      userId: user.id, tenantId: user.tenantId, token: refreshToken,
+      deviceInfo: meta.userAgent, ipAddress: meta.ipAddress,
+    });
+    return { user, accessToken, refreshToken };
+  }
+
+  // OTP login (no password) — find user by phone
+  const user = await prisma.user.findFirst({
+    where,
+    include: { userRoles: { include: { role: true } } },
+  });
+
+  if (!user) {
+    const error = new Error("No account found with this phone number");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  await storeRefreshToken(prisma, {
+    userId: user.id, tenantId: user.tenantId, token: refreshToken,
+    deviceInfo: meta.userAgent, ipAddress: meta.ipAddress,
+  });
+  return { user, accessToken, refreshToken };
+}
+
 export async function loginUser(email, password, meta = {}) {
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({

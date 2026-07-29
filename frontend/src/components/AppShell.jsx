@@ -7,6 +7,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
 import { usePermissionStore, useVisibleModules } from "../hooks/usePermissions";
+import GlobalSearch from "./GlobalSearch";
 import AICopilot from "./AICopilot";
 
 // Icon map for modules
@@ -244,6 +245,8 @@ export function AppShell() {
 
         {/* Page content */}
         <main className="min-w-0 pb-24 lg:pb-0">
+          {/* Global search overlay */}
+          <GlobalSearch />
           <Outlet />
           <AICopilot />
         </main>

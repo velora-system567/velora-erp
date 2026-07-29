@@ -79,17 +79,55 @@ export const requestOtp = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  await checkLoginRateLimit(req.validated.body.email);
+  const { email, phone, password, otp } = req.validated.body;
 
+  // Phone + OTP login
+  if (phone && otp) {
+    const { verifyOtp } = await import("./otp.service.js");
+    await verifyOtp({ target: phone, code: otp });
+    const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, requestMeta(req)));
+    await recordLoginAttempt(phone, true);
+    return ok(res, {
+      user: publicUser(result.user),
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, "Phone login successful");
+  }
+
+  // Phone + Password login
+  if (phone && password) {
+    await checkLoginRateLimit(phone);
+    try {
+      const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, requestMeta(req), password));
+      await recordLoginAttempt(phone, true);
+      return ok(res, {
+        user: publicUser(result.user),
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      }, "Login successful");
+    } catch (error) {
+      await recordLoginAttempt(phone, false);
+      throw error;
+    }
+  }
+
+  // Email + Password login (existing)
+  if (!email) {
+    const err = new Error("Email or phone is required");
+    err.statusCode = 422;
+    throw err;
+  }
+
+  await checkLoginRateLimit(email);
   try {
-    const result = await loginUser(req.validated.body.email, req.validated.body.password, requestMeta(req));
-    await recordLoginAttempt(req.validated.body.email, true);
+    const result = await loginUser(email, password, requestMeta(req));
+    await recordLoginAttempt(email, true);
 
     await writeAudit(req, {
       tableName: "users",
       recordId: result.user.id,
       action: "LOGIN_SUCCESS",
-      newValue: { method: "password", ip: requestMeta(req).ipAddress },
+      newValue: { method: `${phone ? "phone" : "email"}:${otp ? "otp" : "password"}`, ip: requestMeta(req).ipAddress },
     }).catch((err) => console.error("[auth] Audit log error:", err.message));
 
     return ok(res, {
@@ -98,7 +136,7 @@ export const login = asyncHandler(async (req, res) => {
       refreshToken: result.refreshToken,
     }, "Login successful");
   } catch (error) {
-    await recordLoginAttempt(req.validated.body.email, false);
+    await recordLoginAttempt(email, false);
     throw error;
   }
 });

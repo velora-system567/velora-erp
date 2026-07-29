@@ -31,24 +31,31 @@ function getSecret() {
   return env.OTP_HASH_SECRET || env.JWT_ACCESS_SECRET;
 }
 
-function targetDigest(email) {
+/**
+ * Normalize a phone number: strip non-digits, keep as-is.
+ */
+function normalizePhone(phone) {
+  return phone.replace(/[^\d+]/g, "");
+}
+
+function targetDigest(identifier) {
   return crypto.createHmac("sha256", getSecret())
-    .update(`email:${email.toLowerCase().trim()}`)
+    .update(identifier.toLowerCase().trim())
     .digest("hex");
 }
 
-function otpHash(email, code) {
+function otpHash(identifier, code) {
   return crypto.createHmac("sha256", getSecret())
-    .update(`email:${email.toLowerCase().trim()}:${code}`)
+    .update(`${identifier.toLowerCase().trim()}:${code}`)
     .digest("hex");
 }
 
 // ─── Redis Keys ───────────────────────────────────────────────────
 
-function otpKey(email)      { return `otp:email:${targetDigest(email)}`; }
-function cooldownKey(email) { return `otp:cooldown:${targetDigest(email)}`; }
-function sendWindowKey(email) { return `otp:sends:${targetDigest(email)}`; }
-function sendLockKey(email) { return `otp:lock:${targetDigest(email)}`; }
+function otpKey(identifier)      { return `otp:${identifier.startsWith("+") ? "phone" : "email"}:${targetDigest(identifier)}`; }
+function cooldownKey(identifier) { return `otp:cooldown:${targetDigest(identifier)}`; }
+function sendWindowKey(identifier) { return `otp:sends:${targetDigest(identifier)}`; }
+function sendLockKey(identifier) { return `otp:lock:${targetDigest(identifier)}`; }
 
 // ─── Login Rate Limiting ──────────────────────────────────────────
 
@@ -100,27 +107,31 @@ function generateOtp() {
 // ─── OTP Request ──────────────────────────────────────────────────
 
 /**
- * Generates a 6-digit OTP, stores its hash in Redis, and sends it via Resend.
+ * Generates a 6-digit OTP, stores its hash in Redis, and delivers it.
+ * Supports both email (via Resend) and phone (logged to console; SMS provider integration-ready).
  *
  * Rate limiting:
- *  - 60s cooldown between requests to the same email
- *  - Max 5 requests per hour per email
+ *  - 60s cooldown between requests to the same target
+ *  - Max 5 requests per hour per target
  *
+ * @param {string} target - Email address or phone number (starting with +)
+ * @param {string} purpose - "verification" | "password-reset" | "phone-login"
  * @returns {{ expiresInSeconds: number, resendAfterSeconds: number }}
  */
 export async function requestOtp({ target, purpose = "verification" }) {
-  const email = target.toLowerCase().trim();
+  const isPhone = typeof target === "string" && target.startsWith("+");
+  const identifier = isPhone ? normalizePhone(target) : target.toLowerCase().trim();
   const redis = getRedis();
 
   // Cooldown check
-  if (await redis.exists(cooldownKey(email))) {
+  if (await redis.exists(cooldownKey(identifier))) {
     const err = new Error("Please wait 60 seconds before requesting another code.");
     err.statusCode = 429;
     throw err;
   }
 
   // Lock to prevent concurrent requests
-  const locked = await redis.set(sendLockKey(email), "1", "EX", 30, "NX");
+  const locked = await redis.set(sendLockKey(identifier), "1", "EX", 30, "NX");
   if (!locked) {
     const err = new Error("A verification request is already in progress. Please wait a moment.");
     err.statusCode = 429;
@@ -129,7 +140,7 @@ export async function requestOtp({ target, purpose = "verification" }) {
 
   try {
     // Hourly rate limit
-    const windowKey = sendWindowKey(email);
+    const windowKey = sendWindowKey(identifier);
     const sends = await redis.incr(windowKey);
     if (sends === 1) await redis.expire(windowKey, 60 * 60);
     if (sends > MAX_SENDS_PER_HOUR) {
@@ -140,33 +151,41 @@ export async function requestOtp({ target, purpose = "verification" }) {
 
     const code = generateOtp();
 
-    // Send via Resend
-    const { sendOtpEmail, checkConfig } = await import("../../utils/email.js");
-    const missing = checkConfig();
-    if (missing.length > 0) {
-      console.warn(`[otp] ⚠️ Email delivery not configured. Missing: ${missing.join(", ")}`);
-      console.warn(`[otp] 💡 OTP for ${email}: ${code}`);
-      console.warn(`[otp] 📧 To enable email delivery, set ${missing.join(" and ")} in your environment.`);
+    if (isPhone) {
+      // Phone OTP — log to console; ready for SMS provider integration
+      console.log(`[otp] 💡 OTP for phone ${identifier}: ${code}`);
+      // Future: integrate Twilio, AWS SNS, or MSG91 here
+      // const { sendSms } = await import("../../utils/sms.js");
+      // await sendSms({ to: identifier, code, purpose });
     } else {
-      try {
-        const result = await sendOtpEmail({ to: email, code, purpose });
-        console.log(`[otp] ✅ Email sent to ${email} via Resend:`, result?.id || "unknown");
-      } catch (err) {
-        console.error(`[otp] ❌ Failed to send email to ${email}:`, err.message);
+      // Email OTP — send via Resend
+      const { sendOtpEmail, checkConfig } = await import("../../utils/email.js");
+      const missing = checkConfig();
+      if (missing.length > 0) {
+        console.warn(`[otp] ⚠️ Email delivery not configured. Missing: ${missing.join(", ")}`);
+        console.warn(`[otp] 💡 OTP for ${identifier}: ${code}`);
+        console.warn(`[otp] 📧 To enable email delivery, set ${missing.join(" and ")} in your environment.`);
+      } else {
+        try {
+          const result = await sendOtpEmail({ to: identifier, code, purpose });
+          console.log(`[otp] ✅ Email sent to ${identifier} via Resend:`, result?.id || "unknown");
+        } catch (err) {
+          console.error(`[otp] ❌ Failed to send email to ${identifier}:`, err.message);
+        }
       }
     }
 
     // Store hashed OTP in Redis with atomic transaction
     await redis
       .multi()
-      .set(otpKey(email), JSON.stringify({ hash: otpHash(email, code), attempts: 0 }), "EX", OTP_TTL_SECONDS)
-      .set(cooldownKey(email), "1", "EX", RESEND_COOLDOWN_SECONDS)
-      .del(sendLockKey(email))
+      .set(otpKey(identifier), JSON.stringify({ hash: otpHash(identifier, code), attempts: 0 }), "EX", OTP_TTL_SECONDS)
+      .set(cooldownKey(identifier), "1", "EX", RESEND_COOLDOWN_SECONDS)
+      .del(sendLockKey(identifier))
       .exec();
 
     return { expiresInSeconds: OTP_TTL_SECONDS, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };
   } catch (error) {
-    await redis.del(sendLockKey(email));
+    await redis.del(sendLockKey(identifier));
     throw error;
   }
 }
@@ -186,7 +205,8 @@ export async function requestOtp({ target, purpose = "verification" }) {
  *  -2  → code didn't match → attempts incremented
  */
 export async function verifyOtp({ target, code }) {
-  const email = target.toLowerCase().trim();
+  const isPhone = typeof target === "string" && target.startsWith("+");
+  const identifier = isPhone ? normalizePhone(target) : target.toLowerCase().trim();
   if (!/^\d{6}$/.test(String(code))) {
     const err = new Error("Verification code must contain 6 digits.");
     err.statusCode = 422;
@@ -194,8 +214,8 @@ export async function verifyOtp({ target, code }) {
   }
 
   const redis = getRedis();
-  const key = otpKey(email);
-  const expectedHash = otpHash(email, String(code));
+  const key = otpKey(identifier);
+  const expectedHash = otpHash(identifier, String(code));
 
   const result = await redis.eval(
     `local value = redis.call('GET', KEYS[1])
