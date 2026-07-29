@@ -20,13 +20,52 @@ function cleanLead(input) {
   };
 }
 
-export async function listLeads(req) {
+export async function listLeads(req, { page = 1, limit = 100, status, q, priority, source, sortBy = "createdAt", sortOrder = "desc" } = {}) {
   const prisma = getPrisma();
-  return prisma.lead.findMany({
-    where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },
-    orderBy: [{ nextFollowUp: "asc" }, { createdAt: "desc" }],
-    take: 200,
-  });
+  const where = {
+    tenantId: req.tenantId,
+    companyId: req.companyId,
+    isDeleted: false,
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+    ...(source ? { source } : {}),
+  };
+
+  if (q) {
+    const term = q.trim();
+    where.OR = [
+      { name: { contains: term, mode: "insensitive" } },
+      { contactPerson: { contains: term, mode: "insensitive" } },
+      { phone: { contains: term, mode: "insensitive" } },
+      { email: { contains: term, mode: "insensitive" } },
+      { city: { contains: term, mode: "insensitive" } },
+      { requirement: { contains: term, mode: "insensitive" } },
+      { notes: { contains: term, mode: "insensitive" } },
+    ];
+  }
+
+  const sortFieldMap = {
+    createdAt: "createdAt",
+    name: "name",
+    value: "value",
+    nextFollowUp: "nextFollowUp",
+    priority: "priority",
+    status: "status",
+  };
+  const field = sortFieldMap[sortBy] || "createdAt";
+  const order = sortOrder === "asc" ? "asc" : "desc";
+
+  const skip = (page - 1) * limit;
+  const [total, rows] = await Promise.all([
+    prisma.lead.count({ where }),
+    prisma.lead.findMany({
+      where,
+      skip,
+      take: Math.min(limit, 500),
+      orderBy: [{ nextFollowUp: "asc" }, { [field]: order }],
+    }),
+  ]);
+  return { rows, meta: { page, limit: Math.min(limit, 500), total } };
 }
 
 export async function createLead(req, input) {

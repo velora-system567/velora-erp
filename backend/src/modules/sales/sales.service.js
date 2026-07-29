@@ -273,29 +273,173 @@ export async function recordPaymentReceipt(req, input) {
 
 // ─── LIST / GET ───────────────────────────────────────────────────────────────
 
-export async function listSalesDocs(req, docType, { page = 1, limit = 20, status, q } = {}) {
+export async function listSalesDocs(req, docType, {
+  page = 1, limit = 20, status, q,
+  dateFrom, dateTo, customerId, amountMin, amountMax,
+  branchId, createdBy,
+  sortBy = "createdAt", sortOrder = "desc",
+} = {}) {
   const prisma = getPrisma();
+
+  // Build dynamic where clause
   const where = {
     tenantId: req.tenantId,
     companyId: req.companyId,
     documentType: docType,
     isDeleted: false,
     ...(status ? { status } : {}),
+    ...(branchId ? { branchId } : {}),
+    ...(createdBy ? { createdBy } : {}),
+    ...(dateFrom || dateTo ? {
+      documentDate: {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+      },
+    } : {}),
+    ...(amountMin || amountMax ? {
+      totalAmount: {
+        ...(amountMin ? { gte: Number(amountMin) } : {}),
+        ...(amountMax ? { lte: Number(amountMax) } : {}),
+      },
+    } : {}),
   };
+
+  // Text search: search by documentNo OR by customer name (via partyId lookup)
+  if (q) {
+    const searchTerm = q.trim();
+    const searchConditions = [
+      { documentNo: { contains: searchTerm, mode: "insensitive" } },
+    ];
+
+    // Also search customers by name/phone/gstin/email for partyId matching
+    const matchingCustomers = await prisma.customer.findMany({
+      where: {
+        tenantId: req.tenantId,
+        companyId: req.companyId,
+        isDeleted: false,
+        OR: [
+          { name: { contains: searchTerm, mode: "insensitive" } },
+          { phone: { contains: searchTerm, mode: "insensitive" } },
+          { gstin: { contains: searchTerm, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (matchingCustomers.length > 0) {
+      searchConditions.push({ partyId: { in: matchingCustomers.map((c) => c.id) } });
+    }
+
+    // Search users (sales persons)
+    const matchingUsers = await prisma.user.findMany({
+      where: {
+        tenantId: req.tenantId,
+        isDeleted: false,
+        OR: [
+          { name: { contains: searchTerm, mode: "insensitive" } },
+          { email: { contains: searchTerm, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (matchingUsers.length > 0) {
+      searchConditions.push({ createdBy: { in: matchingUsers.map((u) => u.id) } });
+    }
+
+    where.OR = searchConditions;
+  }
+
+  // Filter by specific customer
+  if (customerId) {
+    where.partyId = customerId;
+  }
+
+  // Sorting: whitelist allowed sort fields to prevent injection
+  const sortFieldMap = {
+    documentDate: "documentDate",
+    totalAmount: "totalAmount",
+    documentNo: "documentNo",
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
+  };
+  const field = sortFieldMap[sortBy] || "createdAt";
+  const order = sortOrder === "asc" ? "asc" : "desc";
+
   const [total, rows] = await Promise.all([
     prisma.businessDocument.count({ where }),
     prisma.businessDocument.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [field]: order },
       include: { lines: { where: { isDeleted: false } } },
     }),
   ]);
   return { rows, meta: { page, limit, total } };
 }
 
-export async function getSalesDoc(req, docId) {
+export async function listPaymentReceipts(req, {
+  page = "1", limit = "20", q,
+  dateFrom, dateTo, customerId, branchId,
+  mode, sortBy = "paymentDate", sortOrder = "desc",
+} = {}) {
+  const prisma = getPrisma();
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.min(500, Math.max(1, Number(limit) || 20));
+    tenantId: req.tenantId,
+    companyId: req.companyId,
+    paymentType: "RECEIPT",
+    isDeleted: false,
+    ...(branchId ? { branchId } : {}),
+    ...(mode ? { mode } : {}),
+    ...(dateFrom || dateTo ? {
+      paymentDate: {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+      },
+    } : {}),
+  };
+
+  if (q) {
+    const searchTerm = q.trim();
+    const searchConditions = [
+      { paymentNumber: { contains: searchTerm, mode: "insensitive" } },
+      { referenceNo: { contains: searchTerm, mode: "insensitive" } },
+      { narration: { contains: searchTerm, mode: "insensitive" } },
+    ];
+    const matchingCustomers = await prisma.customer.findMany({
+      where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false, name: { contains: searchTerm, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (matchingCustomers.length > 0) {
+      searchConditions.push({ partyId: { in: matchingCustomers.map((c) => c.id) } });
+    }
+    where.OR = searchConditions;
+  }
+
+  if (customerId) {
+    where.partyId = customerId;
+  }
+
+  const sortFieldMap = {
+    paymentDate: "paymentDate",
+    amount: "amount",
+    paymentNumber: "paymentNumber",
+    createdAt: "createdAt",
+  };
+  const field = sortFieldMap[sortBy] || "paymentDate";
+  const order = sortOrder === "asc" ? "asc" : "desc";
+
+  const [total, rows] = await Promise.all([
+    prisma.payment.count({ where }),
+    prisma.payment.findMany({
+      where,
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
+      orderBy: { [field]: order },
+    }),
+  ]);
+  return { rows, meta: { page: pageNum, limit: limitNum, total } };
+}
   const prisma = getPrisma();
   const doc = await prisma.businessDocument.findFirst({
     where: { id: docId, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },

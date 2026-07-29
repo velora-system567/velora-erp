@@ -13,6 +13,7 @@ import {
   createInvoice,
   recordPaymentReceipt,
   listSalesDocs,
+  listPaymentReceipts,
   getSalesDoc,
   updateDocStatus,
   getOutstandingReport,
@@ -58,6 +59,15 @@ const listQuery = z.object({
     limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
     status: z.string().optional(),
     q: z.string().optional(),
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional(),
+    customerId: z.string().optional(),
+    branchId: z.string().optional(),
+    createdBy: z.string().optional(),
+    amountMin: z.coerce.number().optional(),
+    amountMax: z.coerce.number().optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(["asc", "desc"]).optional(),
   }),
 });
 
@@ -80,8 +90,9 @@ const leadSchema = z.object({
 });
 
 router.get("/leads", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
-  const rows = await listLeads(req);
-  return ok(res, rows, "Leads loaded");
+  const { page = 1, limit = 100, status, q, priority, source, sortBy = "createdAt", sortOrder = "desc" } = req.query;
+  const result = await listLeads(req, { page: Number(page), limit: Number(limit), status, q, priority, source, sortBy, sortOrder });
+  return ok(res, result.rows, "Leads loaded", result.meta);
 }));
 
 router.post("/leads", requirePermission(PERMISSIONS.SALES_CREATE), validate(leadSchema), asyncHandler(async (req, res) => {
@@ -255,13 +266,8 @@ const receiptSchema = z.object({
 });
 
 router.get("/payment-receipts", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
-  const prisma = (await import("../../config/db.js")).getPrisma();
-  const rows = await prisma.payment.findMany({
-    where: { tenantId: req.tenantId, companyId: req.companyId, paymentType: "RECEIPT", isDeleted: false },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  return ok(res, rows, "Receipts loaded");
+  const { rows, meta } = await listPaymentReceipts(req, req.query);
+  return ok(res, rows, "Receipts loaded", meta);
 }));
 
 router.post("/payment-receipts", requirePermission(PERMISSIONS.SALES_PAYMENT),

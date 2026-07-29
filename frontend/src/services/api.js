@@ -192,7 +192,10 @@ export const masterApi = {
 // ─── Leads ────────────────────────────────────────────────────────────────────
 
 export const leadsApi = {
-  list: () => apiRequest("/leads"),
+  list: (p = {}) => {
+    const qs = new URLSearchParams(p).toString();
+    return apiRequest(`/leads${qs ? `?${qs}` : ""}`);
+  },
   create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
   update: (id, input) => {
     const safeId = _guard(id, "lead id");
@@ -256,7 +259,10 @@ export const salesApi = {
   createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
 
   // Receipts
-  receipts: () => apiRequest("/payment-receipts"),
+  receipts: (p = {}) => {
+    const qs = new URLSearchParams(p).toString();
+    return apiRequest(`/payment-receipts${qs ? `?${qs}` : ""}`);
+  },
   createReceipt: (input) => apiRequest("/payment-receipts", { method: "POST", body: JSON.stringify(input) }),
 
   // Dashboard & Analytics
