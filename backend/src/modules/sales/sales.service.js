@@ -385,6 +385,7 @@ export async function listPaymentReceipts(req, {
   const prisma = getPrisma();
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.min(500, Math.max(1, Number(limit) || 20));
+  const where = {
     tenantId: req.tenantId,
     companyId: req.companyId,
     paymentType: "RECEIPT",
@@ -440,6 +441,8 @@ export async function listPaymentReceipts(req, {
   ]);
   return { rows, meta: { page: pageNum, limit: limitNum, total } };
 }
+
+export async function getSalesDoc(req, docId) {
   const prisma = getPrisma();
   const doc = await prisma.businessDocument.findFirst({
     where: { id: docId, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },
