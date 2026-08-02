@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package,
   AlertTriangle, CheckCircle2, Building2, RefreshCw, BarChart3,
@@ -15,12 +16,20 @@ import { PageHeader, SecondaryButton } from "../../components/PageHeader";
 
 export default function ExecutiveDashboard() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  const activityRoute = (type) => {
+    if (type === "INVOICE" || type === "SALES_ORDER" || type === "QUOTATION" || type === "DELIVERY_NOTE") return "/sales";
+    if (type === "PURCHASE_ORDER" || type === "PURCHASE_REQUEST" || type === "RFQ" || type === "GRN") return "/purchase";
+    return null;
+  };
 
   const execQuery = useQuery({
     queryKey: ["bi-executive"],
     queryFn: () => biApi.executiveDashboard(),
     staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const deptQuery = useQuery({
@@ -100,25 +109,35 @@ export default function ExecutiveDashboard() {
             <SectionHeader title="Recent Activity" description="Last 30 days" icon={Activity} />
           </div>
           <div className="divide-y divide-slate-100">
-            {data.recentActivity.map((a) => (
-              <div key={a.id} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${a.type === "INVOICE" ? "bg-emerald-50" : a.type === "SALES_ORDER" ? "bg-blue-50" : a.type === "PURCHASE_ORDER" ? "bg-amber-50" : "bg-slate-50"}`}>
-                    {a.type === "INVOICE" ? <DollarSign size={14} className="text-emerald-600" /> :
-                     a.type === "SALES_ORDER" ? <ShoppingCart size={14} className="text-blue-600" /> :
-                     <Package size={14} className="text-amber-600" />}
+            {data.recentActivity.map((a) => {
+              const route = activityRoute(a.type);
+              const row = (
+                <>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${a.type === "INVOICE" ? "bg-emerald-50" : a.type === "SALES_ORDER" ? "bg-blue-50" : a.type === "PURCHASE_ORDER" ? "bg-amber-50" : "bg-slate-50"}`}>
+                      {a.type === "INVOICE" ? <DollarSign size={14} className="text-emerald-600" /> :
+                       a.type === "SALES_ORDER" ? <ShoppingCart size={14} className="text-blue-600" /> :
+                       <Package size={14} className="text-amber-600" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-950">{a.ref || a.type}</p>
+                      <p className="text-xs text-slate-500">{a.type.replace(/_/g, " ")}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-950">{a.ref || a.type}</p>
-                    <p className="text-xs text-slate-500">{a.type.replace(/_/g, " ")}</p>
+                  <div className="text-right">
+                    {a.amount > 0 && <p className="font-semibold text-sm">{formatRupees(a.amount)}</p>}
+                    <StatusPill status={a.status} />
                   </div>
-                </div>
-                <div className="text-right">
-                  {a.amount > 0 && <p className="font-semibold text-sm">{formatRupees(a.amount)}</p>}
-                  <StatusPill status={a.status} />
-                </div>
-              </div>
-            ))}
+                </>
+              );
+              return route ? (
+                <button key={a.id} onClick={() => navigate(route)} className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-slate-50">
+                  {row}
+                </button>
+              ) : (
+                <div key={a.id} className="flex items-center justify-between px-5 py-3">{row}</div>
+              );
+            })}
           </div>
         </Card>
       )}

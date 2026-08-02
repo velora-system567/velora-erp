@@ -81,7 +81,7 @@ export default function MovementTable({ warehouseId }) {
                 </Cell>
                 <Cell>
                   <Pill tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>
-                    {row.transactionType.replaceAll("_", " ")}
+                    {(row.transactionType || "MOVEMENT").replaceAll("_", " ")}
                   </Pill>
                 </Cell>
                 <Cell className="text-slate-600">{row.warehouse?.name || "—"}</Cell>

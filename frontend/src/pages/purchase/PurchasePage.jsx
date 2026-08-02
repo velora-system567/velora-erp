@@ -4,7 +4,7 @@
  * Tabs: Dashboard | Purchase Orders | GRN | Reports
  */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3, CheckCircle2, Clock, DollarSign, FileText, Package,
@@ -26,12 +26,24 @@ const TABS = [
   ["reports", FileText, "Purchase analysis"],
 ];
 
+const GRN_SORTS = [
+  ["createdAt-desc", "Newest First"],
+  ["createdAt-asc", "Oldest First"],
+  ["receiptDate-desc", "Date (Newest)"],
+  ["receiptDate-asc", "Date (Oldest)"],
+];
+
 export function PurchasePage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(localStorage.getItem("purchase_tab") || "dashboard");
+  const location = useLocation();
+  // Seed tab from a KPI drill-down (navigate('/purchase', { state: { tab } })).
+  const [tab, setTab] = useState(() => location.state?.tab || localStorage.getItem("purchase_tab") || "dashboard");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  // GRN list filters
+  const [grnFilters, setGrnFilters] = useState({ q: "", status: "", fromDate: "", toDate: "", supplierId: "", sortBy: "createdAt", sortOrder: "desc" });
+  const setGrnFilter = (key, value) => { setGrnFilters((f) => ({ ...f, [key]: value })); setPage(1); };
 
   const switchTab = (t) => { setTab(t); setPage(1); localStorage.setItem("purchase_tab", t); };
 
@@ -67,8 +79,11 @@ export function PurchasePage() {
 
   // GRNs
   const grnsQuery = useQuery({
-    queryKey: ["purchase-grns", page],
-    queryFn: () => purchaseApi.grns({ page, limit: 20 }),
+    queryKey: ["purchase-grns", page, grnFilters],
+    queryFn: () => purchaseApi.grns({
+      page, limit: 20,
+      ...Object.fromEntries(Object.entries(grnFilters).filter(([, v]) => v !== "" && v != null)),
+    }),
     staleTime: 30 * 1000,
     enabled: tab === "grn",
   });
@@ -148,6 +163,8 @@ export function PurchasePage() {
           approvePending={grnApproveMutation.isPending}
           onPageChange={setPage}
           page={page}
+          filters={grnFilters}
+          onFilterChange={setGrnFilter}
         />
       )}
 
@@ -161,6 +178,7 @@ export function PurchasePage() {
 
 function DashboardTab({ data: query }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   if (query.isPending) return <div className="space-y-4"><SkeletonCards count={6} /><SkeletonTable rows={5} cols={4} /></div>;
   if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["purchase-dashboard"] })} />;
 
@@ -205,10 +223,10 @@ function DashboardTab({ data: query }) {
           {data.recentActivity?.length ? (
             <div className="divide-y divide-slate-100">
               {data.recentActivity.slice(0, 8).map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-3">
+                <button key={a.id} onClick={() => navigate("/purchase", { state: { tab: "orders" } })} className="flex w-full items-center justify-between py-3 text-left transition-colors hover:bg-slate-50">
                   <div className="min-w-0"><p className="truncate font-medium text-slate-950">{a.documentNo || "—"}</p><p className="text-xs text-slate-500">{a.partyName}</p></div>
                   <div className="text-right"><StatusPill status={a.status} /><p className="mt-0.5 text-xs text-slate-500">{formatRupees(a.totalAmount)}</p></div>
-                </div>
+                </button>
               ))}
             </div>
           ) : <EmptyState title="No activity" description="Purchase order updates appear here." />}
@@ -349,7 +367,7 @@ function OrdersTab({ query, vendorMap, onApprove, approvePending, onRefresh, onP
 
 // ─── GRN Tab ──────────────────────────────────────────────────────
 
-function GrnTab({ query, vendorMap, warehouseMap, onApprove, approvePending, onPageChange, page }) {
+function GrnTab({ query, vendorMap, warehouseMap, onApprove, approvePending, onPageChange, page, filters, onFilterChange }) {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ vendorId: "", warehouseId: "", notes: "", lines: [{ itemId: "", orderedQty: 1, receivedQty: 1, acceptedQty: 1, rate: 0, gstRate: 18 }] });
@@ -405,12 +423,65 @@ function GrnTab({ query, vendorMap, warehouseMap, onApprove, approvePending, onP
     );
   }
 
+  const exportData = () =>
+    exportCsv("velora-grns.csv", grns, [
+      { label: "GRN #", value: (r) => r.grnNumber },
+      { label: "Date", value: (r) => r.receiptDate },
+      { label: "Vendor", value: (r) => vendorMap.get(r.vendorId)?.name || "" },
+      { label: "Warehouse", value: (r) => warehouseMap.get(r.warehouseId)?.name || "" },
+      { label: "Status", value: (r) => r.status },
+    ]);
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600">{meta ? `${meta.total} GRNs` : ""}</p>
-        <AddButton label="New GRN" onClick={() => setShowCreate(true)} />
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+        <label className="relative min-w-[180px] flex-1 lg:max-w-xs">
+          <Search size={15} className="pointer-events-none absolute left-3 top-3 text-slate-400" />
+          <input
+            value={filters.q}
+            onChange={(e) => onFilterChange("q", e.target.value)}
+            placeholder="Search GRN # or vendor…"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
+        <select
+          aria-label="Filter GRN status"
+          value={filters.status}
+          onChange={(e) => onFilterChange("status", e.target.value)}
+          className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">All statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="APPROVED">Approved</option>
+        </select>
+        <input type="date" aria-label="From date" value={filters.fromDate} onChange={(e) => onFilterChange("fromDate", e.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm" />
+        <input type="date" aria-label="To date" value={filters.toDate} onChange={(e) => onFilterChange("toDate", e.target.value)} className="h-11 rounded-lg border border-slate-200 px-3 text-sm" />
+        <select
+          aria-label="Filter by supplier"
+          value={filters.supplierId}
+          onChange={(e) => onFilterChange("supplierId", e.target.value)}
+          className="h-11 max-w-44 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">All suppliers</option>
+          {[...vendorMap.values()].map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+        <select
+          aria-label="Sort GRNs"
+          value={`${filters.sortBy}-${filters.sortOrder}`}
+          onChange={(e) => { const [sortBy, sortOrder] = e.target.value.split("-"); onFilterChange("sortBy", sortBy); onFilterChange("sortOrder", sortOrder); }}
+          className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+        >
+          {GRN_SORTS.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+        </select>
+        <div className="ml-auto flex items-center gap-2">
+          <SecondaryButton label="Export CSV" icon={Send} onClick={exportData} />
+          <AddButton label="New GRN" onClick={() => setShowCreate(true)} />
+        </div>
       </div>
+
+      <p className="text-sm text-slate-600">{meta ? `${meta.total} GRNs` : ""}</p>
+
       <TableShell>
         <Head>
           <th className="px-4 py-3">GRN #</th>
@@ -442,6 +513,16 @@ function GrnTab({ query, vendorMap, warehouseMap, onApprove, approvePending, onP
           )}
         </tbody>
       </TableShell>
+
+      {meta && meta.totalPages > 1 && (
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Page {meta.page} of {meta.totalPages}</span>
+          <div className="flex gap-2">
+            <button disabled={page <= 1} onClick={() => onPageChange((p) => Math.max(1, p - 1))} className="rounded border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-30">Previous</button>
+            <button disabled={page >= (meta.totalPages || 1)} onClick={() => onPageChange((p) => p + 1)} className="rounded border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-30">Next</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

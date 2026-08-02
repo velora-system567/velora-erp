@@ -5,6 +5,19 @@ import { inventoryApi } from "../../../services/api";
 import { ErrorBanner } from "../../../components/ErrorState";
 import { Card, SectionHeader } from "./shared";
 
+// One-line explanation shown under the active stock-operation mode.
+const MODE_INFO = {
+  transfer: "Move inventory from one warehouse to another.",
+  adjustment: "Correct inventory quantities after audits or physical counts.",
+  opening: "Record the initial inventory when implementing the ERP.",
+};
+
+const MODES = [
+  ["transfer", "Transfer"],
+  ["adjustment", "Adjustment"],
+  ["opening", "Opening stock"],
+];
+
 export default function TransferWorkspace({ warehouses, items, onPosted }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState("transfer");
@@ -123,18 +136,19 @@ export default function TransferWorkspace({ warehouses, items, onPosted }) {
           icon={Truck}
         />
         <div className="grid grid-cols-3 gap-2">
-          {["transfer", "adjustment", "opening"].map((m) => (
+          {MODES.map(([key, label]) => (
             <button
-              key={m}
-              onClick={() => { setMode(m); setNotice(""); }}
+              key={key}
+              onClick={() => { setMode(key); setNotice(""); }}
               className={`min-h-11 rounded-lg text-sm font-semibold ${
-                mode === m ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
+                mode === key ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
               }`}
             >
-              {m === "transfer" ? "Transfer" : m === "adjustment" ? "Adjustment" : "Opening stock"}
+              {label}
             </button>
           ))}
         </div>
+        <p className="mt-2.5 text-sm text-slate-600">{MODE_INFO[mode]}</p>
       </Card>
 
       {mode !== "opening" ? (

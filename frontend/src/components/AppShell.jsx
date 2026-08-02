@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Activity, BarChart3, Building2, LogOut, Package, Settings,
-  ShoppingBag, ShoppingCart, Users, Warehouse, Shield,
+  ShoppingBag, ShoppingCart, Users, Warehouse, Shield, PanelLeftClose, PanelLeft, X,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import { authApi } from "../services/api";
 import { usePermissionStore, useVisibleModules } from "../hooks/usePermissions";
+import {
+  useShortcutStore,
+  useActiveModule,
+  useOverlayStack,
+} from "../hooks/useShortcutManager";
 import GlobalSearch from "./GlobalSearch";
 import AICopilot from "./AICopilot";
 
@@ -54,10 +59,9 @@ function getActiveRoutes(key) {
     settings: ["/settings"],
     admin: ["/admin"],
   };
-  return map[key] || [mod.path];
+  return map[key] || [];
 }
 
-// Settings-related routes for active state in the profile bar
 const SETTINGS_ROUTES = ["/settings", "/company", "/branches", "/users", "/hrms", "/activity"];
 
 export function AppShell() {
@@ -68,6 +72,46 @@ export function AppShell() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const permissions = usePermissionStore((s) => s.permissions);
   const sections = useNavigationSections();
+
+  // Sidebar state from shortcut store (persisted)
+  const sidebarCollapsed = useShortcutStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useShortcutStore((s) => s.toggleSidebar);
+  const setSidebarCollapsed = useShortcutStore((s) => s.setSidebarCollapsed);
+
+  // Module detection
+  useActiveModule(pathname);
+
+  // Mobile sidebar drawer state
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Track mobile state
+  useEffect(() => {
+    function check() {
+      setIsMobile(window.innerWidth < 1024);
+    }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Close mobile drawer when route changes
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [pathname]);
+
+  // Close mobile drawer on ESC
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    function onKey(e) {
+      if (e.key === "Escape") setMobileDrawerOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileDrawerOpen]);
+
+  // Register as overlay for ESC stack
+  useOverlayStack("sidebar-mobile", mobileDrawerOpen && isMobile);
 
   // Init permissions from JWT on first load
   useState(() => {
@@ -112,113 +156,201 @@ export function AppShell() {
     icon: s.icon,
   }));
 
-  return (
-    <div className="min-h-dvh bg-slate-50 lg:grid lg:grid-cols-[272px_1fr]">
-      {/* ─── Desktop Sidebar ────────────────────────────────── */}
-      <aside className="hidden border-r border-slate-200 bg-white lg:block">
-        <div className="sticky top-0 flex h-screen flex-col p-5">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-950">
-                {user?.name || "Your Company"}
-              </p>
-              <p className="text-xs text-slate-500">Velora ERP</p>
-            </div>
+  // ─── Render sidebar content (shared between desktop and mobile) ─────
+  const sidebarContent = (asDrawer = false) => (
+    <div className={`flex h-full flex-col ${asDrawer ? "" : "p-5"}`}>
+      {/* Brand - collapsed: icon only; expanded: full with name */}
+      <div className={`flex items-center gap-3 ${!asDrawer && sidebarCollapsed ? "justify-center px-2" : ""}`}>
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">
+          <Building2 size={20} />
+        </div>
+        {(!sidebarCollapsed || asDrawer) && (
+          <div className="min-w-0 overflow-hidden">
+            <p className="truncate text-sm font-semibold text-slate-950">
+              {user?.name || "Your Company"}
+            </p>
+            <p className="truncate text-xs text-slate-500">Velora ERP</p>
           </div>
+        )}
+      </div>
 
-          {/* Navigation — filtered by permissions */}
-          <nav className="mt-8 flex-1 space-y-1 overflow-y-auto">
-            {sections.map((section) => {
-              const active = isSectionActive(section);
-              return (
-                <Link
-                  key={section.to}
-                  to={section.to}
-                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
-                    active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`}
-                >
-                  <section.icon size={18} />
-                  {section.label}
-                </Link>
-              );
-            })}
-          </nav>
+      {/* Toggle button - visible only on desktop */}
+      {!asDrawer && (
+        <button
+          onClick={toggleSidebar}
+          className="mt-4 flex items-center justify-center rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          title={sidebarCollapsed ? "Expand sidebar (Ctrl+Shift+S)" : "Collapse sidebar (Ctrl+Shift+S)"}
+        >
+          {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+      )}
 
-          {/* Profile bar at bottom */}
-          <div className="mt-auto">
-            <div className="border-t border-slate-200 pt-4 space-y-1">
-              {/* Administration (only if permitted) */}
-              {canViewAdmin && (
-                <Link
-                  to="/admin"
-                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
-                    pathname.startsWith("/admin")
-                      ? "bg-purple-50 text-purple-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`}
-                >
-                  <Shield size={18} />
-                  Administration
-                </Link>
+      {/* Navigation */}
+      <nav className={`mt-4 flex-1 space-y-1 overflow-y-auto ${asDrawer ? "" : sidebarCollapsed ? "flex flex-col items-center" : ""}`}>
+        {sections.map((section) => {
+          const active = isSectionActive(section);
+          return (
+            <Link
+              key={section.to}
+              to={section.to}
+              className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                active
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+              } ${!asDrawer && sidebarCollapsed ? "w-11 justify-center px-0" : ""}`}
+              title={sidebarCollapsed && !asDrawer ? section.label : undefined}
+            >
+              <section.icon size={18} className="shrink-0" />
+              {(!sidebarCollapsed || asDrawer) && (
+                <span className="truncate">{section.label}</span>
               )}
+            </Link>
+          );
+        })}
+      </nav>
 
-              {/* Settings */}
-              {canViewSettings && (
-                <Link
-                  to="/settings"
-                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
-                    pathname.startsWith("/settings")
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`}
-                >
-                  <Settings size={18} />
-                  Settings
-                </Link>
-              )}
+      {/* Bottom section - collapsed: minimize */}
+      <div className={`mt-auto ${asDrawer ? "" : sidebarCollapsed ? "flex flex-col items-center" : ""}`}>
+        <div className={`border-t border-slate-200 py-4 ${
+          !asDrawer && sidebarCollapsed && !canViewAdmin && !canViewSettings
+            ? "border-t-0"
+            : ""
+        } space-y-1`}>
+          {canViewAdmin && (
+            <Link
+              to="/admin"
+              className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                pathname.startsWith("/admin")
+                  ? "bg-purple-50 text-purple-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+              } ${!asDrawer && sidebarCollapsed ? "w-11 justify-center px-0" : ""}`}
+              title={sidebarCollapsed && !asDrawer ? "Administration" : undefined}
+            >
+              <Shield size={18} className="shrink-0" />
+              {(!sidebarCollapsed || asDrawer) && <span>Administration</span>}
+            </Link>
+          )}
 
-              {/* User info */}
-              <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                  {user?.name?.charAt(0)?.toUpperCase() || "V"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-950">
-                    {user?.name || "User"}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">
-                    {user?.email || ""}
-                  </p>
-                </div>
+          {canViewSettings && (
+            <Link
+              to="/settings"
+              className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+                pathname.startsWith("/settings")
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+              } ${!asDrawer && sidebarCollapsed ? "w-11 justify-center px-0" : ""}`}
+              title={sidebarCollapsed && !asDrawer ? "Settings" : undefined}
+            >
+              <Settings size={18} className="shrink-0" />
+              {(!sidebarCollapsed || asDrawer) && <span>Settings</span>}
+            </Link>
+          )}
+
+          {/* User info - collapsed: hide full info, show just avatar */}
+          {(!sidebarCollapsed || asDrawer) ? (
+            <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                {user?.name?.charAt(0)?.toUpperCase() || "V"}
               </div>
-
-              {/* Logout */}
-              <button
-                onClick={logout}
-                className="inline-flex w-full min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="truncate text-sm font-medium text-slate-950">
+                  {user?.name || "User"}
+                </p>
+                <p className="truncate text-xs text-slate-500">
+                  {user?.email || ""}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-center py-1">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-700"
+                   title={user?.name || "User"}>
+                {user?.name?.charAt(0)?.toUpperCase() || "V"}
+              </div>
+            </div>
+          )}
+
+          {/* Logout */}
+          <button
+            onClick={logout}
+            className={`inline-flex w-full min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 ${
+              !asDrawer && sidebarCollapsed ? "w-11 justify-center px-0" : ""
+            }`}
+            title={sidebarCollapsed && !asDrawer ? "Logout" : undefined}
+          >
+            <LogOut size={18} className="shrink-0" />
+            {(!sidebarCollapsed || asDrawer) && <span>Logout</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={`min-h-dvh bg-slate-50 ${
+        isMobile ? "" : "lg:grid transition-[grid-template-columns] duration-300 ease-in-out"
+      }`}
+      style={!isMobile ? { gridTemplateColumns: sidebarCollapsed ? "0px 1fr" : "272px 1fr" } : undefined}
+    >
+      {/* ─── Desktop Sidebar ────────────────────────────────── */}
+      <aside
+        className={`hidden border-r border-slate-200 bg-white transition-all duration-300 ease-in-out lg:block overflow-hidden ${
+          sidebarCollapsed ? "w-0 opacity-0" : "w-[272px] opacity-100"
+        }`}
+      >
+        <div className="sticky top-0 h-screen">
+          {sidebarContent(false)}
         </div>
       </aside>
+
+      {/* ─── Mobile Sidebar Drawer ──────────────────────────── */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          {/* Drawer */}
+          <aside className="absolute inset-y-0 left-0 z-50 w-[280px] animate-slide-in-left bg-white shadow-2xl">
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Navigation</p>
+                    <p className="text-xs text-slate-500">Velora ERP</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {sidebarContent(true)}
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* ─── Main Content ───────────────────────────────────── */}
       <section className="min-w-0">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">
+          {/* Hamburger for mobile drawer */}
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
+          >
             <Building2 size={18} />
-          </div>
+          </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-950">
               {user?.name || "Your Company"}
@@ -244,8 +376,7 @@ export function AppShell() {
         </header>
 
         {/* Page content */}
-        <main className="min-w-0 pb-24 lg:pb-0">
-          {/* Global search overlay */}
+        <main className="min-w-0 pb-24 lg:pb-24">
           <GlobalSearch />
           <Outlet />
           <AICopilot />

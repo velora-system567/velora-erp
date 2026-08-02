@@ -1,6 +1,7 @@
 /**
  * Shared UI primitives for the Inventory module.
  */
+import { Link } from "react-router-dom";
 import { Download } from "lucide-react";
 
 // ─── Formatters ─────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ export function Cell({ children, className = "" }) {
   return <td className={`px-4 py-3.5 align-middle ${className}`}>{children}</td>;
 }
 
-export function KpiTile({ label, value, detail, tone = "slate", icon: Icon, formatter }) {
+export function KpiTile({ label, value, detail, tone = "slate", icon: Icon, formatter, to, onClick }) {
   const tones = {
     slate: "border-slate-200 text-slate-900",
     blue: "border-blue-200 text-blue-900",
@@ -122,16 +123,23 @@ export function KpiTile({ label, value, detail, tone = "slate", icon: Icon, form
     purple: "text-purple-600 bg-purple-50",
   };
   const display = formatter ? formatter(value) : value;
-  return (
-    <article className={`rounded-2xl border bg-white p-4 shadow-sm ${tones[tone]}`}>
+  const interactive = Boolean(to || onClick);
+  const cls = `rounded-2xl border bg-white p-4 shadow-sm ${tones[tone]} ${
+    interactive ? "cursor-pointer transition hover:border-blue-300 hover:shadow-md" : ""
+  }`;
+  const body = (
+    <>
       <div className="flex items-start justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
         {Icon ? <div className={`grid h-8 w-8 place-items-center rounded-lg ${iconTones[tone]}`}><Icon size={15} /></div> : null}
       </div>
       <p className="mt-3 text-2xl font-bold tabular-nums text-slate-950">{display}</p>
       {detail ? <p className="mt-1 text-xs text-slate-600">{detail}</p> : null}
-    </article>
+    </>
   );
+  if (to) return <Link to={to} className={cls}>{body}</Link>;
+  if (onClick) return <button onClick={onClick} className={`${cls} w-full text-left`}>{body}</button>;
+  return <article className={cls}>{body}</article>;
 }
 
 export function CountBadge({ count }) {

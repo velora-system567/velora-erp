@@ -153,12 +153,20 @@ export async function createPurchaseOrder(req, input) {
   });
 }
 
-export async function listPurchaseDocs(req, docType, { page = 1, limit = 20, status } = {}) {
+export async function listPurchaseDocs(req, docType, { page = 1, limit = 20, status, q, fromDate, toDate, supplierId, sortBy = "createdAt", sortOrder = "desc" } = {}) {
   const prisma = getPrisma();
-  const where = { tenantId: req.tenantId, companyId: req.companyId, documentType: docType, isDeleted: false, ...(status ? { status } : {}) };
+  const where = {
+    tenantId: req.tenantId, companyId: req.companyId, documentType: docType, isDeleted: false,
+    ...(status ? { status } : {}),
+    ...(supplierId ? { partyId: supplierId } : {}),
+    ...(fromDate || toDate ? { documentDate: { ...(fromDate ? { gte: new Date(fromDate) } : {}), ...(toDate ? { lte: new Date(toDate) } : {}) } } : {}),
+    ...(q ? { documentNo: { contains: q, mode: "insensitive" } } : {}),
+  };
+  const DOC_SORT = { createdAt: "createdAt", documentDate: "documentDate", documentNo: "documentNo", totalAmount: "totalAmount" };
+  const orderBy = { [DOC_SORT[sortBy] || "createdAt"]: sortOrder };
   const [total, rows] = await Promise.all([
     prisma.businessDocument.count({ where }),
-    prisma.businessDocument.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { lines: { where: { isDeleted: false } } } }),
+    prisma.businessDocument.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy, include: { lines: { where: { isDeleted: false } } } }),
   ]);
   return { rows, meta: { page, limit, total } };
 }
@@ -228,12 +236,24 @@ export async function approveGrn(req, grnId) {
   });
 }
 
-export async function listGrns(req, { page = 1, limit = 20, status } = {}) {
+export async function listGrns(req, { page = 1, limit = 20, status, q, fromDate, toDate, supplierId, sortBy = "createdAt", sortOrder = "desc" } = {}) {
   const prisma = getPrisma();
-  const where = { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false, ...(status ? { status } : {}) };
+  const where = {
+    tenantId: req.tenantId, companyId: req.companyId, isDeleted: false,
+    ...(status ? { status } : {}),
+    ...(supplierId ? { vendorId: supplierId } : {}),
+    ...(fromDate || toDate ? { receiptDate: { ...(fromDate ? { gte: new Date(fromDate) } : {}), ...(toDate ? { lte: new Date(toDate) } : {}) } } : {}),
+    ...(q ? { OR: [
+      { grnNumber: { contains: q, mode: "insensitive" } },
+      { vendor: { is: { name: { contains: q, mode: "insensitive" } } } },
+    ] } : {}),
+  };
+  // GRN has no totalAmount — map shared sort keys onto real fields.
+  const GRN_SORT = { createdAt: "createdAt", receiptDate: "receiptDate", grnNumber: "grnNumber", documentNo: "grnNumber", documentDate: "receiptDate", totalAmount: "createdAt" };
+  const orderBy = { [GRN_SORT[sortBy] || "createdAt"]: sortOrder };
   const [total, rows] = await Promise.all([
     prisma.goodsReceiptNote.count({ where }),
-    prisma.goodsReceiptNote.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { lines: true } }),
+    prisma.goodsReceiptNote.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy, include: { lines: true } }),
   ]);
   return { rows, meta: { page, limit, total } };
 }

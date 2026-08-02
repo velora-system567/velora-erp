@@ -16,6 +16,7 @@
  */
 import { useState, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import {
   BarChart3, DollarSign, FileText, Plus, RefreshCw,
   ShoppingCart, TrendingUp, Truck, Users, X, CheckCircle2,
@@ -24,6 +25,7 @@ import { salesApi } from "../../services/api";
 import { formatRupees } from "../../utils/money";
 import { ErrorBanner, ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
+import LiveIndicator from "../../components/LiveIndicator";
 import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";
 import { SkeletonCards, SkeletonTable } from "../../components/Skeleton";
 import { Card, SectionHeader, KpiTile, date, exportCsv } from "../inventory/components/shared";
@@ -67,7 +69,9 @@ const STATUS_OPTIONS = [
 
 export function SalesPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState(() => localStorage.getItem("sales_tab") || "dashboard");
+  const location = useLocation();
+  // Seed tab from a KPI drill-down (navigate('/sales', { state: { tab } })) if provided.
+  const [tab, setTab] = useState(() => location.state?.tab || localStorage.getItem("sales_tab") || "dashboard");
   const switchTab = useCallback((t) => {
     setTab(t);
     localStorage.setItem("sales_tab", t);
@@ -117,7 +121,7 @@ export function SalesPage() {
 
       {/* Active tab */}
       {tab === "dashboard" && (
-        <DashboardTab customers={customers} />
+        <DashboardTab customers={customers} onJump={switchTab} />
       )}
       {tab === "leads" && (
         <LeadsTab customers={customers} users={users} branches={branches} />
@@ -142,7 +146,7 @@ export function SalesPage() {
 //  DASHBOARD TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function DashboardTab({ customers }) {
+function DashboardTab({ customers, onJump }) {
   const qc = useQueryClient();
   const query = useSalesDashboard(true);
 
@@ -154,13 +158,17 @@ function DashboardTab({ customers }) {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <LiveIndicator query={query} onRefresh={() => qc.invalidateQueries({ queryKey: ["sales-dashboard"] })} label="Sales" />
+        <span className="text-xs text-slate-400">Click a KPI to open its records</span>
+      </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiTile label="Total Revenue" value={k.totalRevenue} tone="blue" icon={TrendingUp} formatter={formatRupees} detail={`${k.totalInvoices} invoices`} />
-        <KpiTile label="Monthly Revenue" value={k.monthlyRevenue} tone="emerald" icon={BarChart3} formatter={formatRupees} detail={`${k.monthlyInvoices} invoices this month`} />
-        <KpiTile label="Pending Orders" value={k.pendingSOs} tone="amber" icon={ShoppingCart} detail={`${k.totalSOs} total orders`} />
-        <KpiTile label="Deliveries" value={k.totalDNs} tone="purple" icon={Truck} detail="Delivery notes" />
-        <KpiTile label="Collections" value={k.monthlyCollections} tone="emerald" icon={DollarSign} formatter={formatRupees} detail="This month" />
-        <KpiTile label="Total Orders" value={k.totalSOs} tone="slate" icon={ShoppingCart} />
+        <KpiTile label="Total Revenue" value={k.totalRevenue} tone="blue" icon={TrendingUp} formatter={formatRupees} detail={`${k.totalInvoices} invoices · open`} onClick={() => onJump("invoices")} />
+        <KpiTile label="Monthly Revenue" value={k.monthlyRevenue} tone="emerald" icon={BarChart3} formatter={formatRupees} detail={`${k.monthlyInvoices} invoices this month`} onClick={() => onJump("invoices")} />
+        <KpiTile label="Pending Orders" value={k.pendingSOs} tone="amber" icon={ShoppingCart} detail={`${k.totalSOs} total orders · open`} onClick={() => onJump("orders")} />
+        <KpiTile label="Deliveries" value={k.totalDNs} tone="purple" icon={Truck} detail="Delivery notes · open" onClick={() => onJump("orders")} />
+        <KpiTile label="Collections" value={k.monthlyCollections} tone="emerald" icon={DollarSign} formatter={formatRupees} detail="This month · open" onClick={() => onJump("receipts")} />
+        <KpiTile label="Total Orders" value={k.totalSOs} tone="slate" icon={ShoppingCart} detail="Open orders" onClick={() => onJump("orders")} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">

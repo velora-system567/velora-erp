@@ -1,21 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Building2, ClipboardCheck, Package, ReceiptText, WalletCards, TrendingUp, AlertTriangle } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonCards } from "../../components/Skeleton";
+import LiveIndicator from "../../components/LiveIndicator";
 import { getDashboardKpis, getSalesChart, getTopItems, hasApiBaseUrl } from "../../services/api";
 import { formatRupeesCompact, formatRupees } from "../../utils/money";
 
-function KpiCard({ label, value, icon: Icon, color = "text-blue-600", formatter }) {
+function KpiCard({ label, value, icon: Icon, color = "text-blue-600", formatter, to }) {
   const display = formatter ? formatter(value) : value;
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+  const body = (
+    <>
       <Icon className={color} size={20} />
       <p className="mt-4 text-2xl font-bold tabular-nums text-slate-950">{display}</p>
       <p className="mt-1 text-sm text-slate-600">{label}</p>
-    </div>
+    </>
   );
+  const cls = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md";
+  if (to) {
+    return (
+      <Link to={to} className={`${cls} block cursor-pointer hover:border-blue-300`}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={cls}>{body}</div>;
 }
 
 export function Dashboard() {
@@ -25,6 +36,8 @@ export function Dashboard() {
     retry: 1,
     enabled: hasApiBaseUrl,
     staleTime: 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const chartQuery = useQuery({
@@ -63,39 +76,42 @@ export function Dashboard() {
                 : "Add company details, items, customers, and opening stock to activate live KPIs."}
             </p>
           </div>
-          <Building2 className="hidden shrink-0 text-blue-600 sm:block" size={24} />
+          <div className="flex shrink-0 flex-col items-end gap-3">
+            <LiveIndicator query={kpisQuery} onRefresh={kpisQuery.refetch} label="Dashboard" />
+            <Building2 className="hidden text-blue-600 sm:block" size={24} />
+          </div>
         </div>
       </header>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — each opens its live operational list */}
       {kpisQuery.isPending ? (
         <SkeletonCards count={4} />
       ) : kpisQuery.isError ? (
         <ErrorState error={kpisQuery.error} title="Could not load KPIs" />
       ) : (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Today's Sales" value={kpis?.todaysSalesPaise ?? 0} icon={ReceiptText} formatter={formatRupeesCompact} />
-          <KpiCard label="Outstanding Receivables" value={kpis?.totalOutstandingPaise ?? 0} icon={WalletCards} color="text-amber-600" formatter={formatRupeesCompact} />
-          <KpiCard label="Low Stock Items" value={kpis?.lowStockItemCount ?? 0} icon={Package} color={kpis?.lowStockItemCount > 0 ? "text-rose-600" : "text-slate-400"} />
-          <KpiCard label="Pending Purchase Orders" value={kpis?.pendingPurchaseOrders ?? 0} icon={ClipboardCheck} color="text-purple-600" />
+          <KpiCard label="Today's Sales" value={kpis?.todaysSalesPaise ?? 0} icon={ReceiptText} formatter={formatRupeesCompact} to="/sales" />
+          <KpiCard label="Outstanding Receivables" value={kpis?.totalOutstandingPaise ?? 0} icon={WalletCards} color="text-amber-600" formatter={formatRupeesCompact} to="/accounts" />
+          <KpiCard label="Low Stock Items" value={kpis?.lowStockItemCount ?? 0} icon={Package} color={kpis?.lowStockItemCount > 0 ? "text-rose-600" : "text-slate-400"} to="/inventory" />
+          <KpiCard label="Pending Purchase Orders" value={kpis?.pendingPurchaseOrders ?? 0} icon={ClipboardCheck} color="text-purple-600" to="/purchase" />
         </section>
       )}
 
       {/* Secondary KPIs */}
       {kpis && (
         <section className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly Sales</p>
             <p className="mt-1.5 text-xl font-bold text-slate-950">{formatRupeesCompact(kpis.monthlySalesPaise)}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          </Link>
+          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Collections</p>
             <p className="mt-1.5 text-xl font-bold text-emerald-700">{formatRupeesCompact(kpis.todaysCollectionsPaise)}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          </Link>
+          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Invoices</p>
             <p className="mt-1.5 text-xl font-bold text-slate-950">{kpis.todaysInvoiceCount}</p>
-          </div>
+          </Link>
         </section>
       )}
 

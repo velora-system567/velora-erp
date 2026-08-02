@@ -367,13 +367,6 @@ export const inventoryApi = {
     return apiRequest(`/inventory/reservations/${safeId}/release`, { method: "PATCH" });
   },
   serials: (p = {}) => apiRequest(`/inventory/serials?${new URLSearchParams(p)}`),
-  cycleCounts: () => apiRequest("/inventory/cycle-counts"),
-  createCycleCount: (input) => apiRequest("/inventory/cycle-counts", { method: "POST", body: JSON.stringify(input) }),
-  completeCycleCount: (id, input) => {
-    const safeId = _guard(id, "cycle count id");
-    if (!safeId) return Promise.resolve(null);
-    return apiRequest(`/inventory/cycle-counts/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
-  },
   stockTransfers: () => apiRequest("/inventory/stock-transfers"),
   createTransfer: (input) => apiRequest("/inventory/stock-transfer", { method: "POST", body: JSON.stringify(input) }),
   createAdjustment: (input) => apiRequest("/inventory/stock-adjustment", { method: "POST", body: JSON.stringify(input) }),

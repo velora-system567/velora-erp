@@ -35,6 +35,8 @@ export function useSalesDashboard(enabled = true) {
     queryKey: ["sales-dashboard"],
     queryFn: () => salesApi.dashboard(),
     staleTime: 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
     enabled,
   });
 }

@@ -9,6 +9,7 @@ import { ErrorState } from "../../../components/ErrorState";
 import { EmptyState } from "../../../components/EmptyState";
 import { SkeletonCards, SkeletonTable } from "../../../components/Skeleton";
 import { AddButton, SecondaryButton } from "../../../components/PageHeader";
+import LiveIndicator from "../../../components/LiveIndicator";
 import { Card, SectionHeader, KpiTile, Pill, number, dateTime, exportCsv } from "./shared";
 
 export default function Overview({ warehouseId, onJump }) {
@@ -16,6 +17,8 @@ export default function Overview({ warehouseId, onJump }) {
     queryKey: ["inventory-dashboard-v2", warehouseId],
     queryFn: () => inventoryApi.dashboard(warehouseId ? { warehouseId } : {}),
     staleTime: 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   if (query.isPending) return <><SkeletonCards count={4} /><SkeletonTable rows={6} cols={5} /></>;
@@ -30,6 +33,12 @@ export default function Overview({ warehouseId, onJump }) {
 
   return (
     <div className="space-y-6">
+      {/* Live status + refresh */}
+      <div className="flex items-center justify-between gap-3">
+        <LiveIndicator query={query} onRefresh={query.refetch} label="Inventory" />
+        <span className="text-xs text-slate-400">Click a KPI to open its records</span>
+      </div>
+
       {/* Opening stock prompt */}
       {!isFresh && (
         <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
@@ -48,20 +57,20 @@ export default function Overview({ warehouseId, onJump }) {
         </Card>
       )}
 
-      {/* KPI Grid */}
+      {/* KPI Grid — each tile opens its live operational list */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Inventory value" value={k.inventoryValuePaise} tone="blue" icon={BarChart3} formatter={formatRupeesCompact} detail="FIFO cost basis" />
-        <KpiTile label="Total stock" value={k.totalStock} tone="slate" icon={Boxes} formatter={(v) => `${number(v, 3)} u`} detail={`${k.totalSkus || 0} active SKUs`} />
-        <KpiTile label="Turnover (annualized)" value={k.inventoryTurnover} tone="purple" icon={RefreshCw} formatter={(v) => `${number(v, 2)}x`} detail="Sales ÷ avg on-hand" />
-        <KpiTile label="Reserved stock" value={k.reservedStock} tone="emerald" icon={Layers} formatter={(v) => number(v, 3)} detail="Active allocations" />
+        <KpiTile label="Inventory value" value={k.inventoryValuePaise} tone="blue" icon={BarChart3} formatter={formatRupeesCompact} detail="FIFO cost basis · view stock" onClick={() => onJump("Stock")} />
+        <KpiTile label="Total stock" value={k.totalStock} tone="slate" icon={Boxes} formatter={(v) => `${number(v, 3)} u`} detail={`${k.totalSkus || 0} active SKUs · view stock`} onClick={() => onJump("Stock")} />
+        <KpiTile label="Turnover (annualized)" value={k.inventoryTurnover} tone="purple" icon={RefreshCw} formatter={(v) => `${number(v, 2)}x`} detail="Sales ÷ avg on-hand · view movements" onClick={() => onJump("Movements")} />
+        <KpiTile label="Reserved stock" value={k.reservedStock} tone="emerald" icon={Layers} formatter={(v) => number(v, 3)} detail="Active allocations · view reserved" onClick={() => onJump("Reserved Stocks")} />
       </section>
 
       {/* Risk strip */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Out of stock" value={k.outOfStockItems} tone="rose" icon={AlertTriangle} detail="Items with zero on-hand" />
-        <KpiTile label="Low stock" value={k.lowStockItems} tone="amber" icon={AlertTriangle} detail="At or below reorder level" />
-        <KpiTile label="Overstock" value={k.overstockItems} tone="amber" icon={Box} detail="Above 3× reorder level" />
-        <KpiTile label="Expiring (90d)" value={k.expiringBatches} tone="rose" icon={FileClock} detail="Batches needing attention" />
+        <KpiTile label="Out of stock" value={k.outOfStockItems} tone="rose" icon={AlertTriangle} detail="Items with zero on-hand · view stock" onClick={() => onJump("Stock")} />
+        <KpiTile label="Low stock" value={k.lowStockItems} tone="amber" icon={AlertTriangle} detail="At or below reorder level · view stock" onClick={() => onJump("Stock")} />
+        <KpiTile label="Overstock" value={k.overstockItems} tone="amber" icon={Box} detail="Above 3× reorder level · view stock" onClick={() => onJump("Stock")} />
+        <KpiTile label="Expiring (90d)" value={k.expiringBatches} tone="rose" icon={FileClock} detail="Batches needing attention · view lots" onClick={() => onJump("Traceability")} />
       </section>
 
       {/* Warehouse summary + ABC */}
@@ -159,16 +168,16 @@ export default function Overview({ warehouseId, onJump }) {
         {data.recentActivity?.length ? (
           <div className="divide-y divide-slate-100">
             {data.recentActivity.map((row) => (
-              <div key={row.id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <button key={row.id} onClick={() => onJump("Movements")} className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-slate-50">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-slate-900">{row.item?.name || "Inventory movement"}</p>
-                  <p className="text-xs text-slate-500">{row.warehouse?.name || "Warehouse"} · {dateTime(row.createdAt)}</p>
+                  <p className="text-xs text-slate-500">{row.warehouse?.name || "—"} · {dateTime(row.createdAt)}</p>
                 </div>
                 <div className="text-right">
-                  <Pill tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>{row.transactionType.replaceAll("_", " ")}</Pill>
+                  <Pill tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>{(row.transactionType || "MOVEMENT").replaceAll("_", " ")}</Pill>
                   <p className="mt-1 tabular-nums text-xs text-slate-600">{Number(row.quantity) > 0 ? "+" : ""}{number(row.quantity, 3)}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ) : (
@@ -268,7 +277,7 @@ function ExpiringBatches({ data }) {
               <div key={row.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-slate-900">{row.item?.name}</p>
-                  <p className="font-mono text-xs text-slate-500">{row.item?.itemCode} · Batch {row.batchNumber || "—"} · {row.warehouse?.name || ""}</p>
+                  <p className="font-mono text-xs text-slate-500">{row.item?.itemCode} · Batch {row.batchNumber || "—"} · {row.warehouse?.name || "—"}</p>
                 </div>
                 <div className="text-right">
                   <Pill tone={days != null && days < 0 ? "rose" : days != null && days < 30 ? "amber" : "blue"}>

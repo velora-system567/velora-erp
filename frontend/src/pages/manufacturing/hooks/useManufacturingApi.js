@@ -12,6 +12,8 @@ export function useManufacturingDashboard() {
     queryKey: ["mfg-dashboard"],
     queryFn: manufacturingApi.dashboard,
     staleTime: 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 }

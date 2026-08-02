@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { BarChart3, Search } from "lucide-react";
 import { accountsApi } from "../../services/api";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -156,14 +157,30 @@ function BalanceSheetTab() {
 
 function JournalEntriesTab() {
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["journal-entries"], queryFn: () => accountsApi.journalEntries() });
-  const rows = query.data?.data || [];
+  const allRows = query.data?.data || [];
+  const rows = allRows.filter((e) =>
+    `${e.entryNo || ""} ${e.narration || ""}`.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (query.isPending) return <SkeletonTable rows={6} cols={4} />;
   if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["journal-entries"] })} />;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-slate-100 p-3">
+        <label className="relative flex-1 sm:max-w-xs">
+          <Search size={15} className="pointer-events-none absolute left-3 top-3 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search entries by number or narration…"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
+        <span className="ml-auto text-xs text-slate-400">{rows.length} of {allRows.length}</span>
+      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
@@ -171,7 +188,7 @@ function JournalEntriesTab() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-12 text-center text-slate-400">No journal entries. They are auto-created when you post invoices and payments.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-12 text-center text-slate-400">{allRows.length === 0 ? "No journal entries. They are auto-created when you post invoices and payments." : "No entries match your search."}</td></tr>
             ) : rows.map((e) => (
               <tr key={e.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
@@ -223,6 +240,7 @@ function Gstr3bTab() {
 
 function DebtorAgingTab() {
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
   const query = useQuery({ queryKey: ["debtor-aging"], queryFn: accountsApi.debtorAging });
   const data = query.data?.data;
 
@@ -232,6 +250,9 @@ function DebtorAgingTab() {
 
   const buckets = data.buckets || {};
   const bucketKeys = ["current", "0-30", "31-60", "61-90", "90+"];
+  const agingRows = (data.rows || []).filter((r) => r.outstandingAmount > 0).filter((r) =>
+    `${r.documentNo || ""} ${r.customerName || ""}`.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-4">
@@ -244,13 +265,25 @@ function DebtorAgingTab() {
         ))}
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-2 border-b border-slate-100 p-3">
+          <label className="relative flex-1 sm:max-w-xs">
+            <Search size={15} className="pointer-events-none absolute left-3 top-3 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search unpaid invoices…"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+          <span className="ml-auto text-xs text-slate-400">{agingRows.length} unpaid</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>{["Invoice No", "Date", "Total", "Paid", "Outstanding", "Age (Days)"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(data.rows || []).filter((r) => r.outstandingAmount > 0).map((r) => (
+              {agingRows.length ? agingRows.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.documentNo}</td>
                   <td className="px-4 py-3 text-slate-600">{new Date(r.documentDate).toLocaleDateString("en-IN")}</td>
@@ -259,7 +292,9 @@ function DebtorAgingTab() {
                   <td className="px-4 py-3 font-bold text-rose-700">{formatRupees(r.outstandingAmount)}</td>
                   <td className={`px-4 py-3 font-semibold tabular-nums ${r.agingDays > 90 ? "text-rose-700" : r.agingDays > 60 ? "text-amber-700" : "text-slate-700"}`}>{r.agingDays}</td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No outstanding invoices match your search.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -269,9 +304,11 @@ function DebtorAgingTab() {
 }
 
 export function AccountsPage() {
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const location = useLocation();
+  // Seed tab from a KPI drill-down (navigate('/accounts', { state: { tab } })).
+  const [activeTab, setActiveTab] = useState(() => location.state?.tab || "Dashboard");
   const tabContent = {
-    Dashboard: <FinanceDashboard />,
+    Dashboard: <FinanceDashboard onJump={setActiveTab} />,
     "Trial Balance": <TrialBalanceTab />,
     "P&L": <ProfitLossTab />,
     "Balance Sheet": <BalanceSheetTab />,

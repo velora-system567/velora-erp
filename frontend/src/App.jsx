@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { KeyboardShortcutProvider } from "./components/KeyboardShortcutProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
@@ -48,7 +49,8 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
+        <KeyboardShortcutProvider>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -83,7 +85,8 @@ export default function App() {
               <Route path="/access-denied" element={<AccessDenied />} />
             </Route>
           </Route>
-        </Routes>
+          </Routes>
+        </KeyboardShortcutProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );

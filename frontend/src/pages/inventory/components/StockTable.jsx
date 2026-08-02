@@ -18,9 +18,10 @@ export default function StockTable({ warehouseId, search }) {
     staleTime: 60 * 1000,
   });
 
-  if (query.isPending) return <SkeletonTable rows={8} cols={6} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
-
+  // Hooks must be called unconditionally — this useMemo must stay ABOVE the
+  // early returns below. (Previously it sat after them, which threw
+  // "Rendered more hooks than during the previous render" once the query
+  // resolved — that unmounted the app and caused a blank white page.)
   const rows = useMemo(() => {
     const list = (query.data?.data || []).filter(
       (row) => `${row.item?.itemCode || ""} ${row.item?.name || ""}`
@@ -34,6 +35,9 @@ export default function StockTable({ warehouseId, search }) {
     );
     return list;
   }, [query.data, search, sortBy]);
+
+  if (query.isPending) return <SkeletonTable rows={8} cols={6} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
 
   const toggleAll = () =>
     setSelected(selected.length === rows.length ? [] : rows.map((r) => `${r.itemId}::${r.warehouseId}`));

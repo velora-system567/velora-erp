@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Warehouse, MapPin, Plus, RefreshCw, Activity, Package,
-  BarChart3, X, CheckCircle2,
+  BarChart3, X,
 } from "lucide-react";
 import { wmsApi } from "../../services/api";
 import { ErrorBanner, ErrorState } from "../../components/ErrorState";
@@ -78,7 +78,6 @@ function DashboardTab({ data: query }) {
         <KpiTile label="Warehouses" value={d.kpis.totalWarehouses} tone="blue" icon={Warehouse} detail={`${d.kpis.totalLocations} bin locations`} />
         <KpiTile label="Total Stock" value={d.kpis.totalStock} tone="slate" icon={Package} formatter={(v) => number(v, 3)} />
         <KpiTile label="Pending Transfers" value={d.kpis.pendingTransfers} tone="amber" icon={Activity} />
-        <KpiTile label="Open Cycle Counts" value={d.kpis.openCycleCounts} tone="purple" icon={CheckCircle2} />
       </section>
 
       {d.warehouses?.length > 0 && (

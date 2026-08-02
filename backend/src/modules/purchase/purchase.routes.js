@@ -38,6 +38,13 @@ const listQuery = z.object({
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).default(20).transform(v => Math.min(v, 500)),
     status: z.string().optional(),
+    q: z.string().max(200).optional(),
+    fromDate: z.string().optional(),
+    toDate: z.string().optional(),
+    supplierId: optionalUuid(),
+    vendorId: optionalUuid(),
+    sortBy: z.enum(["createdAt", "documentDate", "documentNo", "totalAmount"]).optional(),
+    sortOrder: z.enum(["asc", "desc"]).optional(),
   }),
 });
 

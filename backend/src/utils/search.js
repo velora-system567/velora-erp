@@ -85,16 +85,18 @@ export async function globalSearch(req, query) {
     });
     for (const d of docs) {
       const typeLabel = d.documentType?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const module = d.documentType === "QUOTATION" ? "quotations"
-        : d.documentType === "SALES_ORDER" ? "orders"
-        : d.documentType === "INVOICE" ? "invoices"
-        : "sales";
+      // Route purchase/sales documents to the right module tab.
+      const PURCHASE_DOCS = ["PURCHASE_REQUEST", "RFQ", "PURCHASE_ORDER", "GRN", "GOODS_RECEIPT", "PURCHASE_INVOICE"];
+      const isPurchase = PURCHASE_DOCS.includes(d.documentType);
+      const module = isPurchase ? "/purchase"
+        : d.documentType === "INVOICE" ? "/sales"
+        : "/sales";
       results.push({
         id: d.id,
-        type: "document",
+        type: isPurchase ? "purchaseDoc" : "document",
         label: `${typeLabel} ${d.documentNo || ""}`,
         description: `Status: ${d.status}`,
-        url: `/${module}`,
+        url: `${module}?docNo=${encodeURIComponent(d.documentNo || "")}`,
       });
     }
   } catch { /* skip */ }
@@ -191,6 +193,102 @@ export async function globalSearch(req, query) {
         label: l.name,
         description: `${l.phone || ""} (${l.status})`.trim(),
         url: "/sales",
+      });
+    }
+  } catch { /* skip */ }
+
+  // ─── 8. Search Branches ─────────────────────────────────────────────
+  try {
+    const branches = await prisma.branch.findMany({
+      where: {
+        tenantId, companyId, isDeleted: false,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { code: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, code: true },
+      take: SEARCH_LIMIT,
+    });
+    for (const b of branches) {
+      results.push({
+        id: b.id,
+        type: "branch",
+        label: b.name,
+        description: b.code ? `Code: ${b.code}` : "Branch",
+        url: "/branches",
+      });
+    }
+  } catch { /* skip */ }
+
+  // ─── 9. Search Machines ─────────────────────────────────────────────
+  try {
+    const machines = await prisma.machine.findMany({
+      where: {
+        tenantId, companyId, isDeleted: false,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { machineCode: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, machineCode: true, status: true },
+      take: SEARCH_LIMIT,
+    });
+    for (const m of machines) {
+      results.push({
+        id: m.id,
+        type: "machine",
+        label: m.name,
+        description: `${m.machineCode || ""} (${m.status})`.trim(),
+        url: "/manufacturing",
+      });
+    }
+  } catch { /* skip */ }
+
+  // ─── 10. Search Work Orders ─────────────────────────────────────────
+  try {
+    const workOrders = await prisma.workOrder.findMany({
+      where: {
+        tenantId, companyId, isDeleted: false,
+        OR: [
+          { woNumber: { contains: term, mode: "insensitive" } },
+          { operationName: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, woNumber: true, operationName: true, status: true },
+      take: SEARCH_LIMIT,
+    });
+    for (const w of workOrders) {
+      results.push({
+        id: w.id,
+        type: "workOrder",
+        label: `WO ${w.woNumber || ""}`.trim(),
+        description: `${w.operationName || ""} (${w.status})`.trim(),
+        url: "/manufacturing",
+      });
+    }
+  } catch { /* skip */ }
+
+  // ─── 11. Search Companies ───────────────────────────────────────────
+  try {
+    const companies = await prisma.company.findMany({
+      where: {
+        tenantId, companyId, isDeleted: false,
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { gstin: { contains: term, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, gstin: true },
+      take: SEARCH_LIMIT,
+    });
+    for (const co of companies) {
+      results.push({
+        id: co.id,
+        type: "company",
+        label: co.name,
+        description: co.gstin || "Company",
+        url: "/company",
       });
     }
   } catch { /* skip */ }

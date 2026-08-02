@@ -55,20 +55,7 @@ export default function FilterBar({
   onRemoveFilter,
   compact = false,
 }) {
-  const [showMore, setShowMore] = useState(false);
   const searchRef = useRef(null);
-
-  // Focus search on Ctrl+K
-  useEffect(() => {
-    function handler(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    }
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, []);
 
   return (
     <div className="sticky top-0 z-30 -mx-1 rounded-xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur-sm">

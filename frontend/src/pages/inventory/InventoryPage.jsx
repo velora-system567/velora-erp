@@ -7,15 +7,14 @@
  *  - Movements   : Audit ledger with date and type filters
  *  - Traceability: Batch / lot traceability
  *  - Operations  : Transfers + adjustments + opening stock
- *  - Reservations: Active reservations and releases
- *  - CycleCounts : Create and complete cycle counts
+ *  - Reserved Stocks: Active allocations and releases
  *  - Warehouses  : List / create warehouses
  */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDownUp, Boxes, ClipboardList, FileClock, Layers,
+  ArrowDownUp, Boxes, FileClock, Layers,
   PackagePlus, RefreshCw, Search, Truck, Warehouse,
   BarChart3, Building2, Tag,
 } from "lucide-react";
@@ -28,7 +27,6 @@ import MovementTable from "./components/MovementTable";
 import BatchTable from "./components/BatchTable";
 import TransferWorkspace from "./components/TransferWorkspace";
 import ReservationsPanel from "./components/ReservationsPanel";
-import CycleCountsPanel from "./components/CycleCountsPanel";
 import WarehouseManager from "./components/WarehouseManager";
 
 const TABS = [
@@ -37,15 +35,16 @@ const TABS = [
   ["Movements", ArrowDownUp, "Audit ledger"],
   ["Traceability", FileClock, "Batches & lots"],
   ["Operations", Truck, "Transfer / adjust / open"],
-  ["Reservations", Layers, "Allocations"],
-  ["CycleCounts", ClipboardList, "Physical counts"],
+  ["Reserved Stocks", Layers, "Active allocations"],
   ["Warehouses", Warehouse, "Sites & zones"],
 ];
 
 export function InventoryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
-  const [tab, setTab] = useState("Overview");
+  // Seed tab from a KPI drill-down (navigate('/inventory', { state: { tab } })).
+  const [tab, setTab] = useState(() => location.state?.tab || "Overview");
   const [warehouseId, setWarehouseId] = useState("");
   const [search, setSearch] = useState("");
 
@@ -90,10 +89,8 @@ export function InventoryPage() {
             onPosted={() => setTab("Overview")}
           />
         );
-      case "Reservations":
+      case "Reserved Stocks":
         return <ReservationsPanel warehouses={warehouses} items={items} />;
-      case "CycleCounts":
-        return <CycleCountsPanel warehouses={warehouses} />;
       case "Warehouses":
         return <WarehouseManager />;
       default:

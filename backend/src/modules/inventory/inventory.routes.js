@@ -208,48 +208,6 @@ router.get("/inventory/serials", requirePermission(PERMISSIONS.INVENTORY_READ),
     return ok(res, rows, "Serial traceability report loaded");
   }));
 
-router.get("/inventory/cycle-counts", requirePermission(PERMISSIONS.INVENTORY_READ), asyncHandler(async (req, res) => {
-  const rows = await getPrisma().cycleCount.findMany({ where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, orderBy: { createdAt: "desc" }, take: 100 });
-  return ok(res, rows, "Cycle counts loaded");
-}));
-
-router.post("/inventory/cycle-counts", requirePermission(PERMISSIONS.INVENTORY_CREATE),
-  validate(z.object({ body: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()), scheduledAt: z.coerce.date().optional(), notes: z.string().max(2000).optional() }) })),
-  asyncHandler(async (req, res) => {
-    const prisma = getPrisma(); const input = req.validated.body;
-    const warehouse = await prisma.warehouse.findFirst({ where: { id: input.warehouseId, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, select: { id: true } });
-    if (!warehouse) { const error = new Error("Warehouse was not found in the active company"); error.statusCode = 404; throw error; }
-    const balances = await getStockBalances(prisma, { tenantId: req.tenantId, companyId: req.companyId, warehouseId: input.warehouseId });
-    const countNumber = `CC-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-    const cycleCount = await prisma.$transaction(async (tx) => {
-      const header = await tx.cycleCount.create({ data: { tenantId: req.tenantId, companyId: req.companyId, branchId: req.branchId, warehouseId: input.warehouseId, countNumber, scheduledAt: input.scheduledAt, notes: input.notes, createdBy: req.user.sub, updatedBy: req.user.sub } });
-      if (balances.length) await tx.cycleCountLine.createMany({ data: balances.map((balance) => ({ tenantId: req.tenantId, companyId: req.companyId, cycleCountId: header.id, itemId: balance.itemId, expectedQty: balance.quantity })) });
-      return header;
-    });
-    await writeAudit(req, { tableName: "cycle_counts", recordId: cycleCount.id, action: "CYCLE_COUNT_CREATED", newValue: cycleCount });
-    return created(res, cycleCount, "Cycle count created");
-  }));
-
-router.patch("/inventory/cycle-counts/:id/complete", requirePermission(PERMISSIONS.INVENTORY_ADJUST),
-  validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }), body: z.object({ lines: z.array(z.object({ lineId: z.preprocess(sanitizeUuid, z.string().uuid()), countedQty: z.coerce.number().min(0), notes: z.string().max(500).optional() })).min(1) }) })),
-  asyncHandler(async (req, res) => {
-    const prisma = getPrisma(); const input = req.validated.body;
-    const count = await prisma.cycleCount.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-    if (!count || count.status === "COMPLETED") { const error = new Error("Cycle count was not found or has already been completed"); error.statusCode = 422; throw error; }
-    await prisma.$transaction(async (tx) => {
-      for (const entry of input.lines) {
-        const line = await tx.cycleCountLine.findFirst({ where: { id: entry.lineId, cycleCountId: count.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
-        if (!line) { const error = new Error("Cycle count line was not found"); error.statusCode = 404; throw error; }
-        const variance = Number(entry.countedQty) - Number(line.expectedQty);
-        await tx.cycleCountLine.update({ where: { id: line.id }, data: { countedQty: entry.countedQty, varianceQty: variance, notes: entry.notes || null } });
-        if (variance !== 0) await processStockAdjustment(tx, req, { itemId: line.itemId, warehouseId: count.warehouseId, adjustmentQty: variance, reason: `Cycle count ${count.countNumber}${entry.notes ? `: ${entry.notes}` : ""}`, costRate: 0 });
-      }
-      await tx.cycleCount.update({ where: { id: count.id }, data: { status: "COMPLETED", completedAt: new Date(), updatedBy: req.user.sub } });
-    });
-    await writeAudit(req, { tableName: "cycle_counts", recordId: count.id, action: "CYCLE_COUNT_COMPLETED", newValue: { status: "COMPLETED" } });
-    return ok(res, {}, "Cycle count completed and variances posted");
-  }));
-
 // ─── Opening Stock ────────────────────────────────────────────────────────────
 router.post("/inventory/opening-stock", requirePermission(PERMISSIONS.INVENTORY_CREATE),
   validate(z.object({

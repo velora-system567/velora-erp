@@ -165,7 +165,7 @@ function MovementReport() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {Object.entries(byType).map(([type, qty]) => (
           <Card key={type} padding="p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{type.replaceAll("_", " ")}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{(type || "OTHER").replaceAll("_", " ")}</p>
             <p className="mt-2 text-xl font-bold text-slate-950">{number(qty, 3)} units</p>
           </Card>
         ))}
@@ -201,7 +201,7 @@ function MovementReport() {
                   <Cell className="font-medium text-slate-950">{row.item?.name || "—"}</Cell>
                   <Cell>
                     <Pill tone={Number(row.quantity) < 0 ? "rose" : "emerald"}>
-                      {row.transactionType.replaceAll("_", " ")}
+                      {(row.transactionType || "MOVEMENT").replaceAll("_", " ")}
                     </Pill>
                   </Cell>
                   <Cell className="text-right tabular-nums font-semibold">

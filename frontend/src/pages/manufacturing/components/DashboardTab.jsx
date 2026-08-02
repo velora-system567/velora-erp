@@ -7,7 +7,7 @@ import { PlannedVsActualChart, OeeTrendChart } from "./Charts";
 import { formatNumber, formatPercent } from "./format";
 import { TonedDot } from "./TonedDot";
 
-export function DashboardTab() {
+export function DashboardTab({ onJump }) {
   const {
     factory,
     plantHealth,
@@ -111,10 +111,10 @@ export function DashboardTab() {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards Row */}
+      {/* KPI Cards Row — each opens its live operational tab */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {/* KPI 1: Active Work Orders */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Orders")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <ClipboardList size={18} className="text-blue-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">Live</span>
@@ -122,10 +122,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Active Orders</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{activeOrdersCount}</p>
           <p className="mt-1 text-xs text-slate-500">On-going & Planning</p>
-        </div>
+        </button>
 
         {/* KPI 2: Production Today */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("WorkOrders")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <Activity size={18} className="text-indigo-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Shift</span>
@@ -133,10 +133,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Today's Output</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{formatNumber(todayProduction.actual)}</p>
           <p className="mt-1 text-xs text-slate-500">Dies ({formatPercent((todayProduction.actual/todayProduction.planned)*100, 0)} plan)</p>
-        </div>
+        </button>
 
         {/* KPI 3: Completed Orders */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Orders")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <CheckCircle size={18} className="text-emerald-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Month</span>
@@ -144,10 +144,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Completed</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{completedOrdersCount}</p>
           <p className="mt-1 text-xs text-slate-500">Full runs delivered</p>
-        </div>
+        </button>
 
         {/* KPI 4: Delayed Orders */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Orders")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <AlertTriangle size={18} className="text-rose-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">Urgent</span>
@@ -155,10 +155,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Delayed</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{delayedOrdersCount}</p>
           <p className="mt-1 text-xs text-slate-500">Exceeding deadlines</p>
-        </div>
+        </button>
 
         {/* KPI 5: Machine Utilization */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Machines")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <Building2 size={18} className="text-sky-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avg</span>
@@ -166,10 +166,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Machine Util</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">71.5%</p>
           <p className="mt-1 text-xs text-slate-500">8 lines running</p>
-        </div>
+        </button>
 
         {/* KPI 6: OEE */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Quality")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <BarChart3 size={18} className="text-amber-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">78% Target</span>
@@ -177,10 +177,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">OEE Score</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">78.4%</p>
           <p className="mt-1 text-xs text-slate-500">Composite Yield</p>
-        </div>
+        </button>
 
         {/* KPI 7: Production Cost */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Orders")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <DollarSign size={18} className="text-teal-600" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Est</span>
@@ -188,10 +188,10 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Est. WIP Cost</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{totalCost}</p>
           <p className="mt-1 text-xs text-slate-500">Active run value</p>
-        </div>
+        </button>
 
         {/* KPI 8: Scrap Rate */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+        <button onClick={() => onJump?.("Quality")} className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <ShieldAlert size={18} className="text-rose-500" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">Best 2.5%</span>
@@ -199,7 +199,7 @@ export function DashboardTab() {
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Scrap Rate</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">3.1%</p>
           <p className="mt-1 text-xs text-slate-500">345 defect dies</p>
-        </div>
+        </button>
       </section>
 
       {/* Graphical section */}

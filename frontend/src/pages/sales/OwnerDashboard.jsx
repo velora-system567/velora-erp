@@ -22,7 +22,8 @@ export default function OwnerDashboard() {
     queryKey: ["owner-dashboard"],
     queryFn: () => salesApi.ownerDashboard(),
     staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000, // auto-refresh every 5 min
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   if (query.isPending) return <div className="space-y-4"><SkeletonCards count={4} /></div>;
