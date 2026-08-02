@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useManufacturingStore } from "../hooks/useManufacturingStore";
-import { Search, Filter, Plus, ChevronDown, Check, Columns, Trash2, Edit2, Play, CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, X, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, Plus, ChevronDown, Check, Columns, Trash2, Edit2, Zap, CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, X, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const STATUS_BADGES = {
@@ -353,7 +353,7 @@ export function ProductionOrdersTab() {
               onClick={() => handleBulkStatusChange("IN_PROGRESS")}
               className="inline-flex items-center gap-1 text-xs text-indigo-400 font-semibold hover:text-indigo-300"
             >
-              <Play size={13} />
+              <Zap size={13} />
               Run Lots
             </button>
             <button
@@ -538,24 +538,6 @@ export function ProductionOrdersTab() {
                       )}
                       <td className="px-4 py-3.5 text-center">
                         <div className="inline-flex items-center gap-1">
-                          {o.status !== "COMPLETED" && o.status !== "IN_PROGRESS" && (
-                            <button
-                              onClick={() => updateProductionOrder(o.id, { status: "IN_PROGRESS", progress: 5 })}
-                              className="rounded-lg p-1.5 text-indigo-600 hover:bg-indigo-50 transition"
-                              title="Start Run"
-                            >
-                              <Play size={14} />
-                            </button>
-                          )}
-                          {o.status === "IN_PROGRESS" && (
-                            <button
-                              onClick={() => updateProductionOrder(o.id, { status: "COMPLETED", progress: 100 })}
-                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition"
-                              title="Mark Done"
-                            >
-                              <CheckCircle2 size={14} />
-                            </button>
-                          )}
                           <button
                             onClick={() => {
                               const newProg = prompt("Enter progress percent (0-100):", o.progress);
@@ -570,18 +552,9 @@ export function ProductionOrdersTab() {
                               }
                             }}
                             className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition"
-                            title="Edit Progress"
+                            title="Edit"
                           >
                             <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm("Delete this order?")) deleteProductionOrder(o.id);
-                            }}
-                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 transition"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>

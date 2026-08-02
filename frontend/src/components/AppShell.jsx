@@ -376,7 +376,7 @@ export function AppShell() {
         </header>
 
         {/* Page content */}
-        <main className="min-w-0 pb-24 lg:pb-24">
+        <main className="fab-safe-area min-w-0">
           <GlobalSearch />
           <Outlet />
           <AICopilot />

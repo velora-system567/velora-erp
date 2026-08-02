@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Floating Action Safe Area
+ * Reserves bottom spacing so fixed floating buttons (the AI chatbot, and any
+ * future FABs) never cover pagination, forms, dropdowns, or tables.
+ * The value accounts for the chatbot button (56px) + its 24px margin + a
+ * comfortable 32px gap. Apply `.fab-safe-area` to any scrollable container,
+ * or rely on the global application in AppShell's <main>.
+ */
+:root {
+  --fab-safe-bottom: 7rem;
+}
+.fab-safe-area {
+  padding-bottom: var(--fab-safe-bottom);
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
