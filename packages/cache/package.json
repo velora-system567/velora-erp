@@ -1,0 +1,13 @@
+{
+  "name": "@velora/cache",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "description": "Offline cache, action queue, and sync architecture for Velora ERP",
+  "dependencies": {
+    "zustand": "^5.0.8"
+  }
+}

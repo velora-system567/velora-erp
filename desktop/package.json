@@ -1,0 +1,17 @@
+{
+  "name": "@velora/desktop",
+  "version": "1.5.0",
+  "private": true,
+  "type": "module",
+  "description": "Velora ERP — Desktop Application (Tauri)",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:icon": "tauri icon"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

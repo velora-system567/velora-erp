@@ -5,18 +5,23 @@
   "type": "module",
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "desktop",
+    "packages/*"
   ],
   "scripts": {
     "dev": "npm run dev --workspace frontend",
     "dev:backend": "npm run dev --workspace backend",
     "dev:frontend": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
+    "build:frontend": "npm run build --workspace frontend",
     "build:backend": "npm run build --workspace backend",
     "postinstall": "node -e \"try { require('child_process').execSync('npm run prisma:generate', { stdio: 'inherit' }) } catch(e) { console.log('Skipping prisma:generate (not available in this context)') }\"",
     "start": "npm run start --workspace backend",
     "lint": "eslint --ext .ts,.tsx,.js,.jsx,.mjs .",
-    "prisma:generate": "npm run prisma:generate --workspace backend"
+    "prisma:generate": "npm run prisma:generate --workspace backend",
+    "desktop:dev": "npm run tauri:dev --workspace desktop",
+    "desktop:build": "npm run tauri:build --workspace desktop"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.2",

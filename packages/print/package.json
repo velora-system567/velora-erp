@@ -1,0 +1,11 @@
+{
+  "name": "@velora/print",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "description": "Centralized print and PDF export service for Velora ERP",
+  "dependencies": {}
+}

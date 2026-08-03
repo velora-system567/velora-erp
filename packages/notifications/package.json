@@ -1,0 +1,13 @@
+{
+  "name": "@velora/notifications",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "description": "Centralized notification service for Velora ERP — desktop, browser, and mobile",
+  "dependencies": {
+    "zustand": "^5.0.8"
+  }
+}
