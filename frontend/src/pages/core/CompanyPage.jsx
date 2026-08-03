@@ -1,30 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { Building2, Save, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorState } from "../../components/ErrorState";
+import { PageHeader, SecondaryButton } from "../../components/PageHeader";
 import { SkeletonCards } from "../../components/Skeleton";
 import { coreApi } from "../../services/api";
-
-const placeholders = {
-  name: "Mahindra Auto Parts Pvt Ltd",
-  legalName: "Mahindra Auto Parts Pvt Ltd",
-  gstin: "27AABCM1234A1Z5",
-  panNumber: "AABCM1234A",
-  "address.city": "Pune",
-  "address.state": "Maharashtra",
-  "address.pincode": "411026",
-};
+import { Card, SectionHeader } from "../inventory/components/shared";
 
 export function CompanyPage() {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ["company"], queryFn: coreApi.company });
+  const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({ name: "", legalName: "", gstin: "", panNumber: "", address: { city: "", state: "", pincode: "" } });
+
   useEffect(() => {
     if (query.data?.data) setForm({ address: {}, ...query.data.data });
   }, [query.data]);
+
   const mutation = useMutation({
     mutationFn: () => coreApi.updateCompany(form),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["company"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["company"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    },
   });
 
   function update(key, value) {
@@ -37,47 +36,72 @@ export function CompanyPage() {
   }
 
   if (query.isPending) return (
-    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">
-      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h1 className="text-2xl font-semibold text-slate-950">Company</h1>
-        <p className="mt-1 text-sm leading-6 text-slate-600">Loading company profile...</p>
-      </header>
+    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
+      <PageHeader title="Company" description="Loading company profile..." />
       <SkeletonCards count={4} />
     </div>
   );
+
   if (query.isError) return (
-    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">
-      <ErrorState error={query.error} title="Could not load company" onRetry={() => query.refetch()} />
+    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
+      <PageHeader title="Company" description="Could not load company" />
+      <ErrorState error={query.error} onRetry={() => query.refetch()} />
     </div>
   );
 
+  const fields = [
+    ["name", "Company Name", "e.g. Velora Systems Pvt Ltd"],
+    ["legalName", "Legal Name", "Registered legal entity name"],
+    ["gstin", "GSTIN", "15-digit GST identification number"],
+    ["panNumber", "PAN", "10-character PAN number"],
+    ["address.city", "City", "e.g. Pune"],
+    ["address.state", "State", "e.g. Maharashtra"],
+    ["address.pincode", "PIN Code", "e.g. 411026"],
+  ];
+
   return (
-    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:py-6 xl:p-8">
-      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h1 className="text-2xl font-semibold text-slate-950">Company</h1>
-        <p className="mt-1 text-sm leading-6 text-slate-600">This is the customer's own company profile used across the ERP.</p>
-      </header>
-      <form onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            ["name", "Company Name"],
-            ["legalName", "Legal Name"],
-            ["gstin", "GSTIN"],
-            ["panNumber", "PAN"],
-            ["address.city", "City"],
-            ["address.state", "State"],
-            ["address.pincode", "Pincode"],
-          ].map(([key, label]) => (
-            <label key={key} className="block text-sm font-medium text-slate-700">
-              {label}
-              <input placeholder={placeholders[key]} value={key.startsWith("address.") ? form.address?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => update(key, event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
-            </label>
-          ))}
+    <div className="mx-auto max-w-4xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
+      <PageHeader
+        title="Company"
+        description="Legal identity and registered address for tax and compliance."
+        actions={<SecondaryButton label="Save" icon={Save} onClick={() => mutation.mutate()} disabled={mutation.isPending} />}
+      />
+
+      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}>
+        <Card>
+          <SectionHeader title="Legal Identity" icon={Building2} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {fields.map(([key, label, placeholder]) => (
+              <label key={key} className="block text-sm font-medium text-slate-700">
+                {label}
+                <input
+                  placeholder={placeholder}
+                  value={key.startsWith("address.") ? form.address?.[key.split(".")[1]] || "" : form[key] || ""}
+                  onChange={(e) => update(key, e.target.value)}
+                  className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-xs outline-none transition-all duration-150 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            ))}
+          </div>
+        </Card>
+
+        {/* Status messages */}
+        <div className="mt-4 space-y-3">
+          {mutation.error && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {mutation.error.message}
+            </div>
+          )}
+          {saved && (
+            <div className="animate-fade-in rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <span className="flex items-center gap-2"><CheckCircle size={16} /> Company profile saved successfully.</span>
+            </div>
+          )}
         </div>
-        {mutation.error ? <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{mutation.error.message}</p> : null}
-        {mutation.isSuccess ? <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Company saved.</p> : null}
-        <button className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-          <Save size={18} /> Save Company
+
+        <button type="submit" disabled={mutation.isPending}
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md disabled:opacity-50">
+          <Save size={16} /> {mutation.isPending ? "Saving..." : "Save Changes"}
         </button>
       </form>
     </div>

@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Trash2, Search } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
+import { PageHeader, AddButton } from "../../components/PageHeader";
 import { SkeletonTable } from "../../components/Skeleton";
 import { coreApi } from "../../services/api";
+import { Cell, Head, TableShell } from "../inventory/components/shared";
 
 const configs = {
   branches: {
@@ -171,28 +173,26 @@ export function CorePage({ resource }) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-6 md:py-6 xl:p-8">
-      <header className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:p-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">{config.title}</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Create and maintain records used by your company operations.</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Import Excel
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              const XLSX = await import("xlsx");
-              const workbook = XLSX.read(await file.arrayBuffer());
-              const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-              importMutation.mutate(rows);
-            }} />
-          </label>
-          <button onClick={() => { setEditing(null); setForm(config.blank); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-            <Plus size={18} /> {config.action}
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title={config.title}
+        description="Create and maintain records used by your company operations."
+        actions={
+          <>
+            <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-all duration-150 hover:bg-slate-50 hover:shadow-sm">
+              Import Excel
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const XLSX = await import("xlsx");
+                const workbook = XLSX.read(await file.arrayBuffer());
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                importMutation.mutate(rows);
+              }} />
+            </label>
+            <AddButton label={config.action} onClick={() => { setEditing(null); setForm(config.blank); }} />
+          </>
+        }
+      />
 
       <section className="grid gap-4 lg:grid-cols-[380px_1fr]">
         <form onSubmit={(event) => { event.preventDefault(); saveMutation.mutate(); }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -202,38 +202,38 @@ export function CorePage({ resource }) {
               <label key={key} className="block text-sm font-medium text-slate-700">
                 {label}
                 {selectOptions[key] ? (
-                  <select value={form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-blue-500">
+                  <select value={form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-xs outline-none transition-all duration-150 focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                     {selectOptions[key].map(([value, optionLabel]) => (
                       <option key={value} value={value}>{optionLabel}</option>
                     ))}
                   </select>
                 ) : (
-                  <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? form[key.split(".")[0]]?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-blue-500" />
+                  <input placeholder={placeholderFor(resource, key)} value={key.includes(".") ? form[key.split(".")[0]]?.[key.split(".")[1]] || "" : form[key] || ""} onChange={(event) => setForm((current) => setNested(current, key, event.target.value))} className="mt-1.5 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-xs outline-none transition-all duration-150 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
                 )}
               </label>
             ))}
           </div>
-          {saveMutation.error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{saveMutation.error.message}</p> : null}
-          <button className="mt-5 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300" disabled={saveMutation.isPending}>
+          {saveMutation.error ? <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{saveMutation.error.message}</div> : null}
+          <button className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 hover:shadow-md disabled:opacity-50" disabled={saveMutation.isPending}>
             {isEditing ? "Save Changes" : config.action}
           </button>
         </form>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           {rows.length === 0 ? (
-            <EmptyState title={config.empty} description="Records created here will be saved permanently and shown to authorized users only." action="" />
+            <EmptyState title={config.empty} description="Records created here will be saved permanently and shown to authorized users only." />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                   <tr>
-                    {config.columns.map((column) => <th key={column} className="px-3 py-3 font-semibold">{column}</th>)}
-                    <th className="px-3 py-3 text-right font-semibold">Actions</th>
+                    {config.columns.map((column) => <th key={column} className="px-3 py-3">{column}</th>)}
+                    <th className="px-3 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {rows.map((row) => (
-                    <tr key={row.id}>
+                    <tr key={row.id} className="transition-colors duration-150 hover:bg-slate-50">
                       {config.columns.map((column) => <td key={column} className="whitespace-nowrap px-3 py-3 text-slate-700">{getValue(row, column)}</td>)}
                       <td className="px-3 py-3">
                         <div className="flex justify-end gap-2">
