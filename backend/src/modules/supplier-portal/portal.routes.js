@@ -22,7 +22,7 @@ router.get("/supplier-portal/dashboard", requirePermission(PERMISSIONS.PURCHASE_
   const [pendingPOs, approvedPOs, completedPOs, totalPOs, totalInvoices, pendingPayments, vendors] = await Promise.all([
     prisma.businessDocument.count({ where: { ...vWhere, ...vendorFilter, status: { in: ["DRAFT", "SUBMITTED"] } } }),
     prisma.businessDocument.count({ where: { ...vWhere, ...vendorFilter, status: "APPROVED" } }),
-    prisma.businessDocument.count({ where: { ...vWhere, ...vendorFilter, status: "COMPLETED" } }),
+    prisma.businessDocument.count({ where: { ...vWhere, ...vendorFilter, status: "CLOSED" } }),
     prisma.businessDocument.aggregate({ where: { ...vWhere, ...vendorFilter }, _sum: { totalAmount: true }, _count: true }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, ...vendorFilter }, _sum: { totalAmount: true }, _count: true }),
     prisma.payment.aggregate({ where: { tenantId, companyId, paymentType: "PAYMENT", isDeleted: false, ...(vendorId ? { partyId: vendorId } : {}) }, _sum: { amount: true }, _count: true }),

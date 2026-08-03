@@ -33,7 +33,7 @@ router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHan
     prisma.lead.findMany({ where: { tenantId, companyId, isDeleted: false, nextFollowUp: { gte: todayStart, lt: todayEnd } }, orderBy: { nextFollowUp: "asc" }, take: 10 }),
     prisma.lead.aggregate({ where: { tenantId, companyId, isDeleted: false, status: { notIn: ["LOST"] } }, _sum: { value: true } }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
-    prisma.lead.findMany({ where: { tenantId, companyId, isDeleted: false }, orderBy: { updatedAt: "desc" }, take: 10, include: { _count: { select: { activities: true } } } }),
+    prisma.lead.findMany({ where: { tenantId, companyId, isDeleted: false }, orderBy: { updatedAt: "desc" }, take: 10 }),
   ]);
 
   return ok(res, {

@@ -548,7 +548,7 @@ export async function getOwnerDashboard(req) {
 
   // Enrich IDs with names
   const customerIds = [...new Set([...overdueInvoices.map((i) => i.partyId), ...recentWins.map((w) => w.partyId), ...inactiveCustomers.map((c) => c.id)].filter(Boolean))];
-  const customers = customerIds.length ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, phone: true } }) : [];
+  const customers = customerIds.length ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true } }) : [];
   const customerMap = new Map(customers.map((c) => [c.id, c]));
 
   const itemIds = topProducts.map((p) => p.itemId).filter(Boolean);

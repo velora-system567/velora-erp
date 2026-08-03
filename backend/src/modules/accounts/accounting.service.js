@@ -22,14 +22,28 @@ export async function getFinanceDashboard(req) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [trialBalance, receivables, payables, gstPayable, invoicing, purchasing] = await Promise.all([
+  // GST payable = credit balances on output GST accounts (2100/2110/2120).
+  // JournalEntryLine has no `account` relation in the schema — resolve the
+  // account IDs from ChartOfAccount first, then filter by accountId.
+  const gstPayable = prisma.chartOfAccount
+    .findMany({ where: { tenantId, companyId, code: { in: ["2100", "2110", "2120"] }, isDeleted: false }, select: { id: true } })
+    .then((accounts) =>
+      prisma.journalEntryLine.aggregate({
+        where: { tenantId, companyId, accountId: { in: accounts.map((a) => a.id) } },
+        _sum: { credit: true },
+      })
+    );
+
+  const [trialBalance, receivables, payables, invoicing, purchasing] = await Promise.all([
     getTrialBalance(req),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", status: { notIn: ["CANCELLED"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", status: { notIn: ["CANCELLED"] }, isDeleted: false }, _sum: { totalAmount: true }, _count: true }),
-    prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, account: { code: { in: ["2100", "2110", "2120"] } } }, _sum: { credit: true } }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, documentDate: { gte: monthStart } }, _sum: { totalAmount: true }, _count: true }),
   ]);
+
+  // gstPayable was computed before the main Promise.all
+  const gstPayableResolved = await gstPayable;
 
   // trialBalance is returned as an array from getTrialBalance (not { rows: [...] })
   const tbRows = Array.isArray(trialBalance) ? trialBalance : (trialBalance?.rows || []);
@@ -52,7 +66,7 @@ export async function getFinanceDashboard(req) {
       revenue: incomeTotal,
       expenses: expenseTotal,
       netProfit: incomeTotal - expenseTotal,
-      gstPayable: Math.abs(gstPayable._sum.credit || 0),
+      gstPayable: Math.abs(gstPayableResolved._sum.credit || 0),
       monthlyRevenue: invoicing._sum.totalAmount || 0,
       monthlyExpenses: purchasing._sum.totalAmount || 0,
       outstandingInvoices: receivables._count || 0,

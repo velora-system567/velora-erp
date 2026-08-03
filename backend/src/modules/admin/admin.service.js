@@ -140,9 +140,11 @@ export async function deleteRole(req, roleId) {
 
 export async function listPermissions(req) {
   const prisma = getPrisma();
+  // Permission has no `module` column — module is derived from the key prefix
+  // (e.g. "sales:read"). Order by key; the client groups by module.
   return prisma.permission.findMany({
     where: { tenantId: req.tenantId, isDeleted: false },
-    orderBy: [{ module: "asc" }, { key: "asc" }],
+    orderBy: [{ key: "asc" }],
   });
 }
 

@@ -40,7 +40,9 @@ router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_RE
     prisma.lead.count({ where: { tenantId, companyId, isDeleted: false } }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
     prisma.businessDocument.aggregate({ where: { tenantId, companyId, documentType: "PURCHASE_INVOICE", isDeleted: false, status: { notIn: ["CANCELLED"] } }, _sum: { totalAmount: true }, _count: true }),
-    prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, account: { code: { in: ["2100", "2110", "2120"] } } }, _sum: { credit: true } }),
+    // JournalEntryLine has no `account` relation — resolve output-GST account IDs first
+    prisma.chartOfAccount.findMany({ where: { tenantId, companyId, code: { in: ["2100", "2110", "2120"] }, isDeleted: false }, select: { id: true } })
+      .then((accounts) => prisma.journalEntryLine.aggregate({ where: { tenantId, companyId, accountId: { in: accounts.map((a) => a.id) } }, _sum: { credit: true } })),
     prisma.stockBatch.aggregate({ where: { tenantId, companyId, isDeleted: false, qtyRemaining: { gt: 0 } }, _sum: { qtyRemaining: true } }),
     prisma.warehouse.count({ where: { tenantId, companyId, isDeleted: false, isActive: true } }),
     prisma.stockTransfer.count({ where: { tenantId, companyId, isDeleted: false, status: { in: ["DRAFT", "SUBMITTED"] } } }),

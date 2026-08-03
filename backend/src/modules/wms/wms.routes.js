@@ -20,8 +20,11 @@ router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyn
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
 
-  const [warehouses, locations, batches, transfers, adjustments, cycleCounts, lowStockAlert] = await Promise.all([
-    prisma.warehouse.findMany({ where: { tenantId, companyId, isDeleted: false }, select: { id: true, name: true, warehouseType: true, capacity: true, isActive: true, _count: { select: { locations: true } } } }),
+  // Warehouse has no `locations` relation in the schema — derive location
+  // counts per warehouse from InventoryLocation.groupBy.
+  const [warehouses, locationCounts, locations, batches, transfers, adjustments, cycleCounts, lowStockAlert] = await Promise.all([
+    prisma.warehouse.findMany({ where: { tenantId, companyId, isDeleted: false }, select: { id: true, name: true, warehouseType: true, capacity: true, isActive: true } }),
+    prisma.inventoryLocation.groupBy({ by: ["warehouseId"], where: { tenantId, companyId, isDeleted: false }, _count: true }),
     prisma.inventoryLocation.count({ where: { tenantId, companyId, isDeleted: false } }),
     prisma.stockBatch.findMany({ where: { tenantId, companyId, isDeleted: false, qtyRemaining: { gt: 0 } }, select: { warehouseId: true, qtyRemaining: true } }),
     prisma.stockTransfer.count({ where: { tenantId, companyId, isDeleted: false, status: { in: ["DRAFT", "SUBMITTED"] } } }),
@@ -37,13 +40,16 @@ router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyn
     whStock.set(b.warehouseId, current + Number(b.qtyRemaining));
   }
 
+  // Location counts per warehouse (from groupBy)
+  const locationCountMap = new Map(locationCounts.map((l) => [l.warehouseId, l._count]));
+
   const warehouseSummary = warehouses.map((w) => ({
     id: w.id,
     name: w.name,
     type: w.warehouseType,
     capacity: w.capacity,
     isActive: w.isActive,
-    locationCount: w._count.locations,
+    locationCount: locationCountMap.get(w.id) || 0,
     stockUnits: Number(whStock.get(w.id) || 0).toFixed(3),
     utilization: w.capacity ? Math.min(100, Math.round((Number(whStock.get(w.id) || 0) / Number(w.capacity)) * 100)) : 0,
   }));

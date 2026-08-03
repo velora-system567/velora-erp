@@ -193,21 +193,21 @@ export default function GlobalSearch() {
       <div className="px-4 pt-3 lg:px-6">
         <button
           onClick={() => setSearchOpen(true)}
-          className="mx-auto flex h-10 w-full max-w-xl items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-400 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-500"
+          className="mx-auto flex h-10 w-full max-w-xl items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-400 shadow-xs transition-all duration-200 hover:border-slate-300 hover:shadow-sm hover:text-slate-500"
           title="Search everything (Ctrl+K)"
         >
-          <Search size={15} />
+          <Search size={15} className="shrink-0" />
           <span className="truncate">Search customers, orders, inventory, modules...</span>
-          <span className="ml-auto shrink-0 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">Ctrl K</span>
+          <kbd className="ml-auto shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 font-mono">⌘K</kbd>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[10vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 pt-[8vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)}>
       <div
-        className="w-full max-w-2xl animate-scale-in rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="w-full max-w-2xl animate-scale-in rounded-2xl border border-slate-200/80 bg-white shadow-xl ring-1 ring-slate-900/5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -224,15 +224,15 @@ export default function GlobalSearch() {
           />
           {loading && <Loader2 size={16} className="animate-spin text-slate-400" />}
           {query && (
-            <button onClick={() => { setQuery(""); setResults([]); inputRef.current?.focus(); }} className="rounded p-1 text-slate-400 hover:bg-slate-100">
+            <button onClick={() => { setQuery(""); setResults([]); inputRef.current?.focus(); }} className="rounded-md p-1 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-600">
               <X size={15} />
             </button>
           )}
-          <kbd className="hidden shrink-0 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 sm:inline">ESC</kbd>
+          <kbd className="hidden shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 font-mono sm:inline">ESC</kbd>
         </div>
 
         {/* Grouped results */}
-        <div className="max-h-[60vh] overflow-y-auto p-2">
+        <div className="max-h-[60vh] overflow-y-auto p-2 scrollbar-thin">
           {groups.current.length === 0 && query && !loading && (
             <div className="flex flex-col items-center py-8 text-center">
               <AlertCircle size={32} className="text-slate-300" />
@@ -260,8 +260,8 @@ export default function GlobalSearch() {
                     <button
                       key={`${result.type}-${result.id}`}
                       onClick={() => navigateTo(result)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                        isSelected(selectedIndex, groups.current, result) ? "bg-blue-50 ring-1 ring-blue-200" : "hover:bg-slate-50"
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${
+                        isSelected(selectedIndex, groups.current, result) ? "bg-blue-50 ring-1 ring-blue-200 shadow-xs" : "hover:bg-slate-50"
                       }`}
                     >
                       <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg border ${meta.color}`}>

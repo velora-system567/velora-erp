@@ -4,13 +4,14 @@
 
 /** Single skeleton block */
 export function Skeleton({ className = "" }) {
-  return <div className={`animate-pulse rounded-lg bg-slate-200 ${className}`} />;
+  return <div className={`animate-shimmer rounded-lg bg-slate-200 ${className}`} />;
 }
 
 /** Row of skeleton cards (for KPI grids) */
 export function SkeletonCards({ count = 4 }) {
+  const cols = { 2: "sm:grid-cols-2 xl:grid-cols-2", 3: "sm:grid-cols-2 xl:grid-cols-3", 4: "sm:grid-cols-2 xl:grid-cols-4" };
   return (
-    <div className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-${count}`}>
+    <div className={`grid gap-3 ${cols[count] || "sm:grid-cols-2 xl:grid-cols-4"}`}>
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton key={i} className="h-24 rounded-xl" />
       ))}

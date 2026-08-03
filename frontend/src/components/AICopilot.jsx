@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useOverlayStack } from "../hooks/useShortcutManager";
 import { useMutation } from "@tanstack/react-query";
 import { Bot, X, Send, Loader2, Sparkles } from "lucide-react";
 import { aiApi } from "../services/api";
@@ -19,6 +20,17 @@ export default function AICopilot() {
   ]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
+  useOverlayStack("ai-copilot", open);
+
+  // Close with Escape while the panel is open
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,7 +61,7 @@ export default function AICopilot() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 hover:scale-105 active:scale-95"
+          aria-label="Open AI assistant" className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-50 grid h-14 w-14 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 hover:scale-105 active:scale-95 sm:right-6 lg:right-6 lg:bottom-6"
         >
           <Bot size={24} />
         </button>
@@ -57,7 +69,18 @@ export default function AICopilot() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 flex w-[380px] flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-[420px]">
+        <>
+        {/* Scrim: focus the chat; click anywhere outside to close */}
+        <div
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[2px]"
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Velora AI Copilot"
+          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-50 flex max-h-[min(540px,calc(100dvh-9.5rem))] w-[calc(100vw-2rem)] max-w-[420px] flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl sm:right-6 lg:right-6 lg:bottom-6 lg:max-h-[min(540px,calc(100dvh-7rem))]">
           {/* Header */}
           <div className="flex items-center justify-between rounded-t-2xl border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-white">
             <div className="flex items-center gap-2">
@@ -75,7 +98,7 @@ export default function AICopilot() {
           </div>
 
           {/* Messages */}
-          <div className="flex h-[400px] flex-col overflow-y-auto p-4 space-y-3">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm ${
@@ -134,6 +157,7 @@ export default function AICopilot() {
             </div>
           </div>
         </div>
+        </>
       )}
     </>
   );

@@ -13,15 +13,15 @@ function KpiCard({ label, value, icon: Icon, color = "text-blue-600", formatter,
   const display = formatter ? formatter(value) : value;
   const body = (
     <>
-      <Icon className={color} size={20} />
-      <p className="mt-4 text-2xl font-bold tabular-nums text-slate-950">{display}</p>
-      <p className="mt-1 text-sm text-slate-600">{label}</p>
+      <Icon className={`${color} transition-transform duration-150`} size={20} />
+      <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-slate-950">{display}</p>
+      <p className="mt-1 text-sm text-slate-500">{label}</p>
     </>
   );
-  const cls = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md";
+  const cls = "group rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:shadow-md hover:border-slate-300";
   if (to) {
     return (
-      <Link to={to} className={`${cls} block cursor-pointer hover:border-blue-300`}>
+      <Link to={to} className={`${cls} block cursor-pointer`}>
         {body}
       </Link>
     );
@@ -100,36 +100,36 @@ export function Dashboard() {
       {/* Secondary KPIs */}
       {kpis && (
         <section className="grid gap-3 sm:grid-cols-3">
-          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly Sales</p>
-            <p className="mt-1.5 text-xl font-bold text-slate-950">{formatRupeesCompact(kpis.monthlySalesPaise)}</p>
+          <Link to="/sales" className="group rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:border-blue-300 hover:shadow-md">
+            <p className="erp-section-title">Monthly Sales</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-slate-950">{formatRupeesCompact(kpis.monthlySalesPaise)}</p>
           </Link>
-          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Collections</p>
-            <p className="mt-1.5 text-xl font-bold text-emerald-700">{formatRupeesCompact(kpis.todaysCollectionsPaise)}</p>
+          <Link to="/sales" className="group rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:border-emerald-300 hover:shadow-md">
+            <p className="erp-section-title">Today's Collections</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-emerald-700">{formatRupeesCompact(kpis.todaysCollectionsPaise)}</p>
           </Link>
-          <Link to="/sales" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Invoices</p>
-            <p className="mt-1.5 text-xl font-bold text-slate-950">{kpis.todaysInvoiceCount}</p>
+          <Link to="/sales" className="group rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:border-blue-300 hover:shadow-md">
+            <p className="erp-section-title">Today's Invoices</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-slate-950">{kpis.todaysInvoiceCount}</p>
           </Link>
         </section>
       )}
 
       {/* Charts row */}
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2">
         {/* Sales Trend */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-slate-600">7-Day Sales Trend</p>
-              <p className="mt-1 text-3xl font-bold text-slate-950">
+              <p className="text-sm font-medium text-slate-500">7-Day Sales Trend</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-slate-950">
                 {formatRupeesCompact(kpis?.todaysSalesPaise || 0)}
               </p>
-              <p className="mt-1 text-xs text-slate-500">Based on approved invoices</p>
+              <p className="mt-0.5 text-xs text-slate-400">Based on approved invoices</p>
             </div>
-            <TrendingUp className="text-blue-600" size={22} />
+            <TrendingUp className="text-blue-500" size={20} />
           </div>
-          <div className="mt-5 h-56">
+          <div className="mt-4 h-52">
             {chartQuery.isPending ? (
               <div className="h-full animate-pulse rounded-xl bg-slate-100" />
             ) : salesRows.some((r) => r.sales > 0) ? (
@@ -154,21 +154,21 @@ export function Dashboard() {
         </div>
 
         {/* Top Items */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-medium text-slate-600">Top Items This Month</p>
-          <div className="mt-3 space-y-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+          <p className="text-sm font-medium text-slate-500">Top Items This Month</p>
+          <div className="mt-3 space-y-1">
             {topItemsQuery.isPending ? (
               Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />)
             ) : topItems.length === 0 ? (
               <EmptyState title="No Sales Data" description="Post invoices with item lines to see top performers." action="" />
             ) : (
               topItems.slice(0, 8).map((r, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-slate-50">
+                <div key={i} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-slate-50">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-700">{i + 1}</span>
-                    <span className="text-sm font-medium text-slate-950 truncate">{r.item?.name || "Unknown item"}</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">{i + 1}</span>
+                    <span className="text-sm text-slate-700 truncate">{r.item?.name || "Unknown item"}</span>
                   </div>
-                  <span className="shrink-0 text-sm font-bold text-slate-950">{formatRupeesCompact(r.totalSalesPaise)}</span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{formatRupeesCompact(r.totalSalesPaise)}</span>
                 </div>
               ))
             )}
@@ -178,13 +178,13 @@ export function Dashboard() {
 
       {/* Low stock warning strip */}
       {kpis?.lowStockItemCount > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <AlertTriangle size={18} className="shrink-0 text-amber-600" />
-          <p className="text-sm text-amber-900">
+        <Link to="/inventory" className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 transition-all duration-200 hover:border-amber-300 hover:shadow-sm">
+          <AlertTriangle size={18} className="shrink-0 text-amber-500" />
+          <p className="text-sm text-amber-800">
             <span className="font-semibold">{kpis.lowStockItemCount} item{kpis.lowStockItemCount > 1 ? "s" : ""}</span>{" "}
             at or below reorder level. Check the Inventory module to review.
           </p>
-        </div>
+        </Link>
       )}
 
       {/* No API warning */}
