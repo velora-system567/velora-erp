@@ -1,0 +1,38 @@
+
+> @velora-erp/frontend@1.5.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v7.3.6[39m  [2mready in [0m[1m969[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m2:04:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m2:04:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m2:05:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AppShell.jsx, /src/index.css[22m
+[2m2:06:14 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/Skeleton.jsx[22m
+[2m2:06:44 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/dashboard/Dashboard.jsx, /src/index.css[22m
+[2m2:07:07 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/dashboard/Dashboard.jsx, /src/index.css[22m
+[2m2:07:16 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/dashboard/Dashboard.jsx, /src/index.css[22m
+[2m2:07:42 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/dashboard/Dashboard.jsx, /src/index.css[22m
+[2m2:07:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/dashboard/Dashboard.jsx, /src/index.css[22m
+[2m2:08:16 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/GlobalSearch.jsx[22m
+[2m2:08:28 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/GlobalSearch.jsx[22m
+[2m2:09:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/GlobalSearch.jsx[22m
+[2m2:11:57 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AppShell.jsx, /src/index.css[22m
+[2m3:15:28 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/Login.jsx, /src/index.css[22m
+[2m3:15:45 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/Login.jsx, /src/index.css[22m
+[2m3:16:00 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/Login.jsx, /src/index.css[22m
+[2m3:16:38 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/core/AuditLogPage.jsx, /src/pages/auth/ResetPassword.jsx, /src/pages/inventory/InventoryPage.jsx, /src/pages/inventory/SuppliersPage.jsx, /src/pages/eam/EamPage.jsx, /src/pages/sales/OwnerDashboard.jsx, /src/pages/bi/ExecutiveDashboard.jsx, /src/pages/manufacturing/ManufacturingPage.jsx, /src/pages/dashboard/Dashboard.jsx, /src/pages/core/CompanyPage.jsx, /src/components/AppShell.jsx, /src/pages/auth/Register.jsx, /src/pages/inventory/ReportsPage.jsx, /src/pages/crm/CrmPage.jsx, /src/pages/supplier-portal/SupplierPortalPage.jsx, /src/pages/admin/AdminPage.jsx, /src/pages/accounts/AccountsPage.jsx, /src/pages/auth/Login.jsx, /src/pages/core/CorePage.jsx, /src/pages/inventory/ProductsPage.jsx, /src/pages/auth/ForgotPassword.jsx, /src/pages/hrms/HrmsPage.jsx, /src/pages/sales/SalesPage.jsx, /src/pages/wms/WmsPage.jsx, /src/pages/purchase/PurchasePage.jsx, /src/components/PermissionGuard.jsx, /src/pages/inventory/components/ReservationsPanel.jsx, /src/pages/inventory/components/BatchTable.jsx, /src/pages/inventory/components/WarehouseManager.jsx, /src/pages/inventory/components/TransferWorkspace.jsx, /src/pages/inventory/components/MovementTable.jsx, /src/pages/inventory/components/StockTable.jsx, /src/pages/inventory/components/Overview.jsx, /src/components/AICopilot.jsx, /src/pages/accounts/FinanceDashboard.jsx, /src/components/GlobalSearch.jsx[22m
+[2m4:09:00 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/core/AuditLogPage.jsx, /src/index.css[22m
+[2m4:11:01 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/core/CompanyPage.jsx, /src/index.css[22m
+[2m4:11:38 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/settings/SettingsPage.jsx, /src/index.css[22m
+[2m4:12:43 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/core/CorePage.jsx, /src/index.css[22m
+[2m5:33:24 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/core/CorePage.jsx, /src/index.css[22m
+[2m5:34:01 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/core/CorePage.jsx, /src/index.css[22m
+[2m7:44:06 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/PermissionGuard.jsx, /src/components/AppShell.jsx, /src/pages/admin/AdminPage.jsx[22m
+[2m7:44:41 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/AppShell.jsx, /src/index.css[22m
+[2m7:46:12 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/KeyboardShortcutProvider.jsx, /src/pages/settings/SettingsPage.jsx, /src/pages/manufacturing/ManufacturingPage.jsx, /src/components/AppShell.jsx, /src/components/KeyboardShortcutsDialog.jsx, /src/components/AICopilot.jsx, /src/components/GlobalSearch.jsx[22m
+[2m8:11:01 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/accounts/AccountsPage.jsx, /src/index.css[22m
+[2m8:11:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/accounts/AccountsPage.jsx, /src/index.css[22m
+[2m8:11:37 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/accounts/AccountsPage.jsx, /src/index.css[22m

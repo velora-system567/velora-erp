@@ -5,6 +5,7 @@ import { BarChart3, Search } from "lucide-react";
 import { accountsApi } from "../../services/api";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
+import { PageHeader } from "../../components/PageHeader";
 import { SkeletonTable } from "../../components/Skeleton";
 import { formatRupees } from "../../utils/money";
 import FinanceDashboard from "./FinanceDashboard";
@@ -13,10 +14,10 @@ const TABS = ["Dashboard", "Trial Balance", "P&L", "Balance Sheet", "Journal Ent
 
 function TabBar({ active, onChange }) {
   return (
-    <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
+    <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-xs">
       {TABS.map((t) => (
         <button key={t} onClick={() => onChange(t)}
-          className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${active === t ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+          className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 ${active === t ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}>
           {t}
         </button>
       ))}
@@ -319,17 +320,10 @@ export function AccountsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
-      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-950">Accounts</h1>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Double-entry accounting — journal entries, trial balance, P&L, balance sheet, and GST reports.
-            </p>
-          </div>
-          <BarChart3 className="hidden shrink-0 text-blue-600 sm:block" size={22} />
-        </div>
-      </header>
+      <PageHeader
+        title="Accounts"
+        description="Double-entry accounting — journal entries, trial balance, P&L, balance sheet, and GST reports."
+      />
       <TabBar active={activeTab} onChange={setActiveTab} />
       <div className="min-h-[300px]">{tabContent[activeTab]}</div>
     </div>
