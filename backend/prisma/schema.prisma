@@ -9,14 +9,24 @@ datasource db {
 
 enum UserRoleName {
   OWNER
+  SUPER_ADMIN
   ADMIN
-  ACCOUNTANT
+  FOUNDER
   SALES_MANAGER
-  SALESMAN
+  SALES_EXECUTIVE
+  INVENTORY_MANAGER
   STORE_KEEPER
+  PROCUREMENT_MANAGER
+  FINANCE_MANAGER
+  ACCOUNTANT
+  MANUFACTURING_MANAGER
+  HR_MANAGER
+  CRM_MANAGER
+  VIEWER
+  // Legacy names kept for data compatibility
+  SALESMAN
   PURCHASE_MANAGER
   PRODUCTION_OPERATOR
-  HR_MANAGER
 }
 
 enum ItemType {
@@ -240,6 +250,15 @@ model User {
   email           String
   phone           String?
   passwordHash    String   @map("password_hash")
+  avatarUrl       String?  @map("avatar_url")
+  googleId        String?  @unique @map("google_id")
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+  twoFactorMethod  String?  @map("two_factor_method")
+  lastLoginAt     DateTime? @map("last_login_at")
+  lastLoginIp     String?  @map("last_login_ip")
+  failedLoginAttempts Int @default(0) @map("failed_login_attempts")
+  lockedUntil     DateTime? @map("locked_until")
   emailVerifiedAt DateTime? @map("email_verified_at")
   isActive        Boolean  @default(true) @map("is_active")
   createdBy       String?  @map("created_by") @db.Uuid
@@ -253,6 +272,8 @@ model User {
   userBranches            UserBranch[]
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
+  googleAccounts          GoogleAccount[]
+  trustedDevices          TrustedDevice[]
 
   @@unique([tenantId, email])
   @@index([tenantId, isDeleted])
@@ -1337,4 +1358,90 @@ model QualityCheck {
   @@unique([tenantId, qcNumber])
   @@index([tenantId, companyId, workOrderId, isDeleted])
   @@map("quality_checks")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Security Models — Authentication, 2FA, Device Management, QR Login, Audit
+// ═══════════════════════════════════════════════════════════════════════════
+
+model GoogleAccount {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  googleId     String   @map("google_id")
+  email        String
+  name         String?
+  avatarUrl    String?  @map("avatar_url")
+  accessToken  String?  @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, googleId])
+  @@map("google_accounts")
+}
+
+model TrustedDevice {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  deviceName      String?   @map("device_name")
+  browser         String?
+  operatingSystem String?   @map("operating_system")
+  deviceType      String?   @map("device_type")
+  ipAddress       String?   @map("ip_address")
+  location        String?
+  fingerprint     String?
+  isTrusted       Boolean   @default(false) @map("is_trusted")
+  isRevoked       Boolean   @default(false) @map("is_revoked")
+  lastActiveAt    DateTime  @default(now()) @map("last_active_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRevoked])
+  @@map("trusted_devices")
+}
+
+model QRLoginSession {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionCode  String   @unique @map("session_code")
+  qrToken      String   @unique @map("qr_token")
+  userId       String?  @map("user_id") @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  companyId    String?  @map("company_id") @db.Uuid
+  status       String   @default("pending") // pending | approved | rejected | expired
+  deviceInfo   Json?    @map("device_info")
+  ipAddress    String?  @map("ip_address")
+  location     String?
+  approvedAt   DateTime? @map("approved_at")
+  expiresAt    DateTime  @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([sessionCode])
+  @@index([qrToken])
+  @@index([expiresAt])
+  @@map("qr_login_sessions")
+}
+
+model SecurityAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  companyId  String?  @map("company_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   // LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGE, etc.
+  category   String   // auth, security, admin, data
+  details    Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  deviceInfo String?  @map("device_info")
+  location   String?
+  status     String   @default("success") // success | failure | warning
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, action, createdAt])
+  @@index([createdAt])
+  @@map("security_audit_logs")
 }

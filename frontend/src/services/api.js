@@ -109,6 +109,31 @@ export const authApi = {
   me: () => apiRequest("/auth/me"),
   verifyEmail: (token) => apiRequest("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
   resendVerification: (email) => apiRequest("/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }) }),
+
+  // Google OAuth
+  googleUrl: () => apiRequest("/auth/google/url"),
+  googleLogin: (code) => apiRequest("/auth/google", { method: "POST", body: JSON.stringify({ code }) }),
+
+  // Device Management
+  devices: () => apiRequest("/auth/devices"),
+  trustDevice: (deviceId) => apiRequest(`/auth/devices/${deviceId}/trust`, { method: "POST" }),
+  removeDevice: (deviceId) => apiRequest(`/auth/devices/${deviceId}`, { method: "DELETE" }),
+  logoutDevice: (deviceId) => apiRequest(`/auth/devices/${deviceId}/logout`, { method: "POST" }),
+  logoutAllDevices: () => apiRequest("/auth/devices/logout-all", { method: "POST" }),
+
+  // QR Login
+  qrGenerate: () => apiRequest("/auth/qr/generate", { method: "POST" }),
+  qrStatus: (sessionCode) => apiRequest(`/auth/qr/status/${sessionCode}`),
+  qrScan: (qrToken) => apiRequest("/auth/qr/scan", { method: "POST", body: JSON.stringify({ qrToken }) }),
+  qrApprove: (qrToken) => apiRequest("/auth/qr/approve", { method: "POST", body: JSON.stringify({ qrToken }) }),
+  qrReject: (qrToken) => apiRequest("/auth/qr/reject", { method: "POST", body: JSON.stringify({ qrToken }) }),
+
+  // Security
+  securitySummary: () => apiRequest("/auth/security/summary"),
+  securityEvents: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest(`/auth/security/events${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // Legacy exports kept for backward compat
