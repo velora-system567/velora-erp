@@ -52,7 +52,7 @@ function getActiveRoutes(key) {
     crm: ["/crm"],
     hrms: ["/hrms"],
     eam: ["/eam"],
-    reports: ["/reports", "/executive"],
+    reports: ["/executive"],
     audit: ["/activity"],
     settings: ["/settings"],
     admin: ["/admin"],

@@ -33,7 +33,7 @@ const ROUTE_MODULE_MAP = [
   { pattern: /^\/accounts/, module: "accounts" },
   { pattern: /^\/hrms/, module: "hrms" },
   { pattern: /^\/eam/, module: "eam" },
-  { pattern: /^\/reports/, module: "reports" },
+  { pattern: /^\/executive/, module: "reports" },
   { pattern: /^\/activity/, module: "audit" },
   { pattern: /^\/settings/, module: "settings" },
   { pattern: /^\/company/, module: "settings" },

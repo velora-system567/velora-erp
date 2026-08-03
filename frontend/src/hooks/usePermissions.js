@@ -110,7 +110,7 @@ export function useVisibleModules() {
     { key: "crm", path: "/crm", label: "CRM", icon: "Users" },
     { key: "hrms", path: "/hrms", label: "HR", icon: "UserCheck" },
     { key: "eam", path: "/eam", label: "Assets", icon: "Tool" },
-    { key: "reports", path: "/reports", label: "Reports", icon: "BarChart" },
+    { key: "reports", path: "/executive", label: "Reports", icon: "BarChart" },
     { key: "audit", path: "/activity", label: "Audit", icon: "ClipboardCheck" },
     { key: "settings", path: "/settings", label: "Settings", icon: "Settings" },
     { key: "admin", path: "/admin", label: "Administration", icon: "Shield" },
