@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+﻿import { useState, useCallback, useEffect } from "react";
 import {
   Activity, BarChart3, Building2, LogOut, Package, Settings,
   ShoppingBag, ShoppingCart, Users, Warehouse, Shield, PanelLeftClose, PanelLeft, X, ChevronRight,
@@ -98,7 +98,7 @@ export function AppShell() {
 
   useOverlayStack("sidebar-mobile", mobileDrawerOpen && isMobile);
 
-  useState(() => {
+  useEffect(() => {
     const store = usePermissionStore.getState();
     if (!store.loaded) {
       try {
@@ -109,7 +109,7 @@ export function AppShell() {
         }
       } catch { /* ignore */ }
     }
-  });
+  }, []);
 
   async function logout() {
     try {

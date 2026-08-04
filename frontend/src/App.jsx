@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { KeyboardShortcutProvider } from "./components/KeyboardShortcutProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
@@ -51,38 +52,38 @@ export default function App() {
       <BrowserRouter>
         <KeyboardShortcutProvider>
           <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
+          <Route path="/register" element={<RouteErrorBoundary><Register /></RouteErrorBoundary>} />
+          <Route path="/forgot-password" element={<RouteErrorBoundary><ForgotPassword /></RouteErrorBoundary>} />
+          <Route path="/reset-password" element={<RouteErrorBoundary><ResetPassword /></RouteErrorBoundary>} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/company" element={<CompanyPage />} />
-              <Route path="/branches" element={<CorePage resource="branches" />} />
-              <Route path="/users" element={<CorePage resource="users" />} />
-              <Route path="/products" element={<CorePage resource="products" />} />
-              <Route path="/sales" element={<SalesPage />} />
-              <Route path="/sales/dashboard" element={<OwnerDashboard />} />
-              <Route path="/purchase" element={<PurchasePage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/inventory/products" element={<ProductsPage />} />
-              <Route path="/inventory/reports" element={<ReportsPage />} />
-              <Route path="/inventory/suppliers" element={<SuppliersPage />} />
-              <Route path="/accounts" element={<AccountsPage />} />
-              <Route path="/manufacturing" element={<ManufacturingPage />} />
-              <Route path="/crm" element={<CrmPage />} />
-              <Route path="/wms" element={<WmsPage />} />
-              <Route path="/executive" element={<ExecutiveDashboard />} />
-              <Route path="/hrms" element={<HrmsPage />} />
-              <Route path="/eam" element={<EamPage />} />
-              <Route path="/supplier-portal" element={<SupplierPortalPage />} />
-              <Route path="/activity" element={<AuditLogPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
+              <Route path="/company" element={<RouteErrorBoundary><CompanyPage /></RouteErrorBoundary>} />
+              <Route path="/branches" element={<RouteErrorBoundary><CorePage resource="branches" /></RouteErrorBoundary>} />
+              <Route path="/users" element={<RouteErrorBoundary><CorePage resource="users" /></RouteErrorBoundary>} />
+              <Route path="/products" element={<RouteErrorBoundary><CorePage resource="products" /></RouteErrorBoundary>} />
+              <Route path="/sales" element={<RouteErrorBoundary><SalesPage /></RouteErrorBoundary>} />
+              <Route path="/sales/dashboard" element={<RouteErrorBoundary><OwnerDashboard /></RouteErrorBoundary>} />
+              <Route path="/purchase" element={<RouteErrorBoundary><PurchasePage /></RouteErrorBoundary>} />
+              <Route path="/inventory" element={<RouteErrorBoundary><InventoryPage /></RouteErrorBoundary>} />
+              <Route path="/inventory/products" element={<RouteErrorBoundary><ProductsPage /></RouteErrorBoundary>} />
+              <Route path="/inventory/reports" element={<RouteErrorBoundary><ReportsPage /></RouteErrorBoundary>} />
+              <Route path="/inventory/suppliers" element={<RouteErrorBoundary><SuppliersPage /></RouteErrorBoundary>} />
+              <Route path="/accounts" element={<RouteErrorBoundary><AccountsPage /></RouteErrorBoundary>} />
+              <Route path="/manufacturing" element={<RouteErrorBoundary><ManufacturingPage /></RouteErrorBoundary>} />
+              <Route path="/crm" element={<RouteErrorBoundary><CrmPage /></RouteErrorBoundary>} />
+              <Route path="/wms" element={<RouteErrorBoundary><WmsPage /></RouteErrorBoundary>} />
+              <Route path="/executive" element={<RouteErrorBoundary><ExecutiveDashboard /></RouteErrorBoundary>} />
+              <Route path="/hrms" element={<RouteErrorBoundary><HrmsPage /></RouteErrorBoundary>} />
+              <Route path="/eam" element={<RouteErrorBoundary><EamPage /></RouteErrorBoundary>} />
+              <Route path="/supplier-portal" element={<RouteErrorBoundary><SupplierPortalPage /></RouteErrorBoundary>} />
+              <Route path="/activity" element={<RouteErrorBoundary><AuditLogPage /></RouteErrorBoundary>} />
+              <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
               <Route element={<PermissionGuard module="admin" requiredPermission="admin:view" />}>
-                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />
               </Route>
-              <Route path="/access-denied" element={<AccessDenied />} />
+              <Route path="/access-denied" element={<RouteErrorBoundary><AccessDenied /></RouteErrorBoundary>} />
             </Route>
           </Route>
           </Routes>
