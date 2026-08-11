@@ -11,16 +11,19 @@
  * @returns {number}
  */
 export function rupeesToPaise(rupees) {
-  return Math.round(Number(rupees) * 100);
+  return Math.round(Number(rupees || 0) * 100);
 }
 
 /**
  * Converts paise (integer) to rupees (float, 2 decimals).
+ * Defensive: missing/null/NaN input resolves to 0 so dashboards never
+ * render "₹NaN" when a KPI field is absent from a partial API payload.
  * @param {number} paise
  * @returns {number}
  */
 export function paiseToRupees(paise) {
-  return Number((Number(paise) / 100).toFixed(2));
+  const n = Number(paise);
+  return Number.isFinite(n) ? Number((n / 100).toFixed(2)) : 0;
 }
 
 /**

@@ -62,7 +62,7 @@ export default function ExecutiveDashboard() {
       </div>
 
       {/* Business Health Score */}
-      {data.health && (
+      {data.health?.factors && (
         <Card className={`border-2 ${data.health.score >= 80 ? "border-emerald-200" : data.health.score >= 60 ? "border-blue-200" : data.health.score >= 40 ? "border-amber-200" : "border-rose-200"}`}>
           <div className="flex items-center gap-4">
             <div className={`grid h-16 w-16 shrink-0 place-items-center rounded-2xl ${data.health.score >= 80 ? "bg-emerald-100" : data.health.score >= 60 ? "bg-blue-100" : data.health.score >= 40 ? "bg-amber-100" : "bg-rose-100"}`}>
@@ -121,7 +121,7 @@ export default function ExecutiveDashboard() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-slate-950">{a.ref || a.type}</p>
-                      <p className="text-xs text-slate-500">{a.type.replace(/_/g, " ")}</p>
+                      <p className="text-xs text-slate-500">{(a.type || "").replace(/_/g, " ")}</p>
                     </div>
                   </div>
                   <div className="text-right">

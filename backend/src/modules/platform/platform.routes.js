@@ -18,7 +18,7 @@ const uuid = _uuid;
 const optionalUuid = _optUuid;
 
 // ─── API Monitoring Dashboard ────────────────────────────────────
-router.get("/platform/monitoring", requirePermission(PERMISSIONS.ADMIN), asyncHandler(async (req, res) => {
+router.get("/platform/monitoring", requirePermission(PERMISSIONS.ADMIN_VIEW), asyncHandler(async (req, res) => {
   const redis = getRedis();
   const key = `tenant:${req.tenantId}:api:stats`;
   let stats = { requests: 0, errors: 0, avgLatency: 0, endpoints: {} };
@@ -27,14 +27,14 @@ router.get("/platform/monitoring", requirePermission(PERMISSIONS.ADMIN), asyncHa
 }));
 
 // ─── API Keys ────────────────────────────────────────────────────
-router.get("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN), asyncHandler(async (req, res) => {
+router.get("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN_VIEW), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   let keys = [];
   try { keys = await prisma.apiKey.findMany({ where: { tenantId: req.tenantId, isDeleted: false }, orderBy: { createdAt: "desc" } }); } catch { keys = []; }
   return ok(res, keys.map((k) => ({ id: k.id, name: k.name, key: k.key?.slice(0, 8) + "…", lastUsedAt: k.lastUsedAt, createdAt: k.createdAt, isActive: k.isActive })), "API keys");
 }));
 
-router.post("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN),
+router.post("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ body: z.object({ name: z.string().min(2) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -51,7 +51,7 @@ router.post("/platform/api-keys", requirePermission(PERMISSIONS.ADMIN),
     return created(res, { id: result.id, name: result.name, key }, "API key created");
   }));
 
-router.delete("/platform/api-keys/:id", requirePermission(PERMISSIONS.ADMIN),
+router.delete("/platform/api-keys/:id", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -60,14 +60,14 @@ router.delete("/platform/api-keys/:id", requirePermission(PERMISSIONS.ADMIN),
   }));
 
 // ─── Webhooks ────────────────────────────────────────────────────
-router.get("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN), asyncHandler(async (req, res) => {
+router.get("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN_VIEW), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   let hooks = [];
   try { hooks = await prisma.webhook.findMany({ where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, orderBy: { createdAt: "desc" } }); } catch { hooks = []; }
   return ok(res, hooks, "Webhooks loaded");
 }));
 
-router.post("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN),
+router.post("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ body: z.object({ name: z.string().min(2), url: z.string().url(), events: z.array(z.string()).min(1), secret: z.string().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -84,7 +84,7 @@ router.post("/platform/webhooks", requirePermission(PERMISSIONS.ADMIN),
     return created(res, result, "Webhook created");
   }));
 
-router.delete("/platform/webhooks/:id", requirePermission(PERMISSIONS.ADMIN),
+router.delete("/platform/webhooks/:id", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -108,7 +108,7 @@ router.get("/platform/events", (req, res) => {
 });
 
 // ─── Webhook Test ────────────────────────────────────────────────
-router.post("/platform/webhooks/test", requirePermission(PERMISSIONS.ADMIN),
+router.post("/platform/webhooks/test", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ body: z.object({ url: z.string().url(), secret: z.string().optional(), event: z.string().default("test.ping") }) })),
   asyncHandler(async (req, res) => {
     const payload = JSON.stringify({ event: req.validated.body.event, timestamp: new Date().toISOString(), data: { message: "This is a test webhook from Velora ERP" } });
@@ -124,7 +124,7 @@ router.post("/platform/webhooks/test", requirePermission(PERMISSIONS.ADMIN),
   }));
 
 // ─── Import / Export ─────────────────────────────────────────────
-router.post("/platform/export", requirePermission(PERMISSIONS.ADMIN),
+router.post("/platform/export", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ body: z.object({ module: z.enum(["customers", "items", "vendors", "leads", "invoices", "orders", "contacts"]), format: z.enum(["csv", "json"]).default("csv") }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();

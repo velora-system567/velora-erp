@@ -49,13 +49,14 @@ function DashboardTab({ data: query }) {
   if (query.isError) return <ErrorState error={query.error} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No asset data" />;
+  const k = d.kpis || {};
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Total Assets" value={d.kpis.totalAssets} tone="blue" icon={Cpu} detail={`${d.kpis.activeAssets} active`} />
-        <KpiTile label="Active" value={d.kpis.activeAssets} tone="emerald" icon={Activity} />
-        <KpiTile label="Maintenance Due" value={d.kpis.maintenanceDue} tone="amber" icon={Wrench} detail={`${d.kpis.maintenanceOverdue} overdue`} />
-        <KpiTile label="Total Maintenance" value={d.kpis.totalMaintenance} tone="purple" icon={AlertTriangle} />
+        <KpiTile label="Total Assets" value={k.totalAssets} tone="blue" icon={Cpu} detail={`${k.activeAssets} active`} />
+        <KpiTile label="Active" value={k.activeAssets} tone="emerald" icon={Activity} />
+        <KpiTile label="Maintenance Due" value={k.maintenanceDue} tone="amber" icon={Wrench} detail={`${k.maintenanceOverdue} overdue`} />
+        <KpiTile label="Total Maintenance" value={k.totalMaintenance} tone="purple" icon={AlertTriangle} />
       </section>
       {d.recentActivity?.length > 0 && (
         <Card>

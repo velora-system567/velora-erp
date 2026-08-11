@@ -183,7 +183,11 @@ export const me = asyncHandler(async (req, res) => {
     throw error;
   }
   const { passwordHash: _, ...safeUser } = user;
-  return ok(res, { user: safeUser }, "Authenticated user");
+  // Attach the effective permission set computed by requireAuth
+  // (DB role permissions + built-in role defaults). The frontend uses this
+  // as the authoritative source for UI visibility — it must never read
+  // stale permissions embedded in an old JWT.
+  return ok(res, { user: { ...safeUser, permissions: req.user?.permissions || [] } }, "Authenticated user");
 });
 
 // ─── Email Verification Handlers ─────────────────────────────────

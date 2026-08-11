@@ -58,28 +58,69 @@ export default function App() {
           <Route path="/reset-password" element={<RouteErrorBoundary><ResetPassword /></RouteErrorBoundary>} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
-              <Route path="/" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
-              <Route path="/company" element={<RouteErrorBoundary><CompanyPage /></RouteErrorBoundary>} />
-              <Route path="/branches" element={<RouteErrorBoundary><CorePage resource="branches" /></RouteErrorBoundary>} />
-              <Route path="/users" element={<RouteErrorBoundary><CorePage resource="users" /></RouteErrorBoundary>} />
-              <Route path="/products" element={<RouteErrorBoundary><CorePage resource="products" /></RouteErrorBoundary>} />
-              <Route path="/sales" element={<RouteErrorBoundary><SalesPage /></RouteErrorBoundary>} />
-              <Route path="/sales/dashboard" element={<RouteErrorBoundary><OwnerDashboard /></RouteErrorBoundary>} />
-              <Route path="/purchase" element={<RouteErrorBoundary><PurchasePage /></RouteErrorBoundary>} />
-              <Route path="/inventory" element={<RouteErrorBoundary><InventoryPage /></RouteErrorBoundary>} />
-              <Route path="/inventory/products" element={<RouteErrorBoundary><ProductsPage /></RouteErrorBoundary>} />
-              <Route path="/inventory/reports" element={<RouteErrorBoundary><ReportsPage /></RouteErrorBoundary>} />
-              <Route path="/inventory/suppliers" element={<RouteErrorBoundary><SuppliersPage /></RouteErrorBoundary>} />
-              <Route path="/accounts" element={<RouteErrorBoundary><AccountsPage /></RouteErrorBoundary>} />
-              <Route path="/manufacturing" element={<RouteErrorBoundary><ManufacturingPage /></RouteErrorBoundary>} />
-              <Route path="/crm" element={<RouteErrorBoundary><CrmPage /></RouteErrorBoundary>} />
-              <Route path="/wms" element={<RouteErrorBoundary><WmsPage /></RouteErrorBoundary>} />
-              <Route path="/executive" element={<RouteErrorBoundary><ExecutiveDashboard /></RouteErrorBoundary>} />
-              <Route path="/hrms" element={<RouteErrorBoundary><HrmsPage /></RouteErrorBoundary>} />
-              <Route path="/eam" element={<RouteErrorBoundary><EamPage /></RouteErrorBoundary>} />
-              <Route path="/supplier-portal" element={<RouteErrorBoundary><SupplierPortalPage /></RouteErrorBoundary>} />
-              <Route path="/activity" element={<RouteErrorBoundary><AuditLogPage /></RouteErrorBoundary>} />
-              <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
+              {/* Every module route is wrapped in a PermissionGuard that mirrors the
+                  exact permission key the BACKEND enforces for that module. Without
+                  this, direct navigation to a module the user cannot access renders
+                  the page and 403s every API call, producing a permanent, non-
+                  recoverable "Something went wrong" error state. */}
+              <Route element={<PermissionGuard module="dashboard" requiredPermission="dashboard:view" />}>
+                <Route path="/" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="company" requiredPermission="company:view" />}>
+                <Route path="/company" element={<RouteErrorBoundary><CompanyPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="branches" requiredPermission="branches:view" />}>
+                <Route path="/branches" element={<RouteErrorBoundary><CorePage resource="branches" /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="users" requiredPermission="users:view" />}>
+                <Route path="/users" element={<RouteErrorBoundary><CorePage resource="users" /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="products" requiredPermission="products:view" />}>
+                <Route path="/products" element={<RouteErrorBoundary><CorePage resource="products" /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="sales" requiredPermission="sales:view" />}>
+                <Route path="/sales" element={<RouteErrorBoundary><SalesPage /></RouteErrorBoundary>} />
+                <Route path="/sales/dashboard" element={<RouteErrorBoundary><OwnerDashboard /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="purchase" requiredPermission="purchase:view" />}>
+                <Route path="/purchase" element={<RouteErrorBoundary><PurchasePage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="inventory" requiredPermission="inventory:view" />}>
+                <Route path="/inventory" element={<RouteErrorBoundary><InventoryPage /></RouteErrorBoundary>} />
+                <Route path="/inventory/products" element={<RouteErrorBoundary><ProductsPage /></RouteErrorBoundary>} />
+                <Route path="/inventory/reports" element={<RouteErrorBoundary><ReportsPage /></RouteErrorBoundary>} />
+                <Route path="/inventory/suppliers" element={<RouteErrorBoundary><SuppliersPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="accounts" requiredPermission="accounts:view" />}>
+                <Route path="/accounts" element={<RouteErrorBoundary><AccountsPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="manufacturing" requiredPermission="manufacturing:view" />}>
+                <Route path="/manufacturing" element={<RouteErrorBoundary><ManufacturingPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="crm" requiredPermission="sales:view" />}>
+                <Route path="/crm" element={<RouteErrorBoundary><CrmPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="wms" requiredPermission="inventory:view" />}>
+                <Route path="/wms" element={<RouteErrorBoundary><WmsPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="reports" requiredPermission="dashboard:view" />}>
+                <Route path="/executive" element={<RouteErrorBoundary><ExecutiveDashboard /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="hrms" requiredPermission="hr:view" />}>
+                <Route path="/hrms" element={<RouteErrorBoundary><HrmsPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="eam" requiredPermission="manufacturing:view" />}>
+                <Route path="/eam" element={<RouteErrorBoundary><EamPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="supplier-portal" requiredPermission="purchase:view" />}>
+                <Route path="/supplier-portal" element={<RouteErrorBoundary><SupplierPortalPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="audit" requiredPermission="audit:view" />}>
+                <Route path="/activity" element={<RouteErrorBoundary><AuditLogPage /></RouteErrorBoundary>} />
+              </Route>
+              <Route element={<PermissionGuard module="settings" requiredPermission="settings:view" />}>
+                <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
+              </Route>
               <Route element={<PermissionGuard module="admin" requiredPermission="admin:view" />}>
                 <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />
               </Route>

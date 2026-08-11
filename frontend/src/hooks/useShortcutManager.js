@@ -73,13 +73,11 @@ export const useShortcutStore = create((set, get) => ({
   /** ShortcutDef[] — global shortcuts that work everywhere */
   globalShortcuts: [],
 
-  /** Master toggle — reads from localStorage on init */
-  enabled: JSON.parse(localStorage.getItem(STORAGE_KEYS.ENABLED) ?? "true"),
+  /** Master toggle — reads from localStorage on init (guarded against corruption) */
+  enabled: (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.ENABLED) ?? "true"); } catch { return true; } })(),
 
-  /** Sidebar collapsed state — persisted to localStorage */
-  sidebarCollapsed: JSON.parse(
-    localStorage.getItem(STORAGE_KEYS.SIDEBAR) ?? "false"
-  ),
+  /** Sidebar collapsed state — persisted to localStorage (guarded against corruption) */
+  sidebarCollapsed: (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.SIDEBAR) ?? "false"); } catch { return false; } })(),
 
   /** Whether the shortcuts dialog is open */
   dialogOpen: false,

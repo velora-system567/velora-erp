@@ -6,80 +6,80 @@
 
 export const PERMISSIONS = {
   // Core
-  COMPANY_READ: "company:read",
-  COMPANY_UPDATE: "company:update",
+  COMPANY_READ: "company:view",
+  COMPANY_UPDATE: "company:edit",
   COMPANY_DELETE: "company:delete",
-  BRANCH_READ: "branches:read",
+  BRANCH_READ: "branches:view",
   BRANCH_CREATE: "branches:create",
-  BRANCH_UPDATE: "branches:update",
+  BRANCH_UPDATE: "branches:edit",
   BRANCH_DELETE: "branches:delete",
-  USER_READ: "users:read",
+  USER_READ: "users:view",
   USER_CREATE: "users:create",
-  USER_UPDATE: "users:update",
+  USER_UPDATE: "users:edit",
   USER_DELETE: "users:delete",
-  AUDIT_READ: "audit:read",
+  AUDIT_READ: "audit:view",
 
   // Products / Master
-  PRODUCT_READ: "products:read",
+  PRODUCT_READ: "products:view",
   PRODUCT_CREATE: "products:create",
-  PRODUCT_UPDATE: "products:update",
+  PRODUCT_UPDATE: "products:edit",
   PRODUCT_DELETE: "products:delete",
-  MASTER_READ: "master:read",
+  MASTER_READ: "master:view",
   MASTER_CREATE: "master:create",
-  MASTER_UPDATE: "master:update",
+  MASTER_UPDATE: "master:edit",
   MASTER_DELETE: "master:delete",
 
   // Sales
-  SALES_READ: "sales:read",
+  SALES_READ: "sales:view",
   SALES_CREATE: "sales:create",
-  SALES_UPDATE: "sales:update",
+  SALES_UPDATE: "sales:edit",
   SALES_DELETE: "sales:delete",
   SALES_APPROVE: "sales:approve",
   SALES_PAYMENT: "sales:payment",
 
   // Purchase
-  PURCHASE_READ: "purchase:read",
+  PURCHASE_READ: "purchase:view",
   PURCHASE_CREATE: "purchase:create",
-  PURCHASE_UPDATE: "purchase:update",
+  PURCHASE_UPDATE: "purchase:edit",
   PURCHASE_DELETE: "purchase:delete",
   PURCHASE_APPROVE: "purchase:approve",
   PURCHASE_PAYMENT: "purchase:payment",
 
   // Inventory
-  INVENTORY_READ: "inventory:read",
+  INVENTORY_READ: "inventory:view",
   INVENTORY_CREATE: "inventory:create",
-  INVENTORY_UPDATE: "inventory:update",
+  INVENTORY_UPDATE: "inventory:edit",
   INVENTORY_ADJUST: "inventory:adjust",
   INVENTORY_TRANSFER: "inventory:transfer",
 
   // Accounts
-  ACCOUNTS_READ: "accounts:read",
+  ACCOUNTS_READ: "accounts:view",
   ACCOUNTS_CREATE: "accounts:create",
-  ACCOUNTS_UPDATE: "accounts:update",
+  ACCOUNTS_UPDATE: "accounts:edit",
   ACCOUNTS_JOURNAL: "accounts:journal",
   ACCOUNTS_REPORT: "accounts:report",
 
   // Manufacturing
-  MFG_READ: "manufacturing:read",
+  MFG_READ: "manufacturing:view",
   MFG_CREATE: "manufacturing:create",
-  MFG_UPDATE: "manufacturing:update",
+  MFG_UPDATE: "manufacturing:edit",
   MFG_APPROVE: "manufacturing:approve",
   MFG_QUALITY: "manufacturing:quality",
 
   // CRM
-  CRM_READ: "crm:read",
+  CRM_READ: "crm:view",
   CRM_CREATE: "crm:create",
-  CRM_UPDATE: "crm:update",
+  CRM_UPDATE: "crm:edit",
   CRM_DELETE: "crm:delete",
   CRM_CONVERT: "crm:convert",
 
   // HR
-  HR_READ: "hr:read",
+  HR_READ: "hr:view",
   HR_CREATE: "hr:create",
-  HR_UPDATE: "hr:update",
+  HR_UPDATE: "hr:edit",
 
   // Reports
-  REPORTS_READ: "reports:read",
+  REPORTS_READ: "reports:view",
   REPORTS_EXPORT: "reports:export",
 
   // Settings
@@ -93,7 +93,7 @@ export const PERMISSIONS = {
   ADMIN_MANAGE_PERMISSIONS: "admin:managePermissions",
 
   // Dashboard
-  DASHBOARD_READ: "dashboard:read",
+  DASHBOARD_READ: "dashboard:view",
 };
 
 /**

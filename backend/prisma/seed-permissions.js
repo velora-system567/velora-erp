@@ -72,7 +72,6 @@ async function seedTenant(prisma, tenantId, companyId) {
         companyId,
         name: roleKey,
         description: `${roleName} — auto-created system role`,
-        isSystem: true,
       },
       update: { isDeleted: false },
     });

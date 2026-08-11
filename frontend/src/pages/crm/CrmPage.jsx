@@ -101,7 +101,8 @@ function Customer360View({ customerId, onBack }) {
   const data = query.data?.data;
   if (!data || !data.customer) return <EmptyState title="Customer not found" />;
 
-  const { customer, summary, recentInvoices, recentPayments, timeline } = data;
+  const { customer, recentInvoices, recentPayments, timeline } = data;
+  const summary = data.summary || {};
 
   return (
     <div className="space-y-4">
@@ -188,12 +189,17 @@ function DashboardTab({ data: query, onViewCustomer }) {
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No CRM data" />;
+  // Defensive: the backend can return a partial/version-skewed payload. Guard
+  // nested containers so a missing `pipeline`/`kpis` renders an empty state
+  // instead of a deterministic render crash.
+  const k = d.kpis || {};
+  const pipeline = d.pipeline || [];
 
   return (
     <div className="space-y-6">
       {/* Pipeline overview */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {d.pipeline.map((stage) => (
+        {pipeline.map((stage) => (
           <Card key={stage.stage} padding="p-4" className="text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{stage.stage}</p>
             <p className="mt-2 text-3xl font-bold text-slate-950">{number(stage.count)}</p>
@@ -204,10 +210,10 @@ function DashboardTab({ data: query, onViewCustomer }) {
 
       {/* KPI Grid */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Total Leads" value={d.kpis.totalLeads} tone="blue" icon={Users} detail={`${d.kpis.newLeads} new this month`} />
-        <KpiTile label="Qualified" value={d.kpis.qualifiedLeads} tone="amber" icon={BarChart3} />
-        <KpiTile label="Won" value={d.kpis.wonLeads} tone="emerald" icon={ArrowUpRight} />
-        <KpiTile label="Customers" value={d.kpis.totalCustomers} tone="purple" icon={Building2} />
+        <KpiTile label="Total Leads" value={k.totalLeads} tone="blue" icon={Users} detail={`${k.newLeads} new this month`} />
+        <KpiTile label="Qualified" value={k.qualifiedLeads} tone="amber" icon={BarChart3} />
+        <KpiTile label="Won" value={k.wonLeads} tone="emerald" icon={ArrowUpRight} />
+        <KpiTile label="Customers" value={k.totalCustomers} tone="purple" icon={Building2} />
       </section>
 
       {/* Today's Follow-ups + Recent Leads */}

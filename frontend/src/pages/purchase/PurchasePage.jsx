@@ -185,7 +185,7 @@ function DashboardTab({ data: query }) {
   const data = query.data?.data;
   if (!data) return <EmptyState title="No purchase data" description="Create a purchase order to see dashboard insights." />;
 
-  const k = data.kpis;
+  const k = data.kpis || {};
 
   return (
     <div className="space-y-6">

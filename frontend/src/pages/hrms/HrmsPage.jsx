@@ -67,14 +67,15 @@ function DashboardTab({ data: query }) {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["hrms-dashboard"] })} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No HR data" />;
+  const k = d.kpis || {};
 
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Total Employees" value={d.kpis.totalEmployees} tone="blue" icon={Users} />
-        <KpiTile label="Active" value={d.kpis.activeUsers} tone="emerald" icon={UserCheck} />
-        <KpiTile label="Departments" value={d.kpis.departments} tone="purple" icon={Building2} />
-        <KpiTile label="Inactive" value={d.kpis.inactiveUsers} tone="rose" icon={Users} />
+        <KpiTile label="Total Employees" value={k.totalEmployees} tone="blue" icon={Users} />
+        <KpiTile label="Active" value={k.activeUsers} tone="emerald" icon={UserCheck} />
+        <KpiTile label="Departments" value={k.departments} tone="purple" icon={Building2} />
+        <KpiTile label="Inactive" value={k.inactiveUsers} tone="rose" icon={Users} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">

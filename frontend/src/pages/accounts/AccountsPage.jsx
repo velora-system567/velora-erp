@@ -78,7 +78,8 @@ function TrialBalanceTab() {
 
 function ProfitLossTab() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["profit-loss"], queryFn: accountsApi.profitLoss });
+  // Wrap to prevent React Query's context object from being passed as params
+  const query = useQuery({ queryKey: ["profit-loss"], queryFn: () => accountsApi.profitLoss() });
   const pl = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={6} cols={3} />;

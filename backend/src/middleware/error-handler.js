@@ -6,13 +6,27 @@ export function notFound(req, res) {
 }
 
 /**
+ * Detect Prisma / database connection errors.
+ * These should NEVER leak internal infrastructure details to the client.
+ */
+function isDatabaseError(error) {
+  const msg = error.message || "";
+  return (
+    error.code?.startsWith("P") ||                      // Prisma error codes (P2002, P2028, etc.)
+    msg.includes("Can't reach database") ||
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("connection terminated") ||
+    msg.includes("prepared statement") ||
+    msg.includes("pool") && msg.includes("timeout") ||
+    msg.includes("P2028") ||                            // Prisma: transaction timeout
+    msg.includes("P1001") ||                            // Prisma: can't reach database
+    msg.includes("P1017")                               // Prisma: server closed connection
+  );
+}
+
+/**
  * Safely convert a ZodError into a user-friendly API response.
- *
- * ROOT CAUSE FIX: Previously this handler passed the raw ZodError issues
- * array in `data.issues`, and the frontend's errorFromPayload() re-formatted
- * them — producing messages like "id: Invalid UUID" instead of the friendly
- * "Invalid reference" message.  Now we only return the friendly message
- * string and never leak the raw Zod issue objects to the client.
  */
 export function errorHandler(error, req, res, next) {
   if (res.headersSent) return next(error);
@@ -30,13 +44,18 @@ export function errorHandler(error, req, res, next) {
     });
     const uniqueMsgs = [...new Set(friendlyMessages)];
     const message = uniqueMsgs.join(". ") || "Invalid input";
-    // FIX: Do NOT pass raw Zod issues to the client. Only return the friendly message.
     return fail(res, 422, message);
+  }
+
+  // ── Database / Prisma errors → generic message (never leak internals) ──
+  if (isDatabaseError(error)) {
+    console.error(`[DB_ERROR] ${error.message?.slice(0, 200)}`);
+    return fail(res, 503, "Service temporarily unavailable. Please try again in a moment.");
   }
 
   const statusCode = error.statusCode || 500;
   const message = statusCode === 500
-    ? `Internal error: ${error.message || "Something went wrong"}`
+    ? "An internal error occurred. Please try again."
     : error.message;
   if (statusCode >= 500) console.error(`[${statusCode}] ${error.stack || error.message}`);
   return fail(res, statusCode, message);

@@ -54,6 +54,8 @@ const MODULE_GROUPS = [
   { key: "company", label: "Company", icon: "🏛️" },
   { key: "supplierPortal", label: "Supplier Portal", icon: "🤝" },
   { key: "eam", label: "Asset Management", icon: "🔧" },
+  { key: "products", label: "Products", icon: "📦" },
+  { key: "master", label: "Master Data", icon: "🗂️" },
 ];
 
 const ACTION_LABELS = {

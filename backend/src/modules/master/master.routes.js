@@ -9,6 +9,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { gstinRegex, panRegex } from "../../utils/validators.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
 import { updateTenantRecord } from "../../utils/tenant-record.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 
 const router = Router();
 const prismaModelByResource = {
@@ -93,7 +94,7 @@ router.get("/items/search", requirePermission(PERMISSIONS.MASTER_READ), validate
   return ok(res, rows, "Items found");
 }));
 
-router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ), validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }) })), asyncHandler(async (req, res) => {
+router.get("/customers/:id/outstanding", requirePermission([PERMISSIONS.SALES_READ, PERMISSIONS.MASTER_READ]), validate(z.object({ params: z.object({ id: z.preprocess(sanitizeUuid, z.string().uuid()) }) })), asyncHandler(async (req, res) => {
   return ok(res, { customerId: req.params.id, outstandingPaise: 0 }, "Customer outstanding");
 }));
 
@@ -101,11 +102,17 @@ router.get("/:resource", requirePermission(PERMISSIONS.MASTER_READ), validate(li
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
   const { page, limit } = req.validated.query;
-  const where = { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false };
-  const [total, rows] = await Promise.all([
-    prisma[model].count({ where }),
-    prisma[model].findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" } }),
-  ]);
+  // Short single-flight cache for master reference lists (customers, items,
+  // etc.) — low-churn reference data read by every module's master bundle.
+  const key = `tenant:${req.tenantId}:company:${req.companyId}:master:${model}:${page}:${limit}`;
+  const { total, rows } = await cachedCompute(key, 20, async () => {
+    const where = { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false };
+    const [count, data] = await Promise.all([
+      prisma[model].count({ where }),
+      prisma[model].findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" } }),
+    ]);
+    return { total: count, rows: data };
+  });
   return ok(res, rows, "Records loaded", { page, limit, total });
 }));
 

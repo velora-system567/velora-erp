@@ -2,22 +2,20 @@ import { Router } from "express";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
 import { requireTenant } from "../../middleware/tenant.js";
 import { getPrisma } from "../../config/db.js";
-import { getRedis } from "../../config/redis.js";
 import { ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { paiseToRupees } from "../../utils/money.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
 
 router.get("/kpis", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
-  const redis = getRedis();
   const cacheKey = `tenant:${req.tenantId}:company:${req.companyId}:dashboard:kpis`;
-
-  const cached = await redis.get(cacheKey).catch(() => null);
-  if (cached) return ok(res, JSON.parse(cached), "Dashboard KPIs loaded from cache");
-
+  // 30s TTL — matches the frontend refetchInterval so the dashboard stays
+  // reasonably fresh while single-flight still protects against stampedes.
+  const payload = await cachedCompute(cacheKey, 30, async () => {
   const prisma = getPrisma();
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
@@ -81,7 +79,8 @@ router.get("/kpis", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(
     gstPayablePaise: 0,
   };
 
-  await redis.set(cacheKey, JSON.stringify(payload), "EX", 300).catch(() => {});
+  return payload;
+  });
   return ok(res, payload, "Dashboard KPIs loaded");
 }));
 
@@ -90,54 +89,63 @@ router.get("/sales-chart", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
   const start = new Date(); start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - 6);
 
-  const records = await prisma.businessDocument.findMany({
-    where: { tenantId: req.tenantId, companyId: req.companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: start } },
-    select: { documentDate: true, totalAmount: true },
-    orderBy: { documentDate: "asc" },
+  // 60s single-flight cache — chart is a rolling 7-day view, refetched by the
+  // frontend on focus. Caching avoids repeated identical scans under load.
+  const rows = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:dashboard:sales-chart`, 60, async () => {
+    const records = await prisma.businessDocument.findMany({
+      where: { tenantId: req.tenantId, companyId: req.companyId, documentType: "INVOICE", isDeleted: false, documentDate: { gte: start } },
+      select: { documentDate: true, totalAmount: true },
+      orderBy: { documentDate: "asc" },
+    });
+
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(start); date.setDate(start.getDate() + i);
+      return { date: date.toISOString().slice(0, 10), sales: 0 };
+    });
+
+    const byDate = new Map(days.map((d) => [d.date, d]));
+    for (const r of records) {
+      const key = r.documentDate.toISOString().slice(0, 10);
+      if (byDate.has(key)) byDate.get(key).sales += paiseToRupees(r.totalAmount);
+    }
+    return days;
   });
 
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(start); date.setDate(start.getDate() + i);
-    return { date: date.toISOString().slice(0, 10), sales: 0 };
-  });
-
-  const byDate = new Map(days.map((d) => [d.date, d]));
-  for (const r of records) {
-    const key = r.documentDate.toISOString().slice(0, 10);
-    if (byDate.has(key)) byDate.get(key).sales += paiseToRupees(r.totalAmount);
-  }
-
-  return ok(res, { rows: days }, "Sales chart");
+  return ok(res, { rows }, "Sales chart");
 }));
 
 router.get("/top-items", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-  // Top items by invoice line totals this month
-  const lines = await prisma.businessDocumentLine.findMany({
-    where: {
-      tenantId: req.tenantId, companyId: req.companyId, isDeleted: false,
-      itemId: { not: null },
-      document: { documentType: "INVOICE", documentDate: { gte: monthStart }, isDeleted: false },
-    },
-    select: { itemId: true, lineTotal: true },
+  // 60s single-flight cache — monthly top-items, safe to serve briefly cached.
+  const rows = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:dashboard:top-items`, 60, async () => {
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+
+    // Top items by invoice line totals this month
+    const lines = await prisma.businessDocumentLine.findMany({
+      where: {
+        tenantId: req.tenantId, companyId: req.companyId, isDeleted: false,
+        itemId: { not: null },
+        document: { documentType: "INVOICE", documentDate: { gte: monthStart }, isDeleted: false },
+      },
+      select: { itemId: true, lineTotal: true },
+    });
+
+    const totals = new Map();
+    for (const l of lines) {
+      totals.set(l.itemId, (totals.get(l.itemId) || 0) + l.lineTotal);
+    }
+
+    const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const itemIds = sorted.map(([id]) => id);
+    const items = await prisma.item.findMany({ where: { id: { in: itemIds } }, select: { id: true, itemCode: true, name: true } });
+    const itemMap = new Map(items.map((i) => [i.id, i]));
+
+    return sorted.map(([itemId, total]) => ({
+      item: itemMap.get(itemId) || { id: itemId },
+      totalSalesPaise: total,
+    }));
   });
-
-  const totals = new Map();
-  for (const l of lines) {
-    totals.set(l.itemId, (totals.get(l.itemId) || 0) + l.lineTotal);
-  }
-
-  const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const itemIds = sorted.map(([id]) => id);
-  const items = await prisma.item.findMany({ where: { id: { in: itemIds } }, select: { id: true, itemCode: true, name: true } });
-  const itemMap = new Map(items.map((i) => [i.id, i]));
-
-  const rows = sorted.map(([itemId, total]) => ({
-    item: itemMap.get(itemId) || { id: itemId },
-    totalSalesPaise: total,
-  }));
 
   return ok(res, { rows }, "Top items");
 }));

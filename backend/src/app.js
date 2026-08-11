@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
 import { errorHandler, notFound } from "./middleware/error-handler.js";
+import { checkDatabaseHealth } from "./config/db.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import coreRoutes from "./modules/core/core.routes.js";
 import searchRoutes from "./modules/core/search.routes.js";
@@ -33,8 +34,13 @@ app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: "5mb" }));
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Health
-app.get("/api/health", (req, res) => ok(res, { status: "ok", version: "1.5.0" }, "Velora ERP API is running"));
+// Health — includes database connectivity check
+app.get("/api/health", async (req, res) => {
+  const db = await checkDatabaseHealth();
+  const status = db.healthy ? "ok" : "degraded";
+  const code = db.healthy ? 200 : 503;
+  return ok(res, { status, version: "1.5.0", db: { healthy: db.healthy, latencyMs: db.latencyMs } }, `Velora ERP API is ${status}`);
+});
 
 // Auth
 app.use("/api/auth", authRoutes);

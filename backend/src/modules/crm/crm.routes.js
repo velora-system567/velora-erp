@@ -8,6 +8,7 @@ import { ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
@@ -16,6 +17,7 @@ const optionalUuid = _optUuid;
 
 // ─── CRM Dashboard ───────────────────────────────────────────────
 router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+  const payload = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:crm:dashboard`, 30, async () => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const now = new Date();
@@ -36,7 +38,7 @@ router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHan
     prisma.lead.findMany({ where: { tenantId, companyId, isDeleted: false }, orderBy: { updatedAt: "desc" }, take: 10 }),
   ]);
 
-  return ok(res, {
+  return {
     kpis: { totalLeads, newLeads, qualifiedLeads, wonLeads, lostLeads, totalCustomers, pipelineValue: pipelineValue._sum.value || 0, monthlyRevenue: monthlyRevenue._sum.totalAmount || 0 },
     todayFollowUps: todayFollowUps.map((l) => ({ id: l.id, name: l.name, contactPerson: l.contactPerson, phone: l.phone, value: l.value, time: l.nextFollowUp, status: l.status })),
     recentLeads: recentLeads.map((l) => ({ id: l.id, name: l.name, contactPerson: l.contactPerson, phone: l.phone, email: l.email, status: l.status, value: l.value, priority: l.priority, city: l.city, source: l.source, updatedAt: l.updatedAt, nextFollowUp: l.nextFollowUp })),
@@ -47,7 +49,9 @@ router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHan
       { stage: "Won", count: wonLeads, value: pipelineValue._sum.value || 0, color: "emerald" },
       { stage: "Lost", count: lostLeads, value: 0, color: "rose" },
     ],
-  }, "CRM dashboard loaded");
+  };
+  });
+  return ok(res, payload, "CRM dashboard loaded");
 }));
 
 // ─── CRM Pipeline ────────────────────────────────────────────────

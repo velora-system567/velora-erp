@@ -78,12 +78,13 @@ function DashboardTab({ data: query }) {
   if (query.isError) return <ErrorState error={query.error} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No data" />;
+  const k = d.kpis || {};
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <KpiTile label="Pending Orders" value={d.kpis.pendingPOs} tone="amber" icon={ShoppingBag} />
-      <KpiTile label="Approved Orders" value={d.kpis.approvedPOs} tone="emerald" icon={ShoppingBag} detail={`${d.kpis.completedPOs} completed`} />
-      <KpiTile label="Invoices" value={d.kpis.totalInvoices} tone="blue" icon={FileText} />
-      <KpiTile label="Payments" value={d.kpis.totalPayments} tone="purple" icon={DollarSign} detail={formatRupees(d.kpis.pendingAmount)} />
+      <KpiTile label="Pending Orders" value={k.pendingPOs} tone="amber" icon={ShoppingBag} />
+      <KpiTile label="Approved Orders" value={k.approvedPOs} tone="emerald" icon={ShoppingBag} detail={`${k.completedPOs} completed`} />
+      <KpiTile label="Invoices" value={k.totalInvoices} tone="blue" icon={FileText} />
+      <KpiTile label="Payments" value={k.totalPayments} tone="purple" icon={DollarSign} detail={formatRupees(k.pendingAmount)} />
     </section>
   );
 }

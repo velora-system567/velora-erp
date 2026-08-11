@@ -32,7 +32,9 @@ export default function OwnerDashboard() {
   const data = query.data?.data;
   if (!data || !data.today || !data.kpis) return <EmptyState title="No dashboard data" description="Create sales orders and invoices to see your owner dashboard." />;
 
-  const { today, kpis, focus, performance, insights } = data;
+  const { today, kpis, insights } = data;
+  const focus = data.focus || {};
+  const performance = data.performance || {};
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-4 sm:px-6 md:py-6 xl:p-8">

@@ -1,4 +1,5 @@
 import { isUsableUuid } from "../utils/uuid.js";
+import { useAuthStore } from "../store/auth.js";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const hasApiBaseUrl = Boolean(API_BASE_URL);
@@ -6,25 +7,53 @@ export const hasApiBaseUrl = Boolean(API_BASE_URL);
 // ─── UUID guard (prevents "Invalid UUID" errors system-wide) ─────────────────
 // ROOT CAUSE: API methods were called with undefined/null/"new"/"create"/""
 // before the user selected a real record.  Now every method that requires a
-// UUID rejects invalid values at the client, returning null instead of
-// throwing a Zod 422 that renders as "id: Invalid UUID".
-function _guard(id, label = "id") {
-  if (!isUsableUuid(id)) return null;
+// UUID rejects invalid values at the client instead of throwing a Zod 422
+// that renders as "id: Invalid UUID".
+//
+// IMPORTANT: guarded methods resolve a CONSISTENT response shape —
+// `{ success: false, data: null, message }` — never `null`.  Resolving `null`
+// previously crashed callers that destructured the result (`const { data } =
+// await ...`) when no record was selected.  This shape is API-response-like,
+// so destructuring, `.success` checks, and truthiness checks all work.
+
+let _lastGuardLabel = "Record";
+
+function _guard(id, label = "Record") {
+  if (!isUsableUuid(id)) {
+    _lastGuardLabel = label;
+    return null;
+  }
   return id;
 }
 
+/** Resolve a graceful "no record selected" response for guarded methods. */
+function _noRecord() {
+  return Promise.resolve({
+    success: false,
+    data: null,
+    message: `No ${_lastGuardLabel} selected. Select a valid record to continue.`,
+  });
+}
+
 // ─── Session helpers ──────────────────────────────────────────────────────────
+// Single source of truth for session state: useAuthStore (Zustand).
+// All localStorage writes also sync the in-memory store so React components
+// that read from useAuthStore see the fresh state immediately.
 
 function clearStoredSession() {
   localStorage.removeItem("velora_access_token");
   localStorage.removeItem("velora_refresh_token");
   localStorage.removeItem("velora_user");
+  // Sync Zustand store — prevents stale user state after session clear
+  try { useAuthStore.getState().clearSession(); } catch { /* store not initialized */ }
 }
 
 function storeRefreshedSession(payload) {
   if (payload.accessToken) localStorage.setItem("velora_access_token", payload.accessToken);
   if (payload.refreshToken) localStorage.setItem("velora_refresh_token", payload.refreshToken);
   if (payload.user) localStorage.setItem("velora_user", JSON.stringify(payload.user));
+  // Sync Zustand store — prevents stale user object after silent token refresh
+  try { useAuthStore.getState().syncFromStorage(); } catch { /* store not initialized */ }
 }
 
 async function parsePayload(response) {
@@ -50,18 +79,64 @@ function errorFromPayload(payload, fallback = "Request failed") {
   return new Error(message);
 }
 
+// ─── Singleton token refresh ─────────────────────────────────────────────────
+// Prevents multiple concurrent API calls from all racing to refresh the token.
+// When the first 401 arrives, we refresh once; subsequent 401s wait for the
+// same in-flight refresh instead of each firing their own request.
+
+let _refreshPromise = null;
+
 async function doTokenRefresh() {
-  const refreshToken = localStorage.getItem("velora_refresh_token");
-  if (!refreshToken) return null;
-  const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  const payload = await parsePayload(response);
-  if (!response.ok || !payload.success) return null;
-  storeRefreshedSession(payload.data);
-  return payload.data.accessToken;
+  // If a refresh is already in-flight, wait for it
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const refreshToken = localStorage.getItem("velora_refresh_token");
+      if (!refreshToken) return null;
+      const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const payload = await parsePayload(response);
+      if (!response.ok || !payload.success) return null;
+      storeRefreshedSession(payload.data);
+      return payload.data.accessToken;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+// ─── Session expiration signal ───────────────────────────────────────────────
+// Instead of hard-navigating with window.location.href (which tears down
+// the React tree mid-render and causes white screens), we signal session
+// expiration through a callback.  AppShell watches this and redirects
+// via React Router.
+
+let _onSessionExpired = null;
+let _sessionExpiredSignaled = false;
+
+/**
+ * Register a callback that fires when the session expires.
+ * Called by AppShell to redirect to /login via React Router.
+ */
+export function onSessionExpired(cb) {
+  _onSessionExpired = cb;
+  // Reset flag when a new handler is registered (new session)
+  _sessionExpiredSignaled = false;
+}
+
+function signalSessionExpired() {
+  // Only signal once per session to prevent redirect loops
+  if (_sessionExpiredSignaled) return;
+  _sessionExpiredSignaled = true;
+  if (_onSessionExpired) _onSessionExpired();
 }
 
 // ─── Core request ─────────────────────────────────────────────────────────────
@@ -83,14 +158,22 @@ export async function apiRequest(path, options = {}, retry = true) {
     const newToken = await doTokenRefresh();
     if (newToken) return apiRequest(path, options, false);
     clearStoredSession();
-    if (!["/login", "/register"].includes(window.location.pathname)) {
-      window.location.href = "/login";
-    }
+    // Signal session expiration — AppShell handles the redirect
+    // via React Router (soft navigation), avoiding white screens
+    // caused by hard window.location.href navigation.
+    signalSessionExpired();
     throw new Error("Session expired. Please login again.");
   }
 
   if (!response.ok || !payload.success) {
-    throw errorFromPayload(payload);
+    const err = errorFromPayload(payload);
+    // Tag503 errors so the error boundary can show a user-friendly
+    // "service temporarily unavailable" message instead of generic crash UI.
+    if (response.status === 503) {
+      err.status = 503;
+      err.isServiceUnavailable = true;
+    }
+    throw err;
   }
   return payload;
 }
@@ -159,22 +242,22 @@ export const coreApi = {
   create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
   update: (resource, id, input) => {
     const safeId = _guard(id, `${resource} id`);
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
   },
   remove: (resource, id) => {
     const safeId = _guard(id, `${resource} id`);
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/${safeId}`, { method: "DELETE" });
   },
   resetPassword: (id, password) => {
     const safeId = _guard(id, "user id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/users/${safeId}/reset-password`, { method: "POST", body: JSON.stringify({ password }) });
   },
   disableUser: (id) => {
     const safeId = _guard(id, "user id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/users/${safeId}/disable`, { method: "POST" });
   },
   auditLogs: (params = {}) => {
@@ -192,24 +275,24 @@ export const masterApi = {
   },
   get: (resource, id) => {
     const safeId = _guard(id, `${resource} id`);
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/${safeId}`);
   },
   create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
   update: (resource, id, input) => {
     const safeId = _guard(id, `${resource} id`);
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
   },
   remove: (resource, id) => {
     const safeId = _guard(id, `${resource} id`);
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/${safeId}`, { method: "DELETE" });
   },
   searchItems: (q) => apiRequest(`/items/search?q=${encodeURIComponent(q)}`),
   customerOutstanding: (id) => {
     const safeId = _guard(id, "customer id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/customers/${safeId}/outstanding`);
   },
 };
@@ -224,12 +307,12 @@ export const leadsApi = {
   create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
   update: (id, input) => {
     const safeId = _guard(id, "lead id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/leads/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
   },
   remove: (id) => {
     const safeId = _guard(id, "lead id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/leads/${safeId}`, { method: "DELETE" });
   },
 };
@@ -241,18 +324,18 @@ export const salesApi = {
   quotations: (p = {}) => apiRequest(`/quotations?${new URLSearchParams(p)}`),
   getQuotation: (id) => {
     const safeId = _guard(id, "quotation id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/quotations/${safeId}`);
   },
   createQuotation: (input) => apiRequest("/quotations", { method: "POST", body: JSON.stringify(input) }),
   convertQuotation: (id) => {
     const safeId = _guard(id, "quotation id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/quotations/${safeId}/convert-to-order`, { method: "POST" });
   },
   updateQuotationStatus: (id, status) => {
     const safeId = _guard(id, "quotation id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/quotations/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   },
 
@@ -260,13 +343,13 @@ export const salesApi = {
   salesOrders: (p = {}) => apiRequest(`/sales-orders?${new URLSearchParams(p)}`),
   getSalesOrder: (id) => {
     const safeId = _guard(id, "sales order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/sales-orders/${safeId}`);
   },
   createSalesOrder: (input) => apiRequest("/sales-orders", { method: "POST", body: JSON.stringify(input) }),
   updateSalesOrderStatus: (id, status) => {
     const safeId = _guard(id, "sales order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/sales-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   },
 
@@ -278,7 +361,7 @@ export const salesApi = {
   invoices: (p = {}) => apiRequest(`/invoices?${new URLSearchParams(p)}`),
   getInvoice: (id) => {
     const safeId = _guard(id, "invoice id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/invoices/${safeId}`);
   },
   createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
@@ -299,7 +382,7 @@ export const salesApi = {
   outstandingReport: () => apiRequest("/sales/outstanding-report"),
   customerLedger: (id) => {
     const safeId = _guard(id, "customer id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/customers/${safeId}/ledger`);
   },
 };
@@ -312,7 +395,7 @@ export const purchaseApi = {
   createPurchaseRequest: (input) => apiRequest("/purchase-requests", { method: "POST", body: JSON.stringify(input) }),
   approvePurchaseRequest: (id) => {
     const safeId = _guard(id, "purchase request id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/purchase-requests/${safeId}/approve`, { method: "POST" });
   },
 
@@ -324,13 +407,13 @@ export const purchaseApi = {
   purchaseOrders: (p = {}) => apiRequest(`/purchase-orders?${new URLSearchParams(p)}`),
   getPurchaseOrder: (id) => {
     const safeId = _guard(id, "purchase order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/purchase-orders/${safeId}`);
   },
   createPurchaseOrder: (input) => apiRequest("/purchase-orders", { method: "POST", body: JSON.stringify(input) }),
   approvePurchaseOrder: (id) => {
     const safeId = _guard(id, "purchase order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/purchase-orders/${safeId}/approve`, { method: "PATCH" });
   },
 
@@ -338,13 +421,13 @@ export const purchaseApi = {
   grns: (p = {}) => apiRequest(`/grns?${new URLSearchParams(p)}`),
   getGrn: (id) => {
     const safeId = _guard(id, "GRN id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/grns/${safeId}`);
   },
   createGrn: (input) => apiRequest("/grns", { method: "POST", body: JSON.stringify(input) }),
   approveGrn: (id) => {
     const safeId = _guard(id, "GRN id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/grns/${safeId}/approve`, { method: "POST" });
   },
 
@@ -365,7 +448,7 @@ export const purchaseApi = {
   outstandingReport: () => apiRequest("/purchase/outstanding-report"),
   vendorLedger: (id) => {
     const safeId = _guard(id, "vendor id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/vendors/${safeId}/ledger`);
   },
 };
@@ -377,7 +460,7 @@ export const inventoryApi = {
   stockSummary: (p = {}) => apiRequest(`/inventory/stock-summary?${new URLSearchParams(p)}`),
   stockLedger: (itemId, p = {}) => {
     const safeId = _guard(itemId, "item id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/inventory/stock-ledger/${safeId}?${new URLSearchParams(p)}`);
   },
   ledger: (p = {}) => apiRequest(`/inventory/ledger?${new URLSearchParams(p)}`),
@@ -388,7 +471,7 @@ export const inventoryApi = {
   createReservation: (input) => apiRequest("/inventory/reservations", { method: "POST", body: JSON.stringify(input) }),
   releaseReservation: (id) => {
     const safeId = _guard(id, "reservation id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/inventory/reservations/${safeId}/release`, { method: "PATCH" });
   },
   serials: (p = {}) => apiRequest(`/inventory/serials?${new URLSearchParams(p)}`),
@@ -401,7 +484,7 @@ export const inventoryApi = {
   suppliers: (p = {}) => apiRequest(`/inventory/suppliers?${new URLSearchParams(p)}`),
   supplierDetail: (id) => {
     const safeId = _guard(id, "supplier id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/inventory/suppliers/${safeId}`);
   },
 };
@@ -413,7 +496,7 @@ export const crmApi = {
   pipeline: (status) => apiRequest(`/crm/pipeline?status=${status || "ALL"}`),
   customer360: (id) => {
     const safeId = _guard(id, "customer id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/crm/customers/${safeId}`);
   },
   search: (q) => apiRequest(`/crm/search?q=${encodeURIComponent(q)}`),
@@ -432,7 +515,7 @@ export const accountsApi = {
   balanceSheet: () => apiRequest("/accounts/balance-sheet"),
   generalLedger: (accountId) => {
     const safeId = _guard(accountId, "account id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/accounts/general-ledger/${safeId}`);
   },
   gstr1: () => apiRequest("/accounts/gstr1-report"),
@@ -449,13 +532,13 @@ export const eamApi = {
   assets: (p = {}) => apiRequest(`/eam/assets?${new URLSearchParams(p)}`),
   assetDetail: (id) => {
     const safeId = _guard(id, "asset id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/eam/assets/${safeId}`);
   },
   createAsset: (input) => apiRequest("/eam/assets", { method: "POST", body: JSON.stringify(input) }),
   updateAsset: (id, input) => {
     const safeId = _guard(id, "asset id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/eam/assets/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
   },
   maintenance: (p = {}) => apiRequest(`/eam/maintenance?${new URLSearchParams(p)}`),
@@ -470,7 +553,7 @@ export const hrmsApi = {
   employees: (p = {}) => apiRequest(`/hrms/employees?${new URLSearchParams(p)}`),
   employeeDetail: (id) => {
     const safeId = _guard(id, "employee id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/hrms/employees/${safeId}`);
   },
   roles: () => apiRequest("/hrms/roles"),
@@ -513,14 +596,14 @@ export const platformApi = {
   createApiKey: (name) => apiRequest("/platform/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
   deleteApiKey: (id) => {
     const safeId = _guard(id, "API key id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest("/platform/api-keys/" + safeId, { method: "DELETE" });
   },
   webhooks: () => apiRequest("/platform/webhooks"),
   createWebhook: (input) => apiRequest("/platform/webhooks", { method: "POST", body: JSON.stringify(input) }),
   deleteWebhook: (id) => {
     const safeId = _guard(id, "webhook id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest("/platform/webhooks/" + safeId, { method: "DELETE" });
   },
   testWebhook: (input) => apiRequest("/platform/webhooks/test", { method: "POST", body: JSON.stringify(input) }),
@@ -548,7 +631,7 @@ export const wmsApi = {
   dashboard: () => apiRequest("/wms/dashboard"),
   warehouseDetail: (id) => {
     const safeId = _guard(id, "warehouse id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/wms/warehouses/${safeId}`);
   },
   locations: (p = {}) => apiRequest(`/wms/locations?${new URLSearchParams(p)}`),
@@ -567,13 +650,13 @@ export const manufacturingApi = {
   boms: (p = {}) => apiRequest(`/manufacturing/boms?${new URLSearchParams(p)}`),
   getBom: (id) => {
     const safeId = _guard(id, "BOM id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/boms/${safeId}`);
   },
   createBom: (input) => apiRequest("/manufacturing/boms", { method: "POST", body: JSON.stringify(input) }),
   deleteBom: (id) => {
     const safeId = _guard(id, "BOM id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/boms/${safeId}`, { method: "DELETE" });
   },
 
@@ -581,13 +664,13 @@ export const manufacturingApi = {
   productionOrders: (p = {}) => apiRequest(`/manufacturing/production-orders?${new URLSearchParams(p)}`),
   getProductionOrder: (id) => {
     const safeId = _guard(id, "production order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/production-orders/${safeId}`);
   },
   createProductionOrder: (input) => apiRequest("/manufacturing/production-orders", { method: "POST", body: JSON.stringify(input) }),
   updateProductionOrderStatus: (id, input) => {
     const safeId = _guard(id, "production order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/production-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify(input) });
   },
 
@@ -596,7 +679,7 @@ export const manufacturingApi = {
   createWorkOrder: (input) => apiRequest("/manufacturing/work-orders", { method: "POST", body: JSON.stringify(input) }),
   completeWorkOrder: (id, input) => {
     const safeId = _guard(id, "work order id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/work-orders/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
   },
 
@@ -605,7 +688,7 @@ export const manufacturingApi = {
   createMachine: (input) => apiRequest("/manufacturing/machines", { method: "POST", body: JSON.stringify(input) }),
   updateMachineStatus: (id, status) => {
     const safeId = _guard(id, "machine id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/machines/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   },
 
@@ -614,7 +697,7 @@ export const manufacturingApi = {
   createMaintenance: (input) => apiRequest("/manufacturing/maintenance", { method: "POST", body: JSON.stringify(input) }),
   completeMaintenance: (id, input) => {
     const safeId = _guard(id, "maintenance id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/manufacturing/maintenance/${safeId}/complete`, { method: "PATCH", body: JSON.stringify(input) });
   },
 
@@ -640,7 +723,7 @@ export const operationsApi = {
   },
   remove: (resource, id) => {
     const safeId = _guard(id, "record id");
-    if (!safeId) return Promise.resolve(null);
+    if (!safeId) return _noRecord();
     return apiRequest(`/${resource}/records/${safeId}`, { method: "DELETE" });
   },
 };

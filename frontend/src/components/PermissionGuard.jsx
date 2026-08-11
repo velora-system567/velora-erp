@@ -13,6 +13,29 @@ import { Navigate, Outlet } from "react-router-dom";
 import { usePermissionStore } from "../hooks/usePermissions";
 import { AccessDenied } from "./AccessDenied";
 
+// Friendly display labels for the AccessDenied page.
+const MODULE_LABELS = {
+  dashboard: "Dashboard",
+  company: "Company",
+  branches: "Branches",
+  users: "User Management",
+  products: "Products",
+  sales: "Sales",
+  purchase: "Procurement",
+  inventory: "Inventory",
+  accounts: "Finance",
+  manufacturing: "Manufacturing",
+  crm: "CRM",
+  wms: "Warehouse Management",
+  reports: "Reports",
+  hrms: "HR",
+  eam: "Assets",
+  "supplier-portal": "Supplier Portal",
+  audit: "Audit Log",
+  settings: "Settings",
+  admin: "Administration",
+};
+
 export function PermissionGuard({ module, requiredPermission, fallback = "accessDenied" }) {
   const permissions = usePermissionStore((s) => s.permissions);
   const loaded = usePermissionStore((s) => s.loaded);
@@ -34,7 +57,7 @@ export function PermissionGuard({ module, requiredPermission, fallback = "access
     if (fallback === "redirect") {
       return <Navigate to="/" replace />;
     }
-    return <AccessDenied moduleName={module || "this section"} />;
+    return <AccessDenied moduleName={MODULE_LABELS[module] || module || "this section"} />;
   }
 
   return <Outlet />;

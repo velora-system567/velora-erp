@@ -71,13 +71,14 @@ function DashboardTab({ data: query }) {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["wms-dashboard"] })} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No warehouse data" />;
+  const k = d.kpis || {};
 
   return (
     <div className="space-y-6">
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile label="Warehouses" value={d.kpis.totalWarehouses} tone="blue" icon={Warehouse} detail={`${d.kpis.totalLocations} bin locations`} />
-        <KpiTile label="Total Stock" value={d.kpis.totalStock} tone="slate" icon={Package} formatter={(v) => number(v, 3)} />
-        <KpiTile label="Pending Transfers" value={d.kpis.pendingTransfers} tone="amber" icon={Activity} />
+        <KpiTile label="Warehouses" value={k.totalWarehouses} tone="blue" icon={Warehouse} detail={`${k.totalLocations} bin locations`} />
+        <KpiTile label="Total Stock" value={k.totalStock} tone="slate" icon={Package} formatter={(v) => number(v, 3)} />
+        <KpiTile label="Pending Transfers" value={k.pendingTransfers} tone="amber" icon={Activity} />
       </section>
 
       {d.warehouses?.length > 0 && (

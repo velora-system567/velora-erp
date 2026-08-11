@@ -36,7 +36,11 @@ router.get("/hrms/dashboard", requirePermission(PERMISSIONS.DASHBOARD_READ), asy
 }));
 
 // ─── Employee List ───────────────────────────────────────────────
-router.get("/hrms/employees", requirePermission(PERMISSIONS.USER_READ), asyncHandler(async (req, res) => {
+// HR access is gated by "hr:view"; user-management access is gated by
+// "users:view". Either grants read of the HR employee list, so a role that
+// holds one but not the other (e.g. VIEWER has hr:view, HR_MANAGER has both)
+// never gets a spurious 403.
+router.get("/hrms/employees", requirePermission([PERMISSIONS.HR_READ, PERMISSIONS.USER_READ]), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const { page = 1, limit = 50, department } = req.query;
@@ -61,7 +65,7 @@ router.get("/hrms/employees", requirePermission(PERMISSIONS.USER_READ), asyncHan
 }));
 
 // ─── Employee Detail ─────────────────────────────────────────────
-router.get("/hrms/employees/:id", requirePermission(PERMISSIONS.USER_READ),
+router.get("/hrms/employees/:id", requirePermission([PERMISSIONS.HR_READ, PERMISSIONS.USER_READ]),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -75,7 +79,7 @@ router.get("/hrms/employees/:id", requirePermission(PERMISSIONS.USER_READ),
   }));
 
 // ─── Roles / Departments ─────────────────────────────────────────
-router.get("/hrms/roles", requirePermission(PERMISSIONS.USER_READ), asyncHandler(async (req, res) => {
+router.get("/hrms/roles", requirePermission([PERMISSIONS.HR_READ, PERMISSIONS.USER_READ]), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const roles = await prisma.role.findMany({
     where: { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false },

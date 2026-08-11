@@ -5,12 +5,14 @@ import { ok } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
 
 // ─── Executive Dashboard ─────────────────────────────────────────
 router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
+  const payload = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:bi:executive-dashboard`, 30, async () => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const now = new Date();
@@ -74,7 +76,7 @@ router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_RE
 
   const healthScore = Math.min(100, Math.max(0, healthFactors.reduce((a, b) => a + b, 0)));
 
-  return ok(res, {
+  return {
     timestamp: now.toISOString(),
     health: {
       score: healthScore,
@@ -113,7 +115,9 @@ router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_RE
       status: a.status,
       time: a.updatedAt,
     })),
-  }, "Executive dashboard loaded");
+  };
+  });
+  return ok(res, payload, "Executive dashboard loaded");
 }));
 
 // ─── Department Scorecards ────────────────────────────────────────

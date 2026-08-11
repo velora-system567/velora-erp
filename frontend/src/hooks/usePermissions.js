@@ -18,39 +18,90 @@ export const usePermissionStore = create((set) => ({
   clearPermissions: () => set({ permissions: [], loaded: false }),
 }));
 
+const MAX_AUTH_RETRIES = 3;
+
 /**
- * Load current user's permissions from the backend.
+ * Read the permission claim embedded in the access token (JWT) in
+ * localStorage, if any.  Returns null when there is no token, no parseable
+ * claim, or an empty claim.  Used only as an instant render fallback — the
+ * authoritative source is always the backend (/auth/me).
  */
-export async function fetchUserPermissions() {
+export function permissionsFromJwt() {
   try {
-    const res = await apiRequest("/auth/me");
-    // Permissions are embedded in req.user.permissions after requireAuth middleware
-    // falls back to what's in the JWT
-    return res.data?.user?.permissions || [];
+    const token = localStorage.getItem("velora_access_token");
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (Array.isArray(payload.permissions) && payload.permissions.length) {
+      return payload.permissions;
+    }
+    return null;
   } catch {
-    return [];
+    return null;
   }
 }
 
 /**
- * Initialize permissions on app load.
+ * Load current user's permissions from the backend (authoritative).
+ *
+ * Retries transient failures with backoff (bounded) so a cold-start request
+ * failure — e.g. the serverless function still establishing its DB connection
+ * — does not permanently strand the app in an unloaded permission state.
+ *
+ * Returns:
+ *   - array  → authoritative response (may be empty — respect it)
+ *   - null   → terminal failure (network/5xx), caller should fall back
+ */
+export async function fetchUserPermissions(attempt = 1) {
+  try {
+    const res = await apiRequest("/auth/me");
+    return res.data?.user?.permissions || [];
+  } catch {
+    if (attempt < MAX_AUTH_RETRIES) {
+      await new Promise((r) => setTimeout(r, Math.min(attempt * 800, 2000)));
+      return fetchUserPermissions(attempt + 1);
+    }
+    return null;
+  }
+}
+
+/**
+ * Initialize the permission store.  Guarantees `loaded` becomes true in every
+ * outcome, so the app NEVER deadlocks in a blank "waiting for permissions"
+ * state (which previously happened when /auth/me failed on a cold start AND
+ * the JWT carried no usable permission claim).
+ *
+ * Priority:
+ *   1. JWT claim — applied synchronously so the UI renders immediately while
+ *      the authoritative fetch is in flight (no blank waiting window).
+ *   2. /auth/me (with bounded retries) — server truth; overrides the JWT
+ *      claim when it arrives.
+ *   3. [] — only if both sources yield nothing; shows a diagnosable
+ *      "no access" state instead of a permanent blank page.
+ */
+export async function initPermissions() {
+  const store = usePermissionStore.getState();
+  if (store.loaded) return;
+
+  const jwtPerms = permissionsFromJwt();
+  if (jwtPerms) store.setPermissions(jwtPerms);
+
+  const serverPerms = await fetchUserPermissions();
+  if (serverPerms) {
+    store.setPermissions(serverPerms);
+  } else if (!jwtPerms) {
+    store.setPermissions([]);
+  }
+}
+
+/**
+ * Initialize permissions on app load (legacy hook kept for compatibility).
+ * Prefer the async initPermissions() in AppShell.
  */
 export function useInitPermissions() {
-  const { loaded, setPermissions } = usePermissionStore();
-
+  const { loaded } = usePermissionStore();
   if (!loaded) {
-    // Try to get permissions from the JWT payload (stored in localStorage)
-    try {
-      const token = localStorage.getItem("velora_access_token");
-      if (token) {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        if (payload.permissions) {
-          setPermissions(payload.permissions);
-        }
-      }
-    } catch {
-      // Ignore
-    }
+    const jwtPerms = permissionsFromJwt();
+    if (jwtPerms) usePermissionStore.getState().setPermissions(jwtPerms);
   }
 }
 
@@ -100,26 +151,29 @@ export function useVisibleModules() {
   const permissions = usePermissionStore((s) => s.permissions);
   const isSuperAdmin = permissions.includes("*");
 
+  // `permissionKey` mirrors the exact permission key the BACKEND enforces for
+  // each module. Keeping them in sync here means the sidebar shows exactly what
+  // the API will allow — no "ghost" modules that 403 on navigation.
   const ALL_MODULES = [
-    { key: "dashboard", path: "/", label: "Dashboard", icon: "LayoutDashboard" },
-    { key: "sales", path: "/sales", label: "Sales", icon: "ShoppingCart" },
-    { key: "purchase", path: "/purchase", label: "Procurement", icon: "Package" },
-    { key: "inventory", path: "/inventory", label: "Inventory", icon: "Warehouse" },
-    { key: "manufacturing", path: "/manufacturing", label: "Manufacturing", icon: "Factory" },
-    { key: "accounts", path: "/accounts", label: "Finance", icon: "DollarSign" },
-    { key: "crm", path: "/crm", label: "CRM", icon: "Users" },
-    { key: "hrms", path: "/hrms", label: "HR", icon: "UserCheck" },
-    { key: "eam", path: "/eam", label: "Assets", icon: "Tool" },
-    { key: "reports", path: "/executive", label: "Reports", icon: "BarChart" },
-    { key: "audit", path: "/activity", label: "Audit", icon: "ClipboardCheck" },
-    { key: "settings", path: "/settings", label: "Settings", icon: "Settings" },
-    { key: "admin", path: "/admin", label: "Administration", icon: "Shield" },
+    { key: "dashboard", permissionKey: "dashboard:view", path: "/", label: "Dashboard", icon: "LayoutDashboard" },
+    { key: "sales", permissionKey: "sales:view", path: "/sales", label: "Sales", icon: "ShoppingCart" },
+    { key: "purchase", permissionKey: "purchase:view", path: "/purchase", label: "Procurement", icon: "Package" },
+    { key: "inventory", permissionKey: "inventory:view", path: "/inventory", label: "Inventory", icon: "Warehouse" },
+    { key: "manufacturing", permissionKey: "manufacturing:view", path: "/manufacturing", label: "Manufacturing", icon: "Factory" },
+    { key: "accounts", permissionKey: "accounts:view", path: "/accounts", label: "Finance", icon: "DollarSign" },
+    { key: "crm", permissionKey: "sales:view", path: "/crm", label: "CRM", icon: "Users" },
+    { key: "hrms", permissionKey: "hr:view", path: "/hrms", label: "HR", icon: "UserCheck" },
+    { key: "eam", permissionKey: "manufacturing:view", path: "/eam", label: "Assets", icon: "Tool" },
+    { key: "reports", permissionKey: "dashboard:view", path: "/executive", label: "Reports", icon: "BarChart" },
+    { key: "audit", permissionKey: "audit:view", path: "/activity", label: "Audit", icon: "ClipboardCheck" },
+    { key: "settings", permissionKey: "settings:view", path: "/settings", label: "Settings", icon: "Settings" },
+    { key: "admin", permissionKey: "admin:view", path: "/admin", label: "Administration", icon: "Shield" },
   ];
 
   if (isSuperAdmin) return ALL_MODULES;
 
   return ALL_MODULES.filter((mod) => {
     if (mod.key === "dashboard") return true; // Everyone can see dashboard
-    return permissions.includes(`${mod.key}:view`);
+    return permissions.includes(mod.permissionKey);
   });
 }

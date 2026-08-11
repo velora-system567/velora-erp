@@ -10,6 +10,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { writeAudit } from "../../utils/audit.js";
 import { panRegex } from "../../utils/validators.js";
 import { updateTenantRecord } from "../../utils/tenant-record.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 
 const router = Router();
 router.use(requireAuth, requireTenant);
@@ -109,14 +110,22 @@ async function listRows(model, req, extraWhere = {}) {
       ]
       : [{ name: { contains: q, mode: "insensitive" } }];
   }
-  const [total, rows] = await Promise.all([
-    prisma[model].count({ where }),
-    prisma[model].findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" } }),
-  ]);
-  return { rows, meta: { page, limit, total } };
+  // Short single-flight cache for master/reference lists (users, branches,
+  // items). These are read repeatedly by every module's master-data bundle and
+  // are low-churn reference data — a 20s cache collapses cold-load stampedes
+  // without risking stale transactional data.
+  const extraKey = q ? `:q=${q}` : "";
+  const key = `tenant:${req.tenantId}:company:${req.companyId}:core:${model}:${page}:${limit}${extraKey}`;
+  return cachedCompute(key, 20, async () => {
+    const [total, rows] = await Promise.all([
+      prisma[model].count({ where }),
+      prisma[model].findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" } }),
+    ]);
+    return { rows, meta: { page, limit, total } };
+  });
 }
 
-router.get("/company", requirePermission("company:read"), asyncHandler(async (req, res) => {
+router.get("/company", requirePermission("company:view"), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const company = await prisma.company.findFirst({
     where: { id: req.companyId, tenantId: req.tenantId, isDeleted: false },
@@ -124,7 +133,7 @@ router.get("/company", requirePermission("company:read"), asyncHandler(async (re
   return ok(res, company, "Company loaded");
 }));
 
-router.patch("/company", requirePermission("company:update"), validate(companySchema), asyncHandler(async (req, res) => {
+router.patch("/company", requirePermission("company:edit"), validate(companySchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.company.findFirst({ where: { id: req.companyId, tenantId: req.tenantId, isDeleted: false } });
   const company = await updateTenantRecord(prisma, "company", req, req.companyId,
@@ -142,7 +151,7 @@ router.delete("/company", requirePermission("company:delete"), asyncHandler(asyn
   return ok(res, company, "Company archived");
 }));
 
-router.get("/branches", requirePermission("branches:read"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
+router.get("/branches", requirePermission("branches:view"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
   const { rows, meta } = await listRows("branch", req);
   return ok(res, rows, "Branches loaded", meta);
 }));
@@ -156,7 +165,7 @@ router.post("/branches", requirePermission("branches:create"), validate(branchSc
   return created(res, branch, "Branch created");
 }));
 
-router.patch("/branches/:id", requirePermission("branches:update"), validate(z.object({ params: idParams, body: branchSchema.shape.body })), asyncHandler(async (req, res) => {
+router.patch("/branches/:id", requirePermission("branches:edit"), validate(z.object({ params: idParams, body: branchSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.branch.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
   const branch = await updateTenantRecord(prisma, "branch", req, req.validated.params.id,
@@ -174,7 +183,7 @@ router.delete("/branches/:id", requirePermission("branches:delete"), validate(z.
   return ok(res, branch, "Branch deleted");
 }));
 
-router.get("/users", requirePermission("users:read"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
+router.get("/users", requirePermission("users:view"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
   const { rows, meta } = await listRows("user", req);
   return ok(res, rows.map(({ passwordHash, ...row }) => row), "Users loaded", meta);
 }));
@@ -212,7 +221,7 @@ router.post("/users", requirePermission("users:create"), validate(userSchema), a
   return created(res, user, "User created");
 }));
 
-router.patch("/users/:id", requirePermission("users:update"), validate(z.object({ params: idParams, body: userSchema.shape.body.partial() })), asyncHandler(async (req, res) => {
+router.patch("/users/:id", requirePermission("users:edit"), validate(z.object({ params: idParams, body: userSchema.shape.body.partial() })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.user.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
   const data = cleanStrings(req.validated.body);
@@ -227,7 +236,7 @@ router.patch("/users/:id", requirePermission("users:update"), validate(z.object(
   return ok(res, user, "User updated");
 }));
 
-router.post("/users/:id/reset-password", requirePermission("users:update"), validate(z.object({ params: idParams, body: resetPasswordSchema.shape.body })), asyncHandler(async (req, res) => {
+router.post("/users/:id/reset-password", requirePermission("users:edit"), validate(z.object({ params: idParams, body: resetPasswordSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const passwordHash = await bcrypt.hash(req.validated.body.password, 12);
   const user = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
@@ -236,7 +245,7 @@ router.post("/users/:id/reset-password", requirePermission("users:update"), vali
   return ok(res, {}, "Password reset");
 }));
 
-router.post("/users/:id/disable", requirePermission("users:update"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
+router.post("/users/:id/disable", requirePermission("users:edit"), validate(z.object({ params: idParams })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const user = await updateTenantRecord(prisma, "user", req, req.validated.params.id,
     { isActive: false, updatedBy: req.user.sub }, { notFoundMessage: "User not found" });
@@ -252,7 +261,7 @@ router.delete("/users/:id", requirePermission("users:delete"), validate(z.object
   return ok(res, {}, "User deleted");
 }));
 
-router.get("/products", requirePermission("products:read"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
+router.get("/products", requirePermission("products:view"), validate(z.object({ query: listQuery })), asyncHandler(async (req, res) => {
   const { rows, meta } = await listRows("item", req);
   return ok(res, rows, "Products loaded", meta);
 }));
@@ -266,7 +275,7 @@ router.post("/products", requirePermission("products:create"), validate(productS
   return created(res, product, "Product created");
 }));
 
-router.patch("/products/:id", requirePermission("products:update"), validate(z.object({ params: idParams, body: productSchema.shape.body })), asyncHandler(async (req, res) => {
+router.patch("/products/:id", requirePermission("products:edit"), validate(z.object({ params: idParams, body: productSchema.shape.body })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const oldValue = await prisma.item.findFirst({ where: { id: req.validated.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false } });
   const product = await updateTenantRecord(prisma, "item", req, req.validated.params.id,
@@ -284,7 +293,7 @@ router.delete("/products/:id", requirePermission("products:delete"), validate(z.
   return ok(res, product, "Product deleted");
 }));
 
-router.get("/audit-logs", requirePermission("audit:read"), validate(z.object({ query: listQuery.extend({ module: z.string().optional() }) })), asyncHandler(async (req, res) => {
+router.get("/audit-logs", requirePermission("audit:view"), validate(z.object({ query: listQuery.extend({ module: z.string().optional() }) })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { page, limit, module } = req.validated.query;
   const where = { tenantId: req.tenantId, companyId: req.companyId, isDeleted: false, ...(module ? { tableName: module } : {}) };

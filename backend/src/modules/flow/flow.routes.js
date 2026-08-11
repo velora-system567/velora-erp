@@ -20,7 +20,7 @@ router.get("/flow/templates", (req, res) => ok(res, TEMPLATES, "Templates loaded
 router.get("/flow/reference", (req, res) => ok(res, { triggers: TRIGGERS, actions: ACTIONS }, "Flow reference loaded"));
 
 // ─── Create Workflow ─────────────────────────────────────────────
-router.post("/flow/workflows", requirePermission(PERMISSIONS.ADMIN),
+router.post("/flow/workflows", requirePermission(PERMISSIONS.ADMIN_VIEW),
   validate(z.object({ body: z.object({ name: z.string().min(2), description: z.string().optional(), trigger: z.string().min(1), actions: z.array(z.any()).min(1), enabled: z.boolean().default(false) }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();

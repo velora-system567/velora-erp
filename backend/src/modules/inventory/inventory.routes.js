@@ -7,6 +7,7 @@ import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { getPrisma } from "../../config/db.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 import { writeAudit } from "../../utils/audit.js";
 import {
   getStockBalances,
@@ -61,11 +62,16 @@ async function assertTenantInventoryReference(prisma, req, { itemId, warehouseId
 router.get("/inventory/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ),
   validate(z.object({ query: z.object({ warehouseId: z.preprocess(sanitizeUuid, z.string().uuid()).optional() }) })),
   asyncHandler(async (req, res) => {
-    const data = await getInventoryControlTower(getPrisma(), {
-      tenantId: req.tenantId,
-      companyId: req.companyId,
-      warehouseId: req.validated.query.warehouseId,
-    });
+    const warehouseId = req.validated.query.warehouseId || "all";
+    const data = await cachedCompute(
+      `tenant:${req.tenantId}:company:${req.companyId}:inventory:dashboard:${warehouseId}`,
+      30,
+      () => getInventoryControlTower(getPrisma(), {
+        tenantId: req.tenantId,
+        companyId: req.companyId,
+        warehouseId: req.validated.query.warehouseId,
+      }),
+    );
     return ok(res, data, "Inventory dashboard loaded");
   }));
 

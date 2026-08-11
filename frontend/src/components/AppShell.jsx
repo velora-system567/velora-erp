@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
-import { authApi } from "../services/api";
-import { usePermissionStore, useVisibleModules } from "../hooks/usePermissions";
+import { authApi, onSessionExpired } from "../services/api";
+import { usePermissionStore, useVisibleModules, initPermissions } from "../hooks/usePermissions";
 import {
   useShortcutStore,
   useActiveModule,
@@ -99,17 +99,22 @@ export function AppShell() {
   useOverlayStack("sidebar-mobile", mobileDrawerOpen && isMobile);
 
   useEffect(() => {
-    const store = usePermissionStore.getState();
-    if (!store.loaded) {
-      try {
-        const token = localStorage.getItem("velora_access_token");
-        if (token) {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          if (payload.permissions) store.setPermissions(payload.permissions);
-        }
-      } catch { /* ignore */ }
-    }
+    // Authoritative source is the backend. initPermissions() applies the JWT
+    // claim immediately for an instant render, then overrides it with server
+    // truth from /auth/me (with bounded retries). Every outcome leaves the
+    // store `loaded`, so direct deep links (e.g. straight to /sales) never
+    // deadlock on an unloaded permission state.
+    initPermissions();
   }, []);
+
+  // Register session expiration handler — redirects via React Router
+  // instead of hard window.location.href navigation (which caused white screens)
+  useEffect(() => {
+    onSessionExpired(() => {
+      clearSession();
+      navigate("/login", { replace: true });
+    });
+  }, [navigate, clearSession]);
 
   async function logout() {
     try {

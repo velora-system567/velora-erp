@@ -12,6 +12,8 @@
  */
 import { getPrisma } from "../config/db.js";
 import { writeAudit } from "./audit.js";
+import { ROLE_PERMISSIONS } from "./permissions.js";
+import { getRedis } from "../config/redis.js";
 
 // ─── Module Permission Definitions ───────────────────────────────────────────
 // This is the canonical list of all permissions in the system.
@@ -102,6 +104,16 @@ export const PERMISSION_NAMESPACES = {
     module: "eam",
     label: "Asset Management",
     permissions: ["view", "create", "edit", "delete", "maintenance"],
+  },
+  PRODUCTS: {
+    module: "products",
+    label: "Products",
+    permissions: ["view", "create", "edit", "delete"],
+  },
+  MASTER: {
+    module: "master",
+    label: "Master Data",
+    permissions: ["view", "create", "edit", "delete"],
   },
 };
 
@@ -208,11 +220,27 @@ const permissionCache = new Map();
  */
 export async function loadUserPermissions(prisma, { userId, tenantId, companyId }) {
   const cacheKey = `${tenantId}:${userId}`;
+  const redis = getRedis();
+  const redisKey = `perm:${tenantId}:${userId}`;
 
-  // Check cache
+  // Fast path — in-process cache
   const cached = permissionCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.permissions;
+  }
+
+  // Shared Redis cache — on a cold serverless fleet this lets one lambda's
+  // permission computation serve every other lambda, eliminating one DB
+  // round-trip per request during cold-start bursts.
+  const redisCached = await redis.get(redisKey).catch(() => null);
+  if (redisCached) {
+    try {
+      const permissions = JSON.parse(redisCached);
+      permissionCache.set(cacheKey, { permissions, expiresAt: Date.now() + 5 * 60 * 1000 });
+      return permissions;
+    } catch {
+      // corrupt entry — recompute below
+    }
   }
 
   const user = await prisma.user.findUnique({
@@ -247,16 +275,24 @@ export async function loadUserPermissions(prisma, { userId, tenantId, companyId 
       permissionSet.add("*");
       break;
     }
+    // Explicit DB-assigned permissions take precedence.
     for (const rp of role.rolePermissions) {
       if (rp.permission?.key) {
         permissionSet.add(rp.permission.key);
       }
     }
+    // Fallback to built-in role defaults so an empty/unseeded permission
+    // table never locks a role out of the modules it is supposed to see.
+    const defaults = ROLE_PERMISSIONS[role.name];
+    if (defaults) {
+      for (const key of defaults) permissionSet.add(key);
+    }
   }
 
   const permissions = isSuperAdmin ? ["*"] : [...permissionSet];
 
-  // Cache for 5 minutes
+  // Cache for 5 minutes in shared Redis + in-process map
+  await redis.set(redisKey, JSON.stringify(permissions), "EX", 300).catch(() => {});
   permissionCache.set(cacheKey, {
     permissions,
     expiresAt: Date.now() + 5 * 60 * 1000,
@@ -270,6 +306,7 @@ export async function loadUserPermissions(prisma, { userId, tenantId, companyId 
  */
 export function invalidatePermissionCache(userId, tenantId) {
   permissionCache.delete(`${tenantId}:${userId}`);
+  getRedis().del(`perm:${tenantId}:${userId}`).catch(() => {});
 }
 
 /**

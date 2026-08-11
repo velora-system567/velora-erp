@@ -6,6 +6,7 @@ import { validate, sanitizeUuid } from "../../middleware/validate.js";
 import { ok, created } from "../../utils/api-response.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { PERMISSIONS } from "../../utils/permissions.js";
+import { cachedCompute } from "../../utils/single-flight-cache.js";
 import {
   createQuotation,
   convertQuotationToOrder,
@@ -279,7 +280,13 @@ router.post("/payment-receipts", requirePermission(PERMISSIONS.SALES_PAYMENT),
 
 // ─── SALES DASHBOARD ─────────────────────────────────────────────────────────
 router.get("/sales/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
-  const data = await getSalesDashboard(req);
+  // Single-flight + short cache: collapses concurrent cold loads and keeps
+  // this heavy multi-query endpoint from stampeding the DB connection pool.
+  const data = await cachedCompute(
+    `tenant:${req.tenantId}:company:${req.companyId}:sales:dashboard`,
+    30,
+    () => getSalesDashboard(req),
+  );
   return ok(res, data, "Sales dashboard loaded");
 }));
 
@@ -299,7 +306,7 @@ router.get("/sales/outstanding-report", requirePermission(PERMISSIONS.SALES_READ
   return ok(res, rows, "Outstanding report");
 }));
 
-router.get("/customers/:id/outstanding", requirePermission(PERMISSIONS.SALES_READ),
+router.get("/customers/:id/outstanding", requirePermission([PERMISSIONS.SALES_READ, PERMISSIONS.MASTER_READ]),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const rows = await getOutstandingReport(req);

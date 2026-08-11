@@ -11,17 +11,22 @@ export function useSalesMasters() {
   return useQuery({
     queryKey: ["sales-masters"],
     queryFn: async () => {
-      const [cRes, iRes, uRes, bRes] = await Promise.all([
+      // allSettled keeps the bundle resilient: a 403/500 on one optional
+      // sub-resource (e.g. `users` for roles without users:view) must never
+      // wipe out the core data (customers/items/branches) the rest of the
+      // Sales tabs depend on.
+      const [cRes, iRes, uRes, bRes] = await Promise.allSettled([
         coreApi.list("customers", { limit: 500 }),
         coreApi.list("items", { limit: 500 }),
         coreApi.list("users", { limit: 200 }),
         coreApi.list("branches", { limit: 200 }),
       ]);
+      const value = (r) => (r.status === "fulfilled" ? r.value : { data: [] });
       return {
-        customers: cRes.data || [],
-        items: iRes.data || [],
-        users: uRes.data || [],
-        branches: bRes.data || [],
+        customers: value(cRes).data || [],
+        items: value(iRes).data || [],
+        users: value(uRes).data || [],
+        branches: value(bRes).data || [],
       };
     },
     staleTime: 5 * 60 * 1000,

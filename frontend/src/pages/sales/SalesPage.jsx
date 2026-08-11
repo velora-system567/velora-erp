@@ -154,7 +154,7 @@ function DashboardTab({ customers, onJump }) {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["sales-dashboard"] })} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No sales data" description="Create invoices to see dashboard insights." />;
-  const k = d.kpis;
+  const k = d.kpis || {};
 
   return (
     <div className="space-y-6">
@@ -163,12 +163,12 @@ function DashboardTab({ customers, onJump }) {
         <span className="text-xs text-slate-400">Click a KPI to open its records</span>
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiTile label="Total Revenue" value={k.totalRevenue} tone="blue" icon={TrendingUp} formatter={formatRupees} detail={`${k.totalInvoices} invoices · open`} onClick={() => onJump("invoices")} />
-        <KpiTile label="Monthly Revenue" value={k.monthlyRevenue} tone="emerald" icon={BarChart3} formatter={formatRupees} detail={`${k.monthlyInvoices} invoices this month`} onClick={() => onJump("invoices")} />
-        <KpiTile label="Pending Orders" value={k.pendingSOs} tone="amber" icon={ShoppingCart} detail={`${k.totalSOs} total orders · open`} onClick={() => onJump("orders")} />
-        <KpiTile label="Deliveries" value={k.totalDNs} tone="purple" icon={Truck} detail="Delivery notes · open" onClick={() => onJump("orders")} />
-        <KpiTile label="Collections" value={k.monthlyCollections} tone="emerald" icon={DollarSign} formatter={formatRupees} detail="This month · open" onClick={() => onJump("receipts")} />
-        <KpiTile label="Total Orders" value={k.totalSOs} tone="slate" icon={ShoppingCart} detail="Open orders" onClick={() => onJump("orders")} />
+        <KpiTile label="Total Revenue" value={k.totalRevenue || 0} tone="blue" icon={TrendingUp} formatter={formatRupees} detail={`${k.totalInvoices || 0} invoices · open`} onClick={() => onJump("invoices")} />
+        <KpiTile label="Monthly Revenue" value={k.monthlyRevenue || 0} tone="emerald" icon={BarChart3} formatter={formatRupees} detail={`${k.monthlyInvoices || 0} invoices this month`} onClick={() => onJump("invoices")} />
+        <KpiTile label="Pending Orders" value={k.pendingSOs || 0} tone="amber" icon={ShoppingCart} detail={`${k.totalSOs || 0} total orders · open`} onClick={() => onJump("orders")} />
+        <KpiTile label="Deliveries" value={k.totalDNs || 0} tone="purple" icon={Truck} detail="Delivery notes · open" onClick={() => onJump("orders")} />
+        <KpiTile label="Collections" value={k.monthlyCollections || 0} tone="emerald" icon={DollarSign} formatter={formatRupees} detail="This month · open" onClick={() => onJump("receipts")} />
+        <KpiTile label="Total Orders" value={k.totalSOs || 0} tone="slate" icon={ShoppingCart} detail="Open orders" onClick={() => onJump("orders")} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">

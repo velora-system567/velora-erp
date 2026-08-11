@@ -21,7 +21,8 @@ const ACTION_STYLES = {
 
 export function AuditLogPage() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["audit-logs"], queryFn: coreApi.auditLogs });
+  // Wrap to prevent React Query's context object from being passed as params
+  const query = useQuery({ queryKey: ["audit-logs"], queryFn: () => coreApi.auditLogs() });
   const [search, setSearch] = useState("");
 
   if (query.isPending) return <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:py-6 xl:p-8"><SkeletonTable rows={8} cols={4} /></div>;
