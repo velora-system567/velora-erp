@@ -161,7 +161,7 @@ export function useVisibleModules() {
     { key: "inventory", permissionKey: "inventory:view", path: "/inventory", label: "Inventory", icon: "Warehouse" },
     { key: "manufacturing", permissionKey: "manufacturing:view", path: "/manufacturing", label: "Manufacturing", icon: "Factory" },
     { key: "accounts", permissionKey: "accounts:view", path: "/accounts", label: "Finance", icon: "DollarSign" },
-    { key: "crm", permissionKey: "sales:view", path: "/crm", label: "CRM", icon: "Users" },
+    { key: "crm", permissionKey: "crm:view", path: "/crm", label: "CRM", icon: "Users" },
     { key: "hrms", permissionKey: "hr:view", path: "/hrms", label: "HR", icon: "UserCheck" },
     { key: "eam", permissionKey: "manufacturing:view", path: "/eam", label: "Assets", icon: "Tool" },
     { key: "reports", permissionKey: "dashboard:view", path: "/executive", label: "Reports", icon: "BarChart" },

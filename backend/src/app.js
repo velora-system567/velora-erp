@@ -9,7 +9,6 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import coreRoutes from "./modules/core/core.routes.js";
 import searchRoutes from "./modules/core/search.routes.js";
 import masterRoutes from "./modules/master/master.routes.js";
-import salesRoutes from "./modules/sales/sales.routes.js";
 import purchaseRoutes from "./modules/purchase/purchase.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import accountsRoutes from "./modules/accounts/accounts.routes.js";
@@ -51,9 +50,6 @@ app.use("/api/auth", authRoutes);
 
 // Dashboard KPIs
 app.use("/api/dashboard", dashboardRoutes);
-
-// Sales (leads, quotations, SO, DN, invoices, receipts)
-app.use("/api", salesRoutes);
 
 // Purchase (PR, RFQ, PO, GRN, vendor bills, payments)
 app.use("/api", purchaseRoutes);

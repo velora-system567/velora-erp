@@ -1,0 +1,20 @@
+
+> velora-erp@1.5.0 dev:frontend
+> npm run dev --workspace frontend
+
+
+> @velora-erp/frontend@1.5.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v7.3.6[39m  [2mready in [0m[1m727[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m4:29:39 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/AppShell.jsx, /src/components/PermissionGuard.jsx, /src/pages/admin/AdminPage.jsx[22m
+[2m4:44:04 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/sales/SalesPage.jsx[22m
+[2m8:20:48 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/core/AuditLogPage.jsx, /src/pages/sales/OwnerDashboard.jsx, /src/pages/auth/Login.jsx, /src/components/AppShell.jsx, /src/pages/core/CompanyPage.jsx, /src/pages/auth/ForgotPassword.jsx, /src/pages/auth/Register.jsx, /src/pages/auth/ResetPassword.jsx, /src/pages/hrms/HrmsPage.jsx, /src/pages/manufacturing/ManufacturingPage.jsx, /src/pages/supplier-portal/SupplierPortalPage.jsx, /src/pages/inventory/ProductsPage.jsx, /src/pages/bi/ExecutiveDashboard.jsx, /src/pages/dashboard/Dashboard.jsx, /src/pages/wms/WmsPage.jsx, /src/pages/inventory/InventoryPage.jsx, /src/pages/core/CorePage.jsx, /src/pages/admin/AdminPage.jsx, /src/pages/crm/CrmPage.jsx, /src/pages/inventory/ReportsPage.jsx, /src/pages/inventory/SuppliersPage.jsx, /src/pages/eam/EamPage.jsx, /src/pages/accounts/AccountsPage.jsx, /src/pages/purchase/PurchasePage.jsx, /src/pages/sales/SalesPage.jsx, /src/components/PermissionGuard.jsx, /src/components/AICopilot.jsx, /src/pages/inventory/components/WarehouseManager.jsx, /src/pages/inventory/components/ReservationsPanel.jsx, /src/components/GlobalSearch.jsx, /src/pages/accounts/FinanceDashboard.jsx, /src/pages/inventory/components/BatchTable.jsx, /src/pages/inventory/components/StockTable.jsx, /src/pages/inventory/components/MovementTable.jsx, /src/pages/inventory/components/Overview.jsx, /src/pages/inventory/components/TransferWorkspace.jsx[22m
+[2m9:14:43 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/core/AuditLogPage.jsx, /src/pages/sales/OwnerDashboard.jsx, /src/pages/auth/Login.jsx, /src/components/AppShell.jsx, /src/pages/core/CompanyPage.jsx, /src/pages/auth/ForgotPassword.jsx, /src/pages/auth/Register.jsx, /src/pages/auth/ResetPassword.jsx, /src/pages/hrms/HrmsPage.jsx, /src/pages/manufacturing/ManufacturingPage.jsx, /src/pages/supplier-portal/SupplierPortalPage.jsx, /src/pages/inventory/ProductsPage.jsx, /src/pages/bi/ExecutiveDashboard.jsx, /src/pages/dashboard/Dashboard.jsx, /src/pages/wms/WmsPage.jsx, /src/pages/inventory/InventoryPage.jsx, /src/pages/core/CorePage.jsx, /src/pages/admin/AdminPage.jsx, /src/pages/crm/CrmPage.jsx, /src/pages/inventory/ReportsPage.jsx, /src/pages/inventory/SuppliersPage.jsx, /src/pages/eam/EamPage.jsx, /src/pages/accounts/AccountsPage.jsx, /src/pages/purchase/PurchasePage.jsx, /src/pages/sales/SalesPage.jsx, /src/components/PermissionGuard.jsx, /src/components/AICopilot.jsx, /src/pages/inventory/components/WarehouseManager.jsx, /src/pages/inventory/components/ReservationsPanel.jsx, /src/components/GlobalSearch.jsx, /src/pages/accounts/FinanceDashboard.jsx, /src/pages/inventory/components/BatchTable.jsx, /src/pages/inventory/components/StockTable.jsx, /src/pages/inventory/components/MovementTable.jsx, /src/pages/inventory/components/Overview.jsx, /src/pages/inventory/components/TransferWorkspace.jsx[22m
+[2m10:09:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2me2e-report/index.html[22m
+[2m10:09:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2me2e-report/index.html[22m
+[2m10:16:05 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2me2e-report/index.html[22m

@@ -12,8 +12,7 @@ import { AuditLogPage } from "./pages/core/AuditLogPage";
 import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
 import { Dashboard } from "./pages/dashboard/Dashboard";
-import { SalesPage } from "./pages/sales/SalesPage";
-import OwnerDashboard from "./pages/sales/OwnerDashboard";
+import SalesPlaceholder from "./pages/sales/SalesPlaceholder";
 import { AdminPage } from "./pages/admin/AdminPage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { AccessDenied } from "./components/AccessDenied";
@@ -79,8 +78,7 @@ export default function App() {
                 <Route path="/products" element={<RouteErrorBoundary><CorePage resource="products" /></RouteErrorBoundary>} />
               </Route>
               <Route element={<PermissionGuard module="sales" requiredPermission="sales:view" />}>
-                <Route path="/sales" element={<RouteErrorBoundary><SalesPage /></RouteErrorBoundary>} />
-                <Route path="/sales/dashboard" element={<RouteErrorBoundary><OwnerDashboard /></RouteErrorBoundary>} />
+                <Route path="/sales" element={<RouteErrorBoundary><SalesPlaceholder /></RouteErrorBoundary>} />
               </Route>
               <Route element={<PermissionGuard module="purchase" requiredPermission="purchase:view" />}>
                 <Route path="/purchase" element={<RouteErrorBoundary><PurchasePage /></RouteErrorBoundary>} />

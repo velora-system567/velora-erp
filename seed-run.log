@@ -1,0 +1,1517 @@
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+🌱 Starting permission seed...
+   Seeding tenant 6ece100f... company eb471efc
+      ✓ 101 permissions synced
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+[DB] Database connection error: 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "OWNER" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "ADMIN" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "SALES_MANAGER" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "SALESMAN" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "STORE_KEEPER" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "PURCHASE_MANAGER" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "ACCOUNTANT" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "PRODUCTION_OPERATOR" synced with permissions
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "HR_MANAGER" synced with permissions
+   Seeding tenant 49017b4b... company 6ff58ef2
+      ✓ 101 permissions synced
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+prisma:error 
+Invalid `prisma.rolePermission.create()` invocation:
+
+
+Unique constraint failed on the fields: (`tenant_id`,`role_id`,`permission_id`)
+      ✓ Role "OWNER" synced with permissions
+      ✓ Role "ADMIN" synced with permissions
+      ✓ Role "SALES_MANAGER" synced with permissions
+      ✓ Role "SALESMAN" synced with permissions
+      ✓ Role "STORE_KEEPER" synced with permissions
+      ✓ Role "PURCHASE_MANAGER" synced with permissions
+      ✓ Role "ACCOUNTANT" synced with permissions
+      ✓ Role "PRODUCTION_OPERATOR" synced with permissions
+      ✓ Role "HR_MANAGER" synced with permissions
+   Seeding tenant ec4a980d... company d1343724
+      ✓ 101 permissions synced
+      ✓ Role "OWNER" synced with permissions
+      ✓ Role "ADMIN" synced with permissions
+      ✓ Role "SALES_MANAGER" synced with permissions
+      ✓ Role "SALESMAN" synced with permissions
+      ✓ Role "STORE_KEEPER" synced with permissions
+      ✓ Role "PURCHASE_MANAGER" synced with permissions
+      ✓ Role "ACCOUNTANT" synced with permissions
+      ✓ Role "PRODUCTION_OPERATOR" synced with permissions
+      ✓ Role "HR_MANAGER" synced with permissions
+   Seeding tenant 54fadd6c... company 513c9dfa
+      ✓ 101 permissions synced
+      ✓ Role "OWNER" synced with permissions
+      ✓ Role "ADMIN" synced with permissions
+      ✓ Role "SALES_MANAGER" synced with permissions
+      ✓ Role "SALESMAN" synced with permissions
+      ✓ Role "STORE_KEEPER" synced with permissions
+      ✓ Role "PURCHASE_MANAGER" synced with permissions
+      ✓ Role "ACCOUNTANT" synced with permissions
+      ✓ Role "PRODUCTION_OPERATOR" synced with permissions
+      ✓ Role "HR_MANAGER" synced with permissions
+✅ Permission seed complete!

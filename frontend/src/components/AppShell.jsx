@@ -44,7 +44,7 @@ function useNavigationSections() {
 function getActiveRoutes(key) {
   const map = {
     dashboard: ["/", "/executive"],
-    sales: ["/sales", "/crm"],
+    sales: ["/sales"],
     inventory: ["/inventory", "/wms", "/manufacturing", "/eam", "/products"],
     purchase: ["/purchase", "/supplier-portal"],
     manufacturing: ["/manufacturing"],

@@ -297,96 +297,6 @@ export const masterApi = {
   },
 };
 
-// ─── Leads ────────────────────────────────────────────────────────────────────
-
-export const leadsApi = {
-  list: (p = {}) => {
-    const qs = new URLSearchParams(p).toString();
-    return apiRequest(`/leads${qs ? `?${qs}` : ""}`);
-  },
-  create: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
-  update: (id, input) => {
-    const safeId = _guard(id, "lead id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/leads/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
-  },
-  remove: (id) => {
-    const safeId = _guard(id, "lead id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/leads/${safeId}`, { method: "DELETE" });
-  },
-};
-
-// ─── Sales ────────────────────────────────────────────────────────────────────
-
-export const salesApi = {
-  // Quotations
-  quotations: (p = {}) => apiRequest(`/quotations?${new URLSearchParams(p)}`),
-  getQuotation: (id) => {
-    const safeId = _guard(id, "quotation id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/quotations/${safeId}`);
-  },
-  createQuotation: (input) => apiRequest("/quotations", { method: "POST", body: JSON.stringify(input) }),
-  convertQuotation: (id) => {
-    const safeId = _guard(id, "quotation id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/quotations/${safeId}/convert-to-order`, { method: "POST" });
-  },
-  updateQuotationStatus: (id, status) => {
-    const safeId = _guard(id, "quotation id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/quotations/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-  },
-
-  // Sales Orders
-  salesOrders: (p = {}) => apiRequest(`/sales-orders?${new URLSearchParams(p)}`),
-  getSalesOrder: (id) => {
-    const safeId = _guard(id, "sales order id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/sales-orders/${safeId}`);
-  },
-  createSalesOrder: (input) => apiRequest("/sales-orders", { method: "POST", body: JSON.stringify(input) }),
-  updateSalesOrderStatus: (id, status) => {
-    const safeId = _guard(id, "sales order id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/sales-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-  },
-
-  // Delivery Notes
-  deliveryNotes: (p = {}) => apiRequest(`/delivery-notes?${new URLSearchParams(p)}`),
-  createDeliveryNote: (input) => apiRequest("/delivery-notes", { method: "POST", body: JSON.stringify(input) }),
-
-  // Invoices
-  invoices: (p = {}) => apiRequest(`/invoices?${new URLSearchParams(p)}`),
-  getInvoice: (id) => {
-    const safeId = _guard(id, "invoice id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/invoices/${safeId}`);
-  },
-  createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
-
-  // Receipts
-  receipts: (p = {}) => {
-    const qs = new URLSearchParams(p).toString();
-    return apiRequest(`/payment-receipts${qs ? `?${qs}` : ""}`);
-  },
-  createReceipt: (input) => apiRequest("/payment-receipts", { method: "POST", body: JSON.stringify(input) }),
-
-  // Dashboard & Analytics
-  dashboard: () => apiRequest("/sales/dashboard"),
-  analytics: () => apiRequest("/sales/analytics"),
-  ownerDashboard: () => apiRequest("/sales/owner-dashboard"),
-
-  // Reports
-  outstandingReport: () => apiRequest("/sales/outstanding-report"),
-  customerLedger: (id) => {
-    const safeId = _guard(id, "customer id");
-    if (!safeId) return _noRecord();
-    return apiRequest(`/customers/${safeId}/ledger`);
-  },
-};
-
 // ─── Purchase ─────────────────────────────────────────────────────────────────
 
 export const purchaseApi = {
@@ -711,13 +621,11 @@ export const manufacturingApi = {
 export const operationsApi = {
   list: (resource) => {
     // Map old resource names to new endpoints
-    if (resource === "sales") return salesApi.invoices();
     if (resource === "purchase") return purchaseApi.purchaseOrders();
     if (resource === "accounts") return accountsApi.journalEntries();
     return apiRequest(`/${resource}/records`);
   },
   create: (resource, input) => {
-    if (resource === "sales") return salesApi.createInvoice(input);
     if (resource === "purchase") return purchaseApi.createPurchaseOrder(input);
     return apiRequest(`/${resource}/records`, { method: "POST", body: JSON.stringify(input) });
   },

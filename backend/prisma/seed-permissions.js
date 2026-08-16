@@ -76,38 +76,26 @@ async function seedTenant(prisma, tenantId, companyId) {
       update: { isDeleted: false },
     });
 
-    // Remove existing role permissions
-    await prisma.rolePermission.updateMany({
-      where: { roleId: role.id, isDeleted: false },
-      data: { isDeleted: true },
-    });
-
-    // Assign permissions from the default set
+    // Assign permissions from the default set using upsert to handle existing (including soft-deleted) rows
     if (config.isSuperAdmin || config.permissions.includes("*")) {
       // Super admin: assign ALL permissions
       for (const [, permId] of permissionMap) {
-        await prisma.rolePermission.create({
-          data: {
-            tenantId,
-            companyId,
-            roleId: role.id,
-            permissionId: permId,
-          },
-        }).catch(() => {}); // ignore duplicates
+        await prisma.rolePermission.upsert({
+          where: { tenantId_roleId_permissionId: { tenantId, roleId: role.id, permissionId: permId } },
+          create: { tenantId, companyId, roleId: role.id, permissionId: permId },
+          update: { isDeleted: false },
+        });
       }
     } else {
       // Assign specific permissions
       for (const permKey of config.permissions) {
         const permId = permissionMap.get(permKey);
         if (permId) {
-          await prisma.rolePermission.create({
-            data: {
-              tenantId,
-              companyId,
-              roleId: role.id,
-              permissionId: permId,
-            },
-          }).catch(() => {}); // ignore duplicates
+          await prisma.rolePermission.upsert({
+            where: { tenantId_roleId_permissionId: { tenantId, roleId: role.id, permissionId: permId } },
+            create: { tenantId, companyId, roleId: role.id, permissionId: permId },
+            update: { isDeleted: false },
+          });
         }
       }
     }
