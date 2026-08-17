@@ -24,6 +24,7 @@ import platformRoutes from "./modules/platform/platform.routes.js";
 import portalRoutes from "./modules/supplier-portal/portal.routes.js";
 import flowRoutes from "./modules/flow/flow.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import salesRoutes from "./modules/sales/sales.routes.js";
 import { ok } from "./utils/api-response.js";
 
 export const app = express();
@@ -65,6 +66,9 @@ app.use("/api", manufacturingRoutes);
 
 // CRM (customer pipeline, 360° view, search, activities)
 app.use("/api", crmRoutes);
+
+// Sales (leads, quotations, orders, delivery notes, invoices, receipts)
+app.use("/api", salesRoutes);
 
 // WMS (warehouse management, bin locations, movements)
 app.use("/api", wmsRoutes);

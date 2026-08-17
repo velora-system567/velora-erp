@@ -399,6 +399,99 @@ export const inventoryApi = {
   },
 };
 
+// ─── Sales ──────────────────────────────────────────────────────────────────────
+
+export const salesApi = {
+  // Leads
+  leads: (p = {}) => apiRequest(`/leads?${new URLSearchParams(p)}`),
+  createLead: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
+  updateLead: (id, input) => {
+    const safeId = _guard(id, "lead id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/leads/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
+  },
+  deleteLead: (id) => {
+    const safeId = _guard(id, "lead id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/leads/${safeId}`, { method: "DELETE" });
+  },
+
+  // Quotations
+  quotations: (p = {}) => apiRequest(`/quotations?${new URLSearchParams(p)}`),
+  createQuotation: (input) => apiRequest("/quotations", { method: "POST", body: JSON.stringify(input) }),
+  getQuotation: (id) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/quotations/${safeId}`);
+  },
+  convertQuotationToOrder: (id) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/quotations/${safeId}/convert-to-order`, { method: "POST" });
+  },
+  updateQuotationStatus: (id, status) => {
+    const safeId = _guard(id, "quotation id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/quotations/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
+
+  // Sales Orders
+  salesOrders: (p = {}) => apiRequest(`/sales-orders?${new URLSearchParams(p)}`),
+  createSalesOrder: (input) => apiRequest("/sales-orders", { method: "POST", body: JSON.stringify(input) }),
+  getSalesOrder: (id) => {
+    const safeId = _guard(id, "sales order id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/sales-orders/${safeId}`);
+  },
+  updateSalesOrderStatus: (id, status) => {
+    const safeId = _guard(id, "sales order id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/sales-orders/${safeId}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+  },
+
+  // Delivery Notes
+  deliveryNotes: (p = {}) => apiRequest(`/delivery-notes?${new URLSearchParams(p)}`),
+  createDeliveryNote: (input) => apiRequest("/delivery-notes", { method: "POST", body: JSON.stringify(input) }),
+  getDeliveryNote: (id) => {
+    const safeId = _guard(id, "delivery note id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/delivery-notes/${safeId}`);
+  },
+
+  // Invoices
+  invoices: (p = {}) => apiRequest(`/invoices?${new URLSearchParams(p)}`),
+  createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
+  getInvoice: (id) => {
+    const safeId = _guard(id, "invoice id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/invoices/${safeId}`);
+  },
+
+  // Payment Receipts
+  paymentReceipts: (p = {}) => apiRequest(`/payment-receipts?${new URLSearchParams(p)}`),
+  createPaymentReceipt: (input) => apiRequest("/payment-receipts", { method: "POST", body: JSON.stringify(input) }),
+
+  // Dashboards & Analytics
+  dashboard: () => apiRequest("/sales/dashboard"),
+  ownerDashboard: () => apiRequest("/sales/owner-dashboard"),
+  analytics: () => apiRequest("/sales/analytics"),
+
+  // Customer Outstanding & Ledger
+  customerOutstanding: (id) => {
+    const safeId = _guard(id, "customer id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/customers/${safeId}/outstanding`);
+  },
+  customerLedger: (id) => {
+    const safeId = _guard(id, "customer id");
+    if (!safeId) return _noRecord();
+    return apiRequest(`/customers/${safeId}/ledger`);
+  },
+
+  // Item Search
+  itemSearch: (q, limit = 20) => apiRequest(`/items/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+};
+
 // ─── CRM ──────────────────────────────────────────────────────────────────────
 
 export const crmApi = {
