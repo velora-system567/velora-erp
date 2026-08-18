@@ -3,8 +3,8 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle, ArrowDownUp, ArrowUpRight, BarChart3, Download, FileText,
-  IndianRupee, PackagePlus, TrendingUp, Truck, Users, Zap,
+  AlertCircle, ArrowDownUp, ArrowUpRight, BarChart3, ClipboardList, Download,
+  FileText, IndianRupee, PackagePlus, TrendingUp, Truck, Users, Zap,
 } from "lucide-react";
 import { salesApi, coreApi } from "../../../services/api";
 import { formatRupees, formatRupeesCompact, number } from "../../../utils/format";
