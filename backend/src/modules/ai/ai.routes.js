@@ -85,7 +85,7 @@ router.get("/ai/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
 }));
 
 // ─── AI Diagnostic ───────────────────────────────────────────────
-router.get("/ai/diagnose", (req, res) => {
+router.get("/ai/diagnose", requirePermission(PERMISSIONS.ADMIN_VIEW), (req, res) => {
   ok(res, {
     configured: true,
     status: "operational",

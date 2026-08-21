@@ -16,7 +16,7 @@ const uuid = _uuid;
 const optionalUuid = _optUuid;
 
 // ─── CRM Dashboard ───────────────────────────────────────────────
-router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+router.get("/crm/dashboard", requirePermission(PERMISSIONS.CRM_READ), asyncHandler(async (req, res) => {
   const payload = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:crm:dashboard`, 30, async () => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
@@ -55,7 +55,7 @@ router.get("/crm/dashboard", requirePermission(PERMISSIONS.SALES_READ), asyncHan
 }));
 
 // ─── CRM Pipeline ────────────────────────────────────────────────
-router.get("/crm/pipeline", requirePermission(PERMISSIONS.SALES_READ), asyncHandler(async (req, res) => {
+router.get("/crm/pipeline", requirePermission(PERMISSIONS.CRM_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const status = req.query.status || "NEW";
@@ -68,7 +68,7 @@ router.get("/crm/pipeline", requirePermission(PERMISSIONS.SALES_READ), asyncHand
 }));
 
 // ─── CRM Customer 360° ──────────────────────────────────────────
-router.get("/crm/customers/:id", requirePermission(PERMISSIONS.SALES_READ),
+router.get("/crm/customers/:id", requirePermission(PERMISSIONS.CRM_READ),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -106,7 +106,7 @@ router.get("/crm/customers/:id", requirePermission(PERMISSIONS.SALES_READ),
   }));
 
 // ─── Global Search ───────────────────────────────────────────────
-router.get("/crm/search", requirePermission(PERMISSIONS.SALES_READ),
+router.get("/crm/search", requirePermission(PERMISSIONS.CRM_READ),
   validate(z.object({ query: z.object({ q: z.string().default("") }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();

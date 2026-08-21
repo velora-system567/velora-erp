@@ -12,7 +12,7 @@
  */
 import { getPrisma } from "../config/db.js";
 import { writeAudit } from "./audit.js";
-import { ROLE_PERMISSIONS } from "./permissions.js";
+import { ROLE_PERMISSIONS, PERMISSIONS } from "./permissions.js";
 import { getRedis } from "../config/redis.js";
 
 // ─── Module Permission Definitions ───────────────────────────────────────────
@@ -140,19 +140,16 @@ export function getAllPermissionKeys() {
 
 /**
  * Default permission sets for each role.
- * Role keys are stored in DB as role names.
- */
-/**
- * Default permission sets for each role.
  * Maps role enum values (used in DB) to permission keys.
  * The admin UI can create additional roles via the Permission model directly.
  *
- * NOTE: DB currently uses UserRoleName enum. New role names (FOUNDER, VIEWER, etc.)
- * are mapped at the application layer. Run `prisma db push` after deploying to
- * unlock the full set of DB role types.
+ * NOTE: This mirrors ROLE_PERMISSIONS from permissions.js which is the canonical source.
+ * Keep in sync or import from permissions.js directly.
  */
 export const ROLE_DEFAULT_PERMISSIONS = {
   OWNER: { permissions: ["*"] },
+  FOUNDER: { permissions: ["*"] },
+  SUPER_ADMIN: { permissions: ["*"] },
   ADMIN: { permissions: buildAllPermissionKeys() },
   // Sales & CRM
   SALES_MANAGER: { permissions: [
@@ -162,19 +159,25 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "reports:view", "reports:export",
     "inventory:view",
   ]},
-  SALESMAN: { permissions: [
+  SALES_EXECUTIVE: { permissions: [
     "dashboard:view",
-    "sales:view", "sales:create", "sales:edit", "sales:export",
-    "crm:view", "crm:create", "crm:edit",
+    "sales:view", "sales:create", "sales:edit", "sales:approve", "sales:payment", "sales:export", "sales:print",
+    "crm:view", "crm:create", "crm:edit", "crm:convertLead", "crm:assignLead",
     "inventory:view",
   ]},
   // Inventory
+  INVENTORY_MANAGER: { permissions: [
+    "dashboard:view",
+    "inventory:view", "inventory:create", "inventory:edit", "inventory:adjust", "inventory:transfer", "inventory:receive", "inventory:dispatch", "inventory:export",
+    "purchase:view",
+    "reports:view", "reports:export",
+  ]},
   STORE_KEEPER: { permissions: [
     "inventory:view", "inventory:create", "inventory:edit", "inventory:adjust", "inventory:transfer", "inventory:receive", "inventory:dispatch",
     "purchase:view",
   ]},
   // Procurement
-  PURCHASE_MANAGER: { permissions: [
+  PROCUREMENT_MANAGER: { permissions: [
     "dashboard:view",
     "purchase:view", "purchase:create", "purchase:edit", "purchase:approve", "purchase:payment", "purchase:export",
     "inventory:view",
@@ -198,6 +201,45 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "dashboard:view",
     "hr:view", "hr:create", "hr:edit", "hr:payroll", "hr:attendance", "hr:leaveapprove",
     "users:view", "users:create", "users:edit",
+    "reports:view",
+  ]},
+  // Manufacturing
+  MANUFACTURING_MANAGER: { permissions: [
+    "dashboard:view",
+    "manufacturing:view", "manufacturing:create", "manufacturing:edit", "manufacturing:approve", "manufacturing:bom", "manufacturing:quality", "manufacturing:workOrder", "manufacturing:export",
+    "inventory:view",
+    "reports:view",
+  ]},
+  // CRM
+  CRM_MANAGER: { permissions: [
+    "dashboard:view",
+    "crm:view", "crm:create", "crm:edit", "crm:delete", "crm:convertLead", "crm:assignLead",
+    "sales:view", "sales:create", "sales:edit",
+    "reports:view", "reports:export",
+  ]},
+  // Viewer (read-only)
+  VIEWER: { permissions: [
+    "dashboard:view",
+    "sales:view", "crm:view", "purchase:view", "inventory:view", "accounts:view", "manufacturing:view", "hr:view",
+    "reports:view",
+  ]},
+  // Legacy role names (kept for data compatibility)
+  SALESMAN: { permissions: [
+    "dashboard:view",
+    "sales:view", "sales:create", "sales:edit", "sales:export",
+    "crm:view", "crm:create", "crm:edit",
+    "inventory:view",
+  ]},
+  PURCHASE_MANAGER: { permissions: [
+    "dashboard:view",
+    "purchase:view", "purchase:create", "purchase:edit", "purchase:approve", "purchase:payment", "purchase:export",
+    "inventory:view",
+    "reports:view", "reports:export",
+  ]},
+  PRODUCTION_OPERATOR: { permissions: [
+    "dashboard:view",
+    "manufacturing:view", "manufacturing:create", "manufacturing:edit", "manufacturing:approve", "manufacturing:bom", "manufacturing:quality", "manufacturing:workOrder", "manufacturing:export",
+    "inventory:view",
     "reports:view",
   ]},
 };
@@ -270,7 +312,8 @@ export async function loadUserPermissions(prisma, { userId, tenantId, companyId 
 
   for (const ur of user.userRoles) {
     const role = ur.role;
-    if (role.name === "OWNER") {
+    // OWNER, FOUNDER, SUPER_ADMIN get wildcard access
+    if (role.name === "OWNER" || role.name === "FOUNDER" || role.name === "SUPER_ADMIN") {
       isSuperAdmin = true;
       permissionSet.add("*");
       break;

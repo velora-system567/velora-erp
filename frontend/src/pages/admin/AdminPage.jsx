@@ -172,6 +172,10 @@ function RoleManagement() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-roles"] }); setSelectedRoleId(null); },
   });
 
+  // Debounce timer ref for preventing rapid duplicate requests
+  const debounceTimer = useRef(null);
+  const pendingUpdate = useRef(null);
+
   // Toggle a single permission for the selected role
   const togglePermission = useCallback((permKey) => {
     if (!selectedRoleId) return;
@@ -179,7 +183,17 @@ function RoleManagement() {
     const updated = current.includes(permKey)
       ? current.filter((k) => k !== permKey)
       : [...current, permKey];
-    updateRolePerms.mutate({ id: selectedRoleId, permissionKeys: updated });
+
+    // Debounce to prevent rapid duplicate requests
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    pendingUpdate.current = { id: selectedRoleId, permissionKeys: updated };
+
+    debounceTimer.current = setTimeout(() => {
+      if (pendingUpdate.current) {
+        updateRolePerms.mutate(pendingUpdate.current);
+        pendingUpdate.current = null;
+      }
+    }, 300);
   }, [selectedRoleId, rolePermissionKeys, updateRolePerms]);
 
   // Toggle all permissions in a module
@@ -191,8 +205,20 @@ function RoleManagement() {
     const updated = enable
       ? [...new Set([...current, ...moduleKeys])]
       : current.filter((k) => !moduleKeys.includes(k));
-    updateRolePerms.mutate({ id: selectedRoleId, permissionKeys: updated });
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    pendingUpdate.current = { id: selectedRoleId, permissionKeys: updated };
+
+    debounceTimer.current = setTimeout(() => {
+      if (pendingUpdate.current) {
+        updateRolePerms.mutate(pendingUpdate.current);
+        pendingUpdate.current = null;
+      }
+    }, 300);
   }, [selectedRoleId, rolePermissionKeys, permissionsByModule, updateRolePerms]);
+
+  // Check if selected role is OWNER (super admin) - permissions are read-only
+  const isOwnerRole = selectedRole ? selectedRole.name === "OWNER" || selectedRole.name === "FOUNDER" || selectedRole.name === "SUPER_ADMIN" : false;
 
   if (rolesQuery.isError) return <ErrorState error={rolesQuery.error} onRetry={() => qc.invalidateQueries({ queryKey: ["admin-roles"] })} />;
 

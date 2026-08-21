@@ -165,7 +165,7 @@ router.delete("/:resource/:id", requirePermission(PERMISSIONS.MASTER_DELETE), va
   return ok(res, row, "Record deleted");
 }));
 
-router.post("/items/bulk-import", asyncHandler(async (req, res) => {
+router.post("/items/bulk-import", requirePermission(PERMISSIONS.MASTER_CREATE), asyncHandler(async (req, res) => {
   return ok(res, { queued: true }, "Item import queued");
 }));
 

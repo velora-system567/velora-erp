@@ -503,6 +503,8 @@ model Customer {
   updatedAt      DateTime @updatedAt @map("updated_at")
   isDeleted      Boolean  @default(false) @map("is_deleted")
 
+  documents BusinessDocument[]
+
   @@index([tenantId, companyId, isDeleted])
   @@map("customers")
 }
@@ -745,6 +747,8 @@ model BusinessDocument {
   isDeleted     Boolean        @default(false) @map("is_deleted")
 
   lines BusinessDocumentLine[]
+  party Customer? @relation(fields: [partyId], references: [id])
+  allocations PaymentAllocation[]
 
   @@index([tenantId, companyId, documentType, isDeleted])
   @@map("business_documents")
@@ -845,6 +849,7 @@ model PaymentAllocation {
   isDeleted  Boolean  @default(false) @map("is_deleted")
 
   payment Payment @relation(fields: [paymentId], references: [id])
+  document BusinessDocument @relation(fields: [documentId], references: [id])
 
   @@map("payment_allocations")
 }

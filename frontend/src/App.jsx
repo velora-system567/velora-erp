@@ -95,19 +95,19 @@ export default function App() {
               <Route element={<PermissionGuard module="manufacturing" requiredPermission="manufacturing:view" />}>
                 <Route path="/manufacturing" element={<RouteErrorBoundary><ManufacturingPage /></RouteErrorBoundary>} />
               </Route>
-              <Route element={<PermissionGuard module="crm" requiredPermission="sales:view" />}>
+              <Route element={<PermissionGuard module="crm" requiredPermission="crm:view" />}>
                 <Route path="/crm" element={<RouteErrorBoundary><CrmPage /></RouteErrorBoundary>} />
               </Route>
-              <Route element={<PermissionGuard module="wms" requiredPermission="inventory:view" />}>
+              <Route element={<PermissionGuard module="wms" requiredPermission="wms:view" />}>
                 <Route path="/wms" element={<RouteErrorBoundary><WmsPage /></RouteErrorBoundary>} />
               </Route>
-              <Route element={<PermissionGuard module="reports" requiredPermission="dashboard:view" />}>
+              <Route element={<PermissionGuard module="reports" requiredPermission="reports:view" />}>
                 <Route path="/executive" element={<RouteErrorBoundary><ExecutiveDashboard /></RouteErrorBoundary>} />
               </Route>
               <Route element={<PermissionGuard module="hrms" requiredPermission="hr:view" />}>
                 <Route path="/hrms" element={<RouteErrorBoundary><HrmsPage /></RouteErrorBoundary>} />
               </Route>
-              <Route element={<PermissionGuard module="eam" requiredPermission="manufacturing:view" />}>
+              <Route element={<PermissionGuard module="eam" requiredPermission="eam:view" />}>
                 <Route path="/eam" element={<RouteErrorBoundary><EamPage /></RouteErrorBoundary>} />
               </Route>
               <Route element={<PermissionGuard module="supplier-portal" requiredPermission="purchase:view" />}>

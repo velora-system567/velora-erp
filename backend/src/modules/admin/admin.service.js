@@ -44,21 +44,20 @@ export async function createRole(req, input) {
     },
   });
 
-  // Assign permissions
+  // Assign permissions — use upsert to be idempotent and safe
   if (permissionKeys.length > 0) {
     const permissions = await prisma.permission.findMany({
       where: { tenantId: req.tenantId, key: { in: permissionKeys }, isDeleted: false },
     });
-    await prisma.rolePermission.createMany({
-      data: permissions.map((p) => ({
-        tenantId: req.tenantId,
-        companyId: req.companyId,
-        roleId: role.id,
-        permissionId: p.id,
-        createdBy: req.user.sub,
-        updatedBy: req.user.sub,
-      })),
-    });
+    const permissionIds = permissions.map((p) => p.id);
+
+    for (const permId of permissionIds) {
+      await prisma.rolePermission.upsert({
+        where: { tenantId_roleId_permissionId: { tenantId: req.tenantId, roleId: role.id, permissionId: permId } },
+        create: { tenantId: req.tenantId, companyId: req.companyId, roleId: role.id, permissionId: permId, createdBy: req.user.sub, updatedBy: req.user.sub },
+        update: { isDeleted: false, updatedBy: req.user.sub },
+      });
+    }
   }
 
   await writeAudit(req, { tableName: "roles", recordId: role.id, action: "ROLE_CREATED", newValue: role });
@@ -77,30 +76,41 @@ export async function updateRole(req, roleId, input) {
 
   const role = await prisma.role.update({ where: { id: roleId }, data: updateData });
 
-  // Update permissions if provided
+  // Update permissions if provided — use transactional upsert to avoid unique constraint conflicts
   if (input.permissionKeys) {
-    // Remove existing
-    await prisma.rolePermission.updateMany({
-      where: { roleId, isDeleted: false },
-      data: { isDeleted: true, updatedBy: req.user.sub },
-    });
-
-    // Add new
+    // Resolve permission keys to IDs
     const permissions = await prisma.permission.findMany({
       where: { tenantId: req.tenantId, key: { in: input.permissionKeys }, isDeleted: false },
     });
-    if (permissions.length > 0) {
-      await prisma.rolePermission.createMany({
-        data: permissions.map((p) => ({
-          tenantId: req.tenantId,
-          companyId: req.companyId,
-          roleId: role.id,
-          permissionId: p.id,
-          createdBy: req.user.sub,
-          updatedBy: req.user.sub,
-        })),
+    const permissionIds = permissions.map((p) => p.id);
+    const desiredSet = new Set(permissionIds);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Fetch current active permission IDs for this role
+      const current = await tx.rolePermission.findMany({
+        where: { roleId, tenantId: req.tenantId, isDeleted: false },
+        select: { permissionId: true },
       });
-    }
+      const currentSet = new Set(current.map((r) => r.permissionId));
+
+      // 2. Soft-delete only those NOT in desired set
+      const toDelete = [...currentSet].filter((id) => !desiredSet.has(id));
+      if (toDelete.length) {
+        await tx.rolePermission.updateMany({
+          where: { roleId, permissionId: { in: toDelete }, isDeleted: false },
+          data: { isDeleted: true, updatedBy: req.user.sub },
+        });
+      }
+
+      // 3. Upsert (create or un-delete) only those in desired set
+      for (const permId of desiredSet) {
+        await tx.rolePermission.upsert({
+          where: { tenantId_roleId_permissionId: { tenantId: req.tenantId, roleId, permissionId: permId } },
+          create: { tenantId: req.tenantId, companyId: req.companyId, roleId, permissionId: permId, createdBy: req.user.sub, updatedBy: req.user.sub },
+          update: { isDeleted: false, updatedBy: req.user.sub },
+        });
+      }
+    });
 
     // Invalidate cache for users with this role
     const usersWithRole = await prisma.userRole.findMany({
@@ -172,8 +182,13 @@ export async function assignUserRole(req, userId, roleId) {
   });
   if (existing) return existing;
 
+  // Validate role belongs to the same tenant
   const role = await prisma.role.findFirst({ where: { id: roleId, tenantId: req.tenantId } });
   if (!role) { const e = new Error("Role not found"); e.statusCode = 404; throw e; }
+
+  // Validate target user belongs to the same tenant (prevents cross-tenant role assignment)
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId: req.tenantId } });
+  if (!user) { const e = new Error("User not found in this tenant"); e.statusCode = 404; throw e; }
 
   const userRole = await prisma.userRole.create({
     data: {
@@ -195,6 +210,18 @@ export async function removeUserRole(req, userRoleId) {
   const prisma = getPrisma();
   const ur = await prisma.userRole.findFirst({ where: { id: userRoleId, tenantId: req.tenantId } });
   if (!ur) { const e = new Error("User role not found"); e.statusCode = 404; throw e; }
+
+  // Prevent removing the last OWNER role assignment
+  if (ur.role.name === "OWNER") {
+    const ownerCount = await prisma.userRole.count({
+      where: { role: { name: "OWNER" }, tenantId: req.tenantId, isDeleted: false },
+    });
+    if (ownerCount <= 1) {
+      const e = new Error("Cannot remove the last OWNER role assignment");
+      e.statusCode = 400;
+      throw e;
+    }
+  }
 
   await prisma.userRole.update({
     where: { id: userRoleId },

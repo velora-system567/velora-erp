@@ -16,7 +16,7 @@ const uuid = _uuid;
 const optionalUuid = _optUuid;
 
 // ─── EAM Dashboard ───────────────────────────────────────────────
-router.get("/eam/dashboard", requirePermission(PERMISSIONS.MFG_READ), asyncHandler(async (req, res) => {
+router.get("/eam/dashboard", requirePermission(PERMISSIONS.EAM_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const { MFG_READ } = PERMISSIONS;
@@ -73,7 +73,7 @@ router.get("/eam/assets/:id", requirePermission(PERMISSIONS.MFG_READ),
   }));
 
 // ─── Create Asset ────────────────────────────────────────────────
-router.post("/eam/assets", requirePermission(PERMISSIONS.MFG_CREATE),
+router.post("/eam/assets", requirePermission(PERMISSIONS.EAM_CREATE),
   validate(z.object({ body: z.object({ machineCode: z.string().min(1), name: z.string().min(2), type: z.string().optional(), location: z.string().optional(), status: z.string().default("IDLE") }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -85,7 +85,7 @@ router.post("/eam/assets", requirePermission(PERMISSIONS.MFG_CREATE),
   }));
 
 // ─── Update Asset ────────────────────────────────────────────────
-router.patch("/eam/assets/:id", requirePermission(PERMISSIONS.MFG_UPDATE),
+router.patch("/eam/assets/:id", requirePermission(PERMISSIONS.EAM_UPDATE),
   validate(z.object({ params: z.object({ id: uuid() }), body: z.object({ name: z.string().min(2).optional(), type: z.string().optional(), location: z.string().optional(), status: z.string().optional(), healthScore: z.coerce.number().min(0).max(100).optional(), utilizationPct: z.coerce.number().min(0).max(100).optional(), operatingHours: z.coerce.number().min(0).optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -111,7 +111,7 @@ router.get("/eam/maintenance", requirePermission(PERMISSIONS.MFG_READ),
     return ok(res, rows.map((t) => ({ ...t, assetName: t.machine?.name, assetCode: t.machine?.machineCode, location: t.machine?.location })), "Maintenance tasks loaded", { page, limit, total, totalPages: Math.ceil(total / limit) });
   }));
 
-router.post("/eam/maintenance", requirePermission(PERMISSIONS.MFG_CREATE),
+router.post("/eam/maintenance", requirePermission(PERMISSIONS.EAM_CREATE),
   validate(z.object({ body: z.object({ machineId: uuid(), taskType: z.string().min(2), description: z.string().min(5), scheduledDate: z.string(), priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"), assignedTo: z.string().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -125,7 +125,7 @@ router.post("/eam/maintenance", requirePermission(PERMISSIONS.MFG_CREATE),
   }));
 
 // ─── Asset Statuses ──────────────────────────────────────────────
-router.get("/eam/statuses", (req, res) => {
+router.get("/eam/statuses", requirePermission(PERMISSIONS.EAM_READ), (req, res) => {
   return ok(res, ["IDLE", "RUNNING", "MAINTENANCE", "BREAKDOWN", "RETIRED", "BROKEN", "DISPOSED"], "Asset statuses");
 });
 

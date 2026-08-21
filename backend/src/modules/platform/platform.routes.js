@@ -93,7 +93,7 @@ router.delete("/platform/webhooks/:id", requirePermission(PERMISSIONS.ADMIN_VIEW
   }));
 
 // ─── Webhook Event Types ─────────────────────────────────────────
-router.get("/platform/events", (req, res) => {
+router.get("/platform/events", requirePermission(PERMISSIONS.ADMIN_VIEW), (req, res) => {
   return ok(res, [
     { event: "invoice.created", description: "Invoice generated" },
     { event: "payment.received", description: "Payment received" },

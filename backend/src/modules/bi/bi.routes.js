@@ -11,7 +11,7 @@ const router = Router();
 router.use(requireAuth, requireTenant);
 
 // ─── Executive Dashboard ─────────────────────────────────────────
-router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
+router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.REPORTS_READ), asyncHandler(async (req, res) => {
   const payload = await cachedCompute(`tenant:${req.tenantId}:company:${req.companyId}:bi:executive-dashboard`, 30, async () => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
@@ -121,7 +121,7 @@ router.get("/bi/executive-dashboard", requirePermission(PERMISSIONS.DASHBOARD_RE
 }));
 
 // ─── Department Scorecards ────────────────────────────────────────
-router.get("/bi/departments", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
+router.get("/bi/departments", requirePermission(PERMISSIONS.REPORTS_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -150,7 +150,7 @@ router.get("/bi/departments", requirePermission(PERMISSIONS.DASHBOARD_READ), asy
 }));
 
 // ─── Business Insights ────────────────────────────────────────────
-router.get("/bi/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
+router.get("/bi/insights", requirePermission(PERMISSIONS.REPORTS_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const now = new Date();
@@ -196,7 +196,7 @@ router.get("/bi/insights", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncH
 }));
 
 // ─── Revenue Analytics ────────────────────────────────────────────
-router.get("/bi/revenue-analytics", requirePermission(PERMISSIONS.DASHBOARD_READ), asyncHandler(async (req, res) => {
+router.get("/bi/revenue-analytics", requirePermission(PERMISSIONS.REPORTS_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const months = 12;

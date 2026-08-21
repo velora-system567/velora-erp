@@ -16,7 +16,7 @@ const uuid = _uuid;
 const optionalUuid = _optUuid;
 
 // ─── WMS Dashboard ───────────────────────────────────────────────
-router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyncHandler(async (req, res) => {
+router.get("/wms/dashboard", requirePermission(PERMISSIONS.WMS_READ), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
 
@@ -71,7 +71,7 @@ router.get("/wms/dashboard", requirePermission(PERMISSIONS.INVENTORY_READ), asyn
 }));
 
 // ─── Warehouse Detail ─────────────────────────────────────────────
-router.get("/wms/warehouses/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
+router.get("/wms/warehouses/:id", requirePermission(PERMISSIONS.WMS_READ),
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -91,7 +91,7 @@ router.get("/wms/warehouses/:id", requirePermission(PERMISSIONS.INVENTORY_READ),
   }));
 
 // ─── Inventory Locations ─────────────────────────────────────────
-router.get("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_READ),
+router.get("/wms/locations", requirePermission(PERMISSIONS.WMS_READ),
   validate(z.object({ query: z.object({ warehouseId: optionalUuid(), zone: z.string().optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
@@ -103,7 +103,7 @@ router.get("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_READ),
     return ok(res, rows, "Locations loaded");
   }));
 
-router.post("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_CREATE),
+router.post("/wms/locations", requirePermission(PERMISSIONS.WMS_CREATE),
   validate(z.object({
     body: z.object({
       warehouseId: uuid(),
@@ -127,7 +127,7 @@ router.post("/wms/locations", requirePermission(PERMISSIONS.INVENTORY_CREATE),
   }));
 
 // ─── Stock Movements (Audit Log) ─────────────────────────────────
-router.get("/wms/movements", requirePermission(PERMISSIONS.INVENTORY_READ),
+router.get("/wms/movements", requirePermission(PERMISSIONS.WMS_READ),
   validate(z.object({
     query: z.object({
       page: z.coerce.number().min(1).default(1),
