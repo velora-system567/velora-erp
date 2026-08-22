@@ -322,6 +322,23 @@ export function AppShell() {
 
       {/* Main Content */}
       <section className="min-w-0">
+        {/* Open-sidebar control — shown while the desktop sidebar is collapsed.
+              The collapse toggle lives INSIDE the aside (w-0 overflow-hidden when
+              collapsed), so without this button the only way back is Ctrl+Shift+S.
+              Reuses the same useShortcutStore.toggleSidebar() action, so keyboard
+              shortcut, localStorage persistence and animation stay untouched. */}
+        {!isMobile && sidebarCollapsed && (
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Open sidebar"
+            title="Open sidebar"
+            className="fixed left-3 top-3 z-30 hidden h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 lg:grid"
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
+
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden">
           <button
