@@ -35,6 +35,23 @@ function _noRecord() {
   });
 }
 
+// ─── Query-string builder ─────────────────────────────────────────────────────
+// ROOT CAUSE FIX (Sales module 500s): `new URLSearchParams({ status: undefined })`
+// serializes JS undefined as the literal STRING "undefined". That value passed
+// z.string().optional() validation on the backend, reached Prisma enum filters
+// (DocumentStatus/LeadStatus), and threw PrismaClientValidationError → HTTP 500
+// on /leads, /quotations, /sales-orders, /delivery-notes and /invoices.
+// This builder omits null/undefined/empty values so optional filters are truly
+// absent from the request instead of becoming garbage strings.
+function buildQs(params = {}) {
+  const clean = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    clean[key] = value;
+  }
+  return new URLSearchParams(clean).toString();
+}
+
 // ─── Session helpers ──────────────────────────────────────────────────────────
 // Single source of truth for session state: useAuthStore (Zustand).
 // All localStorage writes also sync the in-memory store so React components
@@ -214,7 +231,7 @@ export const authApi = {
   // Security
   securitySummary: () => apiRequest("/auth/security/summary"),
   securityEvents: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = buildQs(params);
     return apiRequest(`/auth/security/events${qs ? `?${qs}` : ""}`);
   },
 };
@@ -236,7 +253,7 @@ export const coreApi = {
   company: () => apiRequest("/company"),
   updateCompany: (input) => apiRequest("/company", { method: "PATCH", body: JSON.stringify(input) }),
   list: (resource, params = {}) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = buildQs(params);
     return apiRequest(`/${resource}${qs ? `?${qs}` : ""}`);
   },
   create: (resource, input) => apiRequest(`/${resource}`, { method: "POST", body: JSON.stringify(input) }),
@@ -261,7 +278,7 @@ export const coreApi = {
     return apiRequest(`/users/${safeId}/disable`, { method: "POST" });
   },
   auditLogs: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = buildQs(params);
     return apiRequest(`/audit-logs${qs ? `?${qs}` : ""}`);
   },
 };
@@ -270,7 +287,7 @@ export const coreApi = {
 
 export const masterApi = {
   list: (resource, params = {}) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = buildQs(params);
     return apiRequest(`/${resource}${qs ? `?${qs}` : ""}`);
   },
   get: (resource, id) => {
@@ -301,7 +318,7 @@ export const masterApi = {
 
 export const purchaseApi = {
   // Purchase Requests
-  purchaseRequests: (p = {}) => apiRequest(`/purchase-requests?${new URLSearchParams(p)}`),
+  purchaseRequests: (p = {}) => apiRequest(`/purchase-requests?${buildQs(p)}`),
   createPurchaseRequest: (input) => apiRequest("/purchase-requests", { method: "POST", body: JSON.stringify(input) }),
   approvePurchaseRequest: (id) => {
     const safeId = _guard(id, "purchase request id");
@@ -310,11 +327,11 @@ export const purchaseApi = {
   },
 
   // RFQs
-  rfqs: (p = {}) => apiRequest(`/rfqs?${new URLSearchParams(p)}`),
+  rfqs: (p = {}) => apiRequest(`/rfqs?${buildQs(p)}`),
   createRfq: (input) => apiRequest("/rfqs", { method: "POST", body: JSON.stringify(input) }),
 
   // Purchase Orders
-  purchaseOrders: (p = {}) => apiRequest(`/purchase-orders?${new URLSearchParams(p)}`),
+  purchaseOrders: (p = {}) => apiRequest(`/purchase-orders?${buildQs(p)}`),
   getPurchaseOrder: (id) => {
     const safeId = _guard(id, "purchase order id");
     if (!safeId) return _noRecord();
@@ -328,7 +345,7 @@ export const purchaseApi = {
   },
 
   // GRN
-  grns: (p = {}) => apiRequest(`/grns?${new URLSearchParams(p)}`),
+  grns: (p = {}) => apiRequest(`/grns?${buildQs(p)}`),
   getGrn: (id) => {
     const safeId = _guard(id, "GRN id");
     if (!safeId) return _noRecord();
@@ -342,7 +359,7 @@ export const purchaseApi = {
   },
 
   // Purchase Invoices
-  purchaseInvoices: (p = {}) => apiRequest(`/purchase-invoices?${new URLSearchParams(p)}`),
+  purchaseInvoices: (p = {}) => apiRequest(`/purchase-invoices?${buildQs(p)}`),
   createPurchaseInvoice: (input) => apiRequest("/purchase-invoices", { method: "POST", body: JSON.stringify(input) }),
 
   // Vendor Payments
@@ -352,7 +369,7 @@ export const purchaseApi = {
   // Dashboard & Analytics
   dashboard: () => apiRequest("/purchase/dashboard"),
   analytics: () => apiRequest("/purchase/analytics"),
-  report: (p = {}) => apiRequest(`/purchase/report?${new URLSearchParams(p)}`),
+  report: (p = {}) => apiRequest(`/purchase/report?${buildQs(p)}`),
 
   // Reports
   outstandingReport: () => apiRequest("/purchase/outstanding-report"),
@@ -366,16 +383,16 @@ export const purchaseApi = {
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 export const inventoryApi = {
-  dashboard: (p = {}) => apiRequest(`/inventory/dashboard?${new URLSearchParams(p)}`),
-  stockSummary: (p = {}) => apiRequest(`/inventory/stock-summary?${new URLSearchParams(p)}`),
+  dashboard: (p = {}) => apiRequest(`/inventory/dashboard?${buildQs(p)}`),
+  stockSummary: (p = {}) => apiRequest(`/inventory/stock-summary?${buildQs(p)}`),
   stockLedger: (itemId, p = {}) => {
     const safeId = _guard(itemId, "item id");
     if (!safeId) return _noRecord();
-    return apiRequest(`/inventory/stock-ledger/${safeId}?${new URLSearchParams(p)}`);
+    return apiRequest(`/inventory/stock-ledger/${safeId}?${buildQs(p)}`);
   },
-  ledger: (p = {}) => apiRequest(`/inventory/ledger?${new URLSearchParams(p)}`),
-  batches: (p = {}) => apiRequest(`/inventory/batches?${new URLSearchParams(p)}`),
-  locations: (p = {}) => apiRequest(`/inventory/locations?${new URLSearchParams(p)}`),
+  ledger: (p = {}) => apiRequest(`/inventory/ledger?${buildQs(p)}`),
+  batches: (p = {}) => apiRequest(`/inventory/batches?${buildQs(p)}`),
+  locations: (p = {}) => apiRequest(`/inventory/locations?${buildQs(p)}`),
   createLocation: (input) => apiRequest("/inventory/locations", { method: "POST", body: JSON.stringify(input) }),
   reservations: () => apiRequest("/inventory/reservations"),
   createReservation: (input) => apiRequest("/inventory/reservations", { method: "POST", body: JSON.stringify(input) }),
@@ -384,14 +401,14 @@ export const inventoryApi = {
     if (!safeId) return _noRecord();
     return apiRequest(`/inventory/reservations/${safeId}/release`, { method: "PATCH" });
   },
-  serials: (p = {}) => apiRequest(`/inventory/serials?${new URLSearchParams(p)}`),
+  serials: (p = {}) => apiRequest(`/inventory/serials?${buildQs(p)}`),
   stockTransfers: () => apiRequest("/inventory/stock-transfers"),
   createTransfer: (input) => apiRequest("/inventory/stock-transfer", { method: "POST", body: JSON.stringify(input) }),
   createAdjustment: (input) => apiRequest("/inventory/stock-adjustment", { method: "POST", body: JSON.stringify(input) }),
   openingStock: (input) => apiRequest("/inventory/opening-stock", { method: "POST", body: JSON.stringify(input) }),
   lowStockAlerts: () => apiRequest("/inventory/low-stock-alerts"),
   valuationReport: () => apiRequest("/inventory/valuation-report"),
-  suppliers: (p = {}) => apiRequest(`/inventory/suppliers?${new URLSearchParams(p)}`),
+  suppliers: (p = {}) => apiRequest(`/inventory/suppliers?${buildQs(p)}`),
   supplierDetail: (id) => {
     const safeId = _guard(id, "supplier id");
     if (!safeId) return _noRecord();
@@ -403,7 +420,7 @@ export const inventoryApi = {
 
 export const salesApi = {
   // Leads
-  leads: (p = {}) => apiRequest(`/leads?${new URLSearchParams(p)}`),
+  leads: (p = {}) => apiRequest(`/leads?${buildQs(p)}`),
   createLead: (input) => apiRequest("/leads", { method: "POST", body: JSON.stringify(input) }),
   updateLead: (id, input) => {
     const safeId = _guard(id, "lead id");
@@ -417,7 +434,7 @@ export const salesApi = {
   },
 
   // Quotations
-  quotations: (p = {}) => apiRequest(`/quotations?${new URLSearchParams(p)}`),
+  quotations: (p = {}) => apiRequest(`/quotations?${buildQs(p)}`),
   createQuotation: (input) => apiRequest("/quotations", { method: "POST", body: JSON.stringify(input) }),
   getQuotation: (id) => {
     const safeId = _guard(id, "quotation id");
@@ -436,7 +453,7 @@ export const salesApi = {
   },
 
   // Sales Orders
-  salesOrders: (p = {}) => apiRequest(`/sales-orders?${new URLSearchParams(p)}`),
+  salesOrders: (p = {}) => apiRequest(`/sales-orders?${buildQs(p)}`),
   createSalesOrder: (input) => apiRequest("/sales-orders", { method: "POST", body: JSON.stringify(input) }),
   getSalesOrder: (id) => {
     const safeId = _guard(id, "sales order id");
@@ -450,7 +467,7 @@ export const salesApi = {
   },
 
   // Delivery Notes
-  deliveryNotes: (p = {}) => apiRequest(`/delivery-notes?${new URLSearchParams(p)}`),
+  deliveryNotes: (p = {}) => apiRequest(`/delivery-notes?${buildQs(p)}`),
   createDeliveryNote: (input) => apiRequest("/delivery-notes", { method: "POST", body: JSON.stringify(input) }),
   getDeliveryNote: (id) => {
     const safeId = _guard(id, "delivery note id");
@@ -459,7 +476,7 @@ export const salesApi = {
   },
 
   // Invoices
-  invoices: (p = {}) => apiRequest(`/invoices?${new URLSearchParams(p)}`),
+  invoices: (p = {}) => apiRequest(`/invoices?${buildQs(p)}`),
   createInvoice: (input) => apiRequest("/invoices", { method: "POST", body: JSON.stringify(input) }),
   getInvoice: (id) => {
     const safeId = _guard(id, "invoice id");
@@ -468,7 +485,7 @@ export const salesApi = {
   },
 
   // Payment Receipts
-  paymentReceipts: (p = {}) => apiRequest(`/payment-receipts?${new URLSearchParams(p)}`),
+  paymentReceipts: (p = {}) => apiRequest(`/payment-receipts?${buildQs(p)}`),
   createPaymentReceipt: (input) => apiRequest("/payment-receipts", { method: "POST", body: JSON.stringify(input) }),
 
   // Dashboards & Analytics
@@ -511,10 +528,10 @@ export const accountsApi = {
   dashboard: () => apiRequest("/accounts/dashboard"),
   chartOfAccounts: () => apiRequest("/accounts/chart-of-accounts"),
   createAccount: (input) => apiRequest("/accounts/chart-of-accounts", { method: "POST", body: JSON.stringify(input) }),
-  journalEntries: (p = {}) => apiRequest(`/accounts/journal-entries?${new URLSearchParams(p)}`),
+  journalEntries: (p = {}) => apiRequest(`/accounts/journal-entries?${buildQs(p)}`),
   createJournalEntry: (input) => apiRequest("/accounts/journal-entries", { method: "POST", body: JSON.stringify(input) }),
   trialBalance: () => apiRequest("/accounts/trial-balance"),
-  profitLoss: (p = {}) => apiRequest(`/accounts/profit-loss?${new URLSearchParams(p)}`),
+  profitLoss: (p = {}) => apiRequest(`/accounts/profit-loss?${buildQs(p)}`),
   balanceSheet: () => apiRequest("/accounts/balance-sheet"),
   generalLedger: (accountId) => {
     const safeId = _guard(accountId, "account id");
@@ -532,7 +549,7 @@ export const accountsApi = {
 
 export const eamApi = {
   dashboard: () => apiRequest("/eam/dashboard"),
-  assets: (p = {}) => apiRequest(`/eam/assets?${new URLSearchParams(p)}`),
+  assets: (p = {}) => apiRequest(`/eam/assets?${buildQs(p)}`),
   assetDetail: (id) => {
     const safeId = _guard(id, "asset id");
     if (!safeId) return _noRecord();
@@ -544,7 +561,7 @@ export const eamApi = {
     if (!safeId) return _noRecord();
     return apiRequest(`/eam/assets/${safeId}`, { method: "PATCH", body: JSON.stringify(input) });
   },
-  maintenance: (p = {}) => apiRequest(`/eam/maintenance?${new URLSearchParams(p)}`),
+  maintenance: (p = {}) => apiRequest(`/eam/maintenance?${buildQs(p)}`),
   createMaintenance: (input) => apiRequest("/eam/maintenance", { method: "POST", body: JSON.stringify(input) }),
   statuses: () => apiRequest("/eam/statuses"),
 };
@@ -553,7 +570,7 @@ export const eamApi = {
 
 export const hrmsApi = {
   dashboard: () => apiRequest("/hrms/dashboard"),
-  employees: (p = {}) => apiRequest(`/hrms/employees?${new URLSearchParams(p)}`),
+  employees: (p = {}) => apiRequest(`/hrms/employees?${buildQs(p)}`),
   employeeDetail: (id) => {
     const safeId = _guard(id, "employee id");
     if (!safeId) return _noRecord();
@@ -617,10 +634,10 @@ export const platformApi = {
 // ─── Supplier Portal ─────────────────────────────────────────────────────────
 
 export const supplierPortalApi = {
-  dashboard: (p) => apiRequest("/supplier-portal/dashboard?" + new URLSearchParams(p)),
-  purchaseOrders: (p) => apiRequest("/supplier-portal/purchase-orders?" + new URLSearchParams(p)),
-  invoices: (p) => apiRequest("/supplier-portal/invoices?" + new URLSearchParams(p)),
-  payments: (p) => apiRequest("/supplier-portal/payments?" + new URLSearchParams(p)),
+  dashboard: (p) => apiRequest("/supplier-portal/dashboard?" + buildQs(p)),
+  purchaseOrders: (p) => apiRequest("/supplier-portal/purchase-orders?" + buildQs(p)),
+  invoices: (p) => apiRequest("/supplier-portal/invoices?" + buildQs(p)),
+  payments: (p) => apiRequest("/supplier-portal/payments?" + buildQs(p)),
   vendors: () => apiRequest("/supplier-portal/vendors"),
 };
 
@@ -637,9 +654,9 @@ export const wmsApi = {
     if (!safeId) return _noRecord();
     return apiRequest(`/wms/warehouses/${safeId}`);
   },
-  locations: (p = {}) => apiRequest(`/wms/locations?${new URLSearchParams(p)}`),
+  locations: (p = {}) => apiRequest(`/wms/locations?${buildQs(p)}`),
   createLocation: (input) => apiRequest("/wms/locations", { method: "POST", body: JSON.stringify(input) }),
-  movements: (p = {}) => apiRequest(`/wms/movements?${new URLSearchParams(p)}`),
+  movements: (p = {}) => apiRequest(`/wms/movements?${buildQs(p)}`),
 };
 
 // ─── Manufacturing ────────────────────────────────────────────────────────────
@@ -650,7 +667,7 @@ export const manufacturingApi = {
   analytics: () => apiRequest("/manufacturing/analytics"),
 
   // BOMs
-  boms: (p = {}) => apiRequest(`/manufacturing/boms?${new URLSearchParams(p)}`),
+  boms: (p = {}) => apiRequest(`/manufacturing/boms?${buildQs(p)}`),
   getBom: (id) => {
     const safeId = _guard(id, "BOM id");
     if (!safeId) return _noRecord();
@@ -664,7 +681,7 @@ export const manufacturingApi = {
   },
 
   // Production Orders
-  productionOrders: (p = {}) => apiRequest(`/manufacturing/production-orders?${new URLSearchParams(p)}`),
+  productionOrders: (p = {}) => apiRequest(`/manufacturing/production-orders?${buildQs(p)}`),
   getProductionOrder: (id) => {
     const safeId = _guard(id, "production order id");
     if (!safeId) return _noRecord();
@@ -678,7 +695,7 @@ export const manufacturingApi = {
   },
 
   // Work Orders
-  workOrders: (p = {}) => apiRequest(`/manufacturing/work-orders?${new URLSearchParams(p)}`),
+  workOrders: (p = {}) => apiRequest(`/manufacturing/work-orders?${buildQs(p)}`),
   createWorkOrder: (input) => apiRequest("/manufacturing/work-orders", { method: "POST", body: JSON.stringify(input) }),
   completeWorkOrder: (id, input) => {
     const safeId = _guard(id, "work order id");
@@ -687,7 +704,7 @@ export const manufacturingApi = {
   },
 
   // Machines
-  machines: (p = {}) => apiRequest(`/manufacturing/machines?${new URLSearchParams(p)}`),
+  machines: (p = {}) => apiRequest(`/manufacturing/machines?${buildQs(p)}`),
   createMachine: (input) => apiRequest("/manufacturing/machines", { method: "POST", body: JSON.stringify(input) }),
   updateMachineStatus: (id, status) => {
     const safeId = _guard(id, "machine id");
@@ -696,7 +713,7 @@ export const manufacturingApi = {
   },
 
   // Maintenance
-  maintenance: (p = {}) => apiRequest(`/manufacturing/maintenance?${new URLSearchParams(p)}`),
+  maintenance: (p = {}) => apiRequest(`/manufacturing/maintenance?${buildQs(p)}`),
   createMaintenance: (input) => apiRequest("/manufacturing/maintenance", { method: "POST", body: JSON.stringify(input) }),
   completeMaintenance: (id, input) => {
     const safeId = _guard(id, "maintenance id");
@@ -705,7 +722,7 @@ export const manufacturingApi = {
   },
 
   // Quality
-  qualityChecks: (p = {}) => apiRequest(`/manufacturing/quality-checks?${new URLSearchParams(p)}`),
+  qualityChecks: (p = {}) => apiRequest(`/manufacturing/quality-checks?${buildQs(p)}`),
   createQualityCheck: (input) => apiRequest("/manufacturing/quality-checks", { method: "POST", body: JSON.stringify(input) }),
 };
 

@@ -1,7 +1,7 @@
 /**
  * Leads Tab — Velora ERP Sales
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Calendar, Edit, Filter, Mail, MapPin, Phone, Search, Star, Tag, Trash2, User } from "lucide-react";
 import { salesApi } from "../../../services/api";
@@ -13,7 +13,7 @@ import { SkeletonTable } from "../../../components/Skeleton";
 const PRIORITY_COLORS = { HIGH: "rose", MEDIUM: "amber", LOW: "blue" };
 const STATUS_COLORS = { NEW: "blue", QUALIFIED: "emerald", LOST: "rose", CONVERTED: "purple" };
 
-export default function LeadsTab({ customers = [] }) {
+export default function LeadsTab({ customers = [], openFormSignal = 0 }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -21,6 +21,12 @@ export default function LeadsTab({ customers = [] }) {
   const [showForm, setShowForm] = useState(false);
   const [editLead, setEditLead] = useState(null);
   const [form, setForm] = useState({ name: "", contactPerson: "", phone: "", email: "", city: "", source: "", priority: "MEDIUM", status: "NEW", value: "", notes: "", requirement: "", nextFollowUp: "" });
+
+  // Open the create form when the parent "Add lead" button navigates here
+  // with a new openFormSignal (unique timestamp per click).
+  useEffect(() => {
+    if (openFormSignal) setShowForm(true);
+  }, [openFormSignal]);
 
   const query = useQuery({
     queryKey: ["leads", page, search, status],

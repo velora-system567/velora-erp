@@ -1,7 +1,7 @@
 /**
  * Receipts Tab — Velora ERP Sales
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Calendar, CreditCard, Edit, Filter, Plus, Search, Trash2, X } from "lucide-react";
 import { salesApi, masterApi } from "../../../services/api";
@@ -14,7 +14,7 @@ import { SkeletonTable } from "../../../components/Skeleton";
 const MODES = ["CASH", "CHEQUE", "NEFT", "RTGS", "UPI", "CARD"];
 const MODE_LABELS = { CASH: "Cash", CHEQUE: "Cheque", NEFT: "NEFT", RTGS: "RTGS", UPI: "UPI", CARD: "Card" };
 
-export default function ReceiptsTab({ customers = [] }) {
+export default function ReceiptsTab({ customers = [], openFormSignal = 0 }) {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -24,6 +24,11 @@ export default function ReceiptsTab({ customers = [] }) {
     narration: "", paymentDate: new Date().toISOString().slice(0, 10),
     allocations: [{ invoiceId: "", amount: "" }],
   });
+
+  // Open the create form when the parent navigates here with a new openFormSignal.
+  useEffect(() => {
+    if (openFormSignal) setShowForm(true);
+  }, [openFormSignal]);
 
   const query = useQuery({
     queryKey: ["payment-receipts", page, search],

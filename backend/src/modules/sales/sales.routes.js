@@ -25,22 +25,41 @@ const optionalUuid = _optUuid;
 
 // ─── Validation Schemas ────────────────────────────────────────────────────────
 
-const listQuery = z.object({
-  query: z.object({
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(500).default(20),
-    status: z.string().optional(),
-    q: z.string().optional(),
-    dateFrom: z.string().optional(),
-    dateTo: z.string().optional(),
-    customerId: optionalUuid().optional(),
-    branchId: optionalUuid().optional(),
-    createdBy: optionalUuid().optional(),
-    amountMin: z.coerce.number().optional(),
-    amountMax: z.coerce.number().optional(),
-    sortBy: z.string().optional(),
-    sortOrder: z.enum(["asc", "desc"]).optional(),
-  }),
+// ROOT CAUSE FIX: list endpoints previously accepted ANY string as `status`
+// (z.string().optional()). The frontend once sent the literal string
+// "undefined" (URLSearchParams serializes JS undefined), which flowed into
+// Prisma enum filters and threw PrismaClientValidationError → HTTP 500.
+// Status is now validated against the actual DocumentStatus/LeadStatus enums,
+// so invalid input returns a clean 422 instead of crashing Prisma.
+const DOC_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CANCELLED", "CLOSED"];
+const LEAD_STATUSES = ["NEW", "QUALIFIED", "LOST", "CONVERTED"];
+
+const baseListShape = {
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
+  q: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  customerId: optionalUuid().optional(),
+  branchId: optionalUuid().optional(),
+  createdBy: optionalUuid().optional(),
+  amountMin: z.coerce.number().optional(),
+  amountMax: z.coerce.number().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+};
+
+const leadListQuery = z.object({
+  query: z.object({ ...baseListShape, priority: z.string().optional(), source: z.string().optional(), status: z.enum(LEAD_STATUSES).optional() }),
+});
+
+const docListQuery = z.object({
+  query: z.object({ ...baseListShape, status: z.enum(DOC_STATUSES).optional() }),
+});
+
+// Payment model has no status column — never filter on it.
+const receiptListQuery = z.object({
+  query: z.object(baseListShape),
 });
 
 const leadSchema = z.object({
@@ -121,7 +140,7 @@ const statusSchema = z.object({
 
 // ─── Leads ─────────────────────────────────────────────────────────────────────
 
-router.get("/leads", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/leads", requirePermission(PERMISSIONS.SALES_READ), validate(leadListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const { page, limit, status, priority, source, q } = req.validated.query;
@@ -146,7 +165,7 @@ router.delete("/leads/:id", requirePermission(PERMISSIONS.SALES_DELETE), validat
 
 // ─── Quotations ────────────────────────────────────────────────────────────────
 
-router.get("/quotations", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/quotations", requirePermission(PERMISSIONS.SALES_READ), validate(docListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const q = req.validated.query;
@@ -176,7 +195,7 @@ router.patch("/quotations/:id/status", requirePermission(PERMISSIONS.SALES_APPRO
 
 // ─── Sales Orders ──────────────────────────────────────────────────────────────
 
-router.get("/sales-orders", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/sales-orders", requirePermission(PERMISSIONS.SALES_READ), validate(docListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const q = req.validated.query;
@@ -201,7 +220,7 @@ router.patch("/sales-orders/:id/status", requirePermission(PERMISSIONS.SALES_APP
 
 // ─── Delivery Notes ────────────────────────────────────────────────────────────
 
-router.get("/delivery-notes", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/delivery-notes", requirePermission(PERMISSIONS.SALES_READ), validate(docListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const q = req.validated.query;
@@ -221,7 +240,7 @@ router.get("/delivery-notes/:id", requirePermission(PERMISSIONS.SALES_READ), val
 
 // ─── Invoices ──────────────────────────────────────────────────────────────────
 
-router.get("/invoices", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/invoices", requirePermission(PERMISSIONS.SALES_READ), validate(docListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const q = req.validated.query;
@@ -241,12 +260,11 @@ router.get("/invoices/:id", requirePermission(PERMISSIONS.SALES_READ), validate(
 
 // ─── Payment Receipts ──────────────────────────────────────────────────────────
 
-router.get("/payment-receipts", requirePermission(PERMISSIONS.SALES_READ), validate(listQuery), asyncHandler(async (req, res) => {
+router.get("/payment-receipts", requirePermission(PERMISSIONS.SALES_READ), validate(receiptListQuery), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const { tenantId, companyId } = req;
   const q = req.validated.query;
   const where = { tenantId, companyId, paymentType: "RECEIPT", isDeleted: false };
-  if (q.status) where.status = q.status; // payment doesn't have status; ignore
   if (q.customerId) where.partyId = q.customerId;
   if (q.dateFrom || q.dateTo) {
     where.paymentDate = {};

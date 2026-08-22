@@ -1,6 +1,7 @@
 /**
  * Sales Dashboard Tab
  */
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle, ArrowDownUp, ArrowUpRight, BarChart3, ClipboardList, Download,
@@ -15,6 +16,7 @@ import { SectionHeader, KpiTile, Pill, Card, SecondaryButton } from "./shared";
 import { exportCsv } from "./shared";
 
 export default function DashboardTab() {
+  const navigate = useNavigate();
   const query = useQuery({
     queryKey: ["sales-dashboard"],
     queryFn: () => salesApi.dashboard(),
@@ -38,15 +40,15 @@ export default function DashboardTab() {
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiTile label="Total invoiced (all time)" value={k.totalInvoiced} tone="blue" icon={IndianRupee} formatter={formatRupeesCompact} detail={`${data.topCustomers?.length || 0} customers`} onClick={() => window.location.href = "/sales?tab=Invoices"} />
-        <KpiTile label="This month invoices" value={k.monthlyInvoices} tone="emerald" icon={FileText} formatter={formatRupeesCompact} detail={`${k.monthlyInvoiceCount || 0} invoices`} onClick={() => window.location.href = "/sales?tab=Invoices"} />
-        <KpiTile label="Total sales orders" value={k.totalSalesOrders} tone="purple" icon={ClipboardList} formatter={number} detail={`${k.pendingSalesOrders} pending`} onClick={() => window.location.href = "/sales?tab=Orders"} />
+        <KpiTile label="Total invoiced (all time)" value={k.totalInvoiced} tone="blue" icon={IndianRupee} formatter={formatRupeesCompact} detail={`${data.topCustomers?.length || 0} customers`} onClick={() => navigate("/sales?tab=Invoices")} />
+        <KpiTile label="This month invoices" value={k.monthlyInvoices} tone="emerald" icon={FileText} formatter={formatRupeesCompact} detail={`${k.monthlyInvoiceCount || 0} invoices`} onClick={() => navigate("/sales?tab=Invoices")} />
+        <KpiTile label="Total sales orders" value={k.totalSalesOrders} tone="purple" icon={ClipboardList} formatter={number} detail={`${k.pendingSalesOrders} pending`} onClick={() => navigate("/sales?tab=Orders")} />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiTile label="Pending sales orders" value={k.pendingSalesOrders} tone="amber" icon={AlertCircle} formatter={number} detail="Draft / Submitted / Approved" onClick={() => window.location.href = "/sales?tab=Orders"} />
-        <KpiTile label="Delivery notes" value={k.totalDeliveryNotes} tone="blue" icon={Truck} formatter={number} detail="Stock debits" onClick={() => window.location.href = "/sales?tab=Delivery"} />
-        <KpiTile label="Monthly receipts" value={k.monthlyReceipts} tone="emerald" icon={ArrowDownUp} formatter={formatRupeesCompact} detail="Collections this month" onClick={() => window.location.href = "/sales?tab=Receipts"} />
+        <KpiTile label="Pending sales orders" value={k.pendingSalesOrders} tone="amber" icon={AlertCircle} formatter={number} detail="Draft / Submitted / Approved" onClick={() => navigate("/sales?tab=Orders")} />
+        <KpiTile label="Delivery notes" value={k.totalDeliveryNotes} tone="blue" icon={Truck} formatter={number} detail="Stock debits" onClick={() => navigate("/sales?tab=Delivery")} />
+        <KpiTile label="Monthly receipts" value={k.monthlyReceipts} tone="emerald" icon={ArrowDownUp} formatter={formatRupeesCompact} detail="Collections this month" onClick={() => navigate("/sales?tab=Receipts")} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
@@ -87,7 +89,7 @@ export default function DashboardTab() {
               { label: "New delivery note", href: "/sales?tab=Delivery", state: { openDocForm: true, docType: "DELIVERY_NOTE" }, icon: Truck, tone: "blue" },
               { label: "Record payment", href: "/sales?tab=Receipts", state: { openReceiptForm: true }, icon: ArrowDownUp, tone: "emerald" },
             ].map((a) => (
-              <button key={a.label} onClick={() => window.location.href = a.href} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 hover:bg-slate-50 transition-colors">
+              <button key={a.label} onClick={() => navigate(a.href, { state: { ...a.state, ts: Date.now() } })} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 hover:bg-slate-50 transition-colors">
                 <a.icon size={18} className={`shrink-0 text-${a.tone}-600`} />
                 <span className="font-medium text-slate-900">{a.label}</span>
               </button>

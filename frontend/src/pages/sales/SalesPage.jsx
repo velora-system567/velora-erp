@@ -11,7 +11,7 @@
  *  - Receipts   : Payment receipts (journal posted)
  */
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle, BarChart3, ClipboardList, CreditCard, FileText, Inbox,
@@ -39,12 +39,32 @@ const TABS = [
   ["Receipts", CreditCard, "Payment receipts"],
 ];
 
+const TAB_NAMES = TABS.map(([name]) => name);
+
 export function SalesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
-  const [tab, setTab] = useState("Dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
+  // Tab state lives in the URL (?tab=Orders) so deep links from the dashboard,
+  // direct navigation and browser refresh all land on the same tab.
+  const tabParam = searchParams.get("tab");
+  const tab = TAB_NAMES.includes(tabParam) ? tabParam : "Dashboard";
+  const setTab = (name) => setSearchParams(name === "Dashboard" ? {} : { tab: name }, { replace: true });
+
+  // "Add" buttons navigate to /sales with an intent in location.state.
+  // Each click carries a unique ts so a closed form can be re-opened by
+  // clicking Add again (the child tabs react to openFormSignal changes).
+  const intent = location.state || {};
+  const intentTs = Number(intent.ts) || 0;
+  const docFormSignal = (docType) => (intent.openDocForm && intent.docType === docType ? intentTs : 0);
+  const stayPath = () => {
+    const s = searchParams.toString();
+    return s ? `/sales?${s}` : "/sales";
+  };
 
   const masters = useQuery({
     queryKey: ["sales-masters"],
@@ -70,17 +90,17 @@ export function SalesPage() {
       case "Dashboard":
         return <DashboardTab />;
       case "Leads":
-        return <LeadsTab customers={customers} />;
+        return <LeadsTab customers={customers} openFormSignal={intent.openLeadForm ? intentTs : 0} />;
       case "Quotations":
-        return <DocumentsTab docType="QUOTATION" label="Quotation" customers={customers} items={items} onConvertToOrder={(id) => salesApi.convertQuotationToOrder(id)} />;
+        return <DocumentsTab docType="QUOTATION" label="Quotation" customers={customers} items={items} openFormSignal={docFormSignal("QUOTATION")} onConvertToOrder={(id) => salesApi.convertQuotationToOrder(id)} />;
       case "Orders":
-        return <DocumentsTab docType="SALES_ORDER" label="Sales Order" customers={customers} items={items} />;
+        return <DocumentsTab docType="SALES_ORDER" label="Sales Order" customers={customers} items={items} openFormSignal={docFormSignal("SALES_ORDER")} />;
       case "Delivery":
-        return <DocumentsTab docType="DELIVERY_NOTE" label="Delivery Note" customers={customers} items={items} />;
+        return <DocumentsTab docType="DELIVERY_NOTE" label="Delivery Note" customers={customers} items={items} openFormSignal={docFormSignal("DELIVERY_NOTE")} />;
       case "Invoices":
-        return <DocumentsTab docType="INVOICE" label="Invoice" customers={customers} items={items} />;
+        return <DocumentsTab docType="INVOICE" label="Invoice" customers={customers} items={items} openFormSignal={docFormSignal("INVOICE")} />;
       case "Receipts":
-        return <ReceiptsTab customers={customers} />;
+        return <ReceiptsTab customers={customers} openFormSignal={intent.openReceiptForm ? intentTs : 0} />;
       default:
         return null;
     }
@@ -99,9 +119,10 @@ export function SalesPage() {
   };
 
   const onAdd = () => {
-    if (tab === "Leads") return navigate("/sales", { state: { openLeadForm: true } });
-    if (tab === "Receipts") return navigate("/sales", { state: { openReceiptForm: true } });
-    return navigate("/sales", { state: { openDocForm: true, docType: tab.toUpperCase() } });
+    const ts = Date.now();
+    if (tab === "Leads") return navigate(stayPath(), { state: { openLeadForm: true, ts } });
+    if (tab === "Receipts") return navigate(stayPath(), { state: { openReceiptForm: true, ts } });
+    return navigate(stayPath(), { state: { openDocForm: true, docType: tab.toUpperCase(), ts } });
   };
 
   return (

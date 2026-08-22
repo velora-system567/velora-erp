@@ -2,7 +2,7 @@
  * Documents Tab — Velora ERP Sales
  * Handles Quotations, Sales Orders, Delivery Notes, and Invoices
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft, Calendar, Download, Edit, FileText, Filter, Plus,
@@ -20,13 +20,18 @@ const STATUS_COLORS = {
   REJECTED: "rose", CANCELLED: "rose", CLOSED: "purple",
 };
 
-export default function DocumentsTab({ docType, label, customers = [], items = [], onConvertToOrder }) {
+export default function DocumentsTab({ docType, label, customers = [], items = [], openFormSignal = 0, onConvertToOrder }) {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ customerId: "", documentDate: new Date().toISOString().slice(0, 10), gstTreatment: "INTRA_STATE", terms: "", lines: [{ itemId: "", description: "", quantity: "1", rate: "0", discount: "0", gstRate: "18" }] });
+
+  // Open the create form when the parent navigates here with a new openFormSignal.
+  useEffect(() => {
+    if (openFormSignal) setShowForm(true);
+  }, [openFormSignal]);
 
   const apiMap = {
     QUOTATION: { list: "quotations", create: "createQuotation", status: "updateQuotationStatus" },
