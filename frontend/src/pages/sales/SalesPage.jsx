@@ -48,6 +48,12 @@ export function SalesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  // Direct form-open signal for in-page Add button clicks.
+  // Using navigate() to the same URL doesn't trigger a state update in
+  // React Router v6, so location.state alone can't signal form opening
+  // when the user is already on the target tab.  This local state
+  // counter solves that: each click bumps the count, child tabs react.
+  const [formSignal, setFormSignal] = useState({ lead: 0, doc: {}, receipt: 0 });
 
   // Tab state lives in the URL (?tab=Orders) so deep links from the dashboard,
   // direct navigation and browser refresh all land on the same tab.
@@ -55,12 +61,17 @@ export function SalesPage() {
   const tab = TAB_NAMES.includes(tabParam) ? tabParam : "Dashboard";
   const setTab = (name) => setSearchParams(name === "Dashboard" ? {} : { tab: name }, { replace: true });
 
-  // "Add" buttons navigate to /sales with an intent in location.state.
-  // Each click carries a unique ts so a closed form can be re-opened by
-  // clicking Add again (the child tabs react to openFormSignal changes).
+  // Merge both signal sources: location.state (from Dashboard quick actions) and
+  // local formSignal (from in-page Add button).
   const intent = location.state || {};
   const intentTs = Number(intent.ts) || 0;
-  const docFormSignal = (docType) => (intent.openDocForm && intent.docType === docType ? intentTs : 0);
+  const docFormSignal = (docType) => {
+    const fromNav = (intent.openDocForm && intent.docType === docType ? intentTs : 0);
+    const fromLocal = (formSignal.doc?.docType === docType ? formSignal.doc.ts : 0);
+    return Math.max(fromNav, fromLocal);
+  };
+  const leadFormSignal = Math.max(intent.openLeadForm ? intentTs : 0, formSignal.lead);
+  const receiptFormSignal = Math.max(intent.openReceiptForm ? intentTs : 0, formSignal.receipt);
   const stayPath = () => {
     const s = searchParams.toString();
     return s ? `/sales?${s}` : "/sales";
@@ -90,7 +101,7 @@ export function SalesPage() {
       case "Dashboard":
         return <DashboardTab />;
       case "Leads":
-        return <LeadsTab customers={customers} openFormSignal={intent.openLeadForm ? intentTs : 0} />;
+        return <LeadsTab customers={customers} openFormSignal={leadFormSignal} />;
       case "Quotations":
         return <DocumentsTab docType="QUOTATION" label="Quotation" customers={customers} items={items} openFormSignal={docFormSignal("QUOTATION")} onConvertToOrder={(id) => salesApi.convertQuotationToOrder(id)} />;
       case "Orders":
@@ -100,7 +111,7 @@ export function SalesPage() {
       case "Invoices":
         return <DocumentsTab docType="INVOICE" label="Invoice" customers={customers} items={items} openFormSignal={docFormSignal("INVOICE")} />;
       case "Receipts":
-        return <ReceiptsTab customers={customers} openFormSignal={intent.openReceiptForm ? intentTs : 0} />;
+        return <ReceiptsTab customers={customers} openFormSignal={receiptFormSignal} />;
       default:
         return null;
     }
@@ -120,11 +131,11 @@ export function SalesPage() {
 
   const onAdd = () => {
     const ts = Date.now();
-    if (tab === "Leads") return navigate(stayPath(), { state: { openLeadForm: true, ts } });
-    if (tab === "Receipts") return navigate(stayPath(), { state: { openReceiptForm: true, ts } });
-    // Map tab names to the Prisma DocumentType enums that DocumentsTab expects.
+    if (tab === "Leads") return setFormSignal(prev => ({ ...prev, lead: ts }));
+    if (tab === "Receipts") return setFormSignal(prev => ({ ...prev, receipt: ts }));
     const DOC_TYPE_MAP = { Quotations: "QUOTATION", Orders: "SALES_ORDER", Delivery: "DELIVERY_NOTE", Invoices: "INVOICE" };
-    return navigate(stayPath(), { state: { openDocForm: true, docType: DOC_TYPE_MAP[tab] || tab.toUpperCase(), ts } });
+    const docType = DOC_TYPE_MAP[tab] || tab.toUpperCase();
+    return setFormSignal(prev => ({ ...prev, doc: { docType, ts } }));
   };
 
   return (

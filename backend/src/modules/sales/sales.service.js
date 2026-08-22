@@ -167,7 +167,7 @@ export async function createDocument(tx, req, docType, data) {
     data.gstTreatment || "INTRA_STATE"
   );
 
-  const docNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: DOC_PREFIX[docType], date: data.documentDate || new Date() });
+  const docNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: DOC_PREFIX[docType], date: new Date(data.documentDate || Date.now()) });
 
   const doc = await prisma.businessDocument.create({
     data: {
@@ -337,7 +337,7 @@ export async function createDeliveryNote(tx, req, data) {
     data.gstTreatment || "INTRA_STATE"
   );
 
-  const dnNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: "DN", date: data.documentDate || new Date() });
+  const dnNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: "DN", date: new Date(data.documentDate || Date.now()) });
 
   const dn = await prisma.businessDocument.create({
     data: {
@@ -422,7 +422,7 @@ export async function recordPaymentReceipt(tx, req, data) {
   const { tenantId, companyId } = req;
   const userId = req.user?.sub;
 
-  const paymentNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: "RCPT", date: data.paymentDate || new Date() });
+  const paymentNo = await nextDocNumber({ tx: prisma, tenantId, companyId, docType: "RCPT", date: new Date(data.paymentDate || Date.now()) });
   const amountPaise = rupeesToPaise(data.amount);
 
   const payment = await prisma.payment.create({
