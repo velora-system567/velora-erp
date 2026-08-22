@@ -31,12 +31,24 @@ const ICON_MAP = {
   Shield,
 };
 
+const CATEGORY_LABELS = {
+  home: "",
+  sell: "Sell",
+  buy: "Buy",
+  products: "Products",
+  money: "Money",
+  people: "People",
+};
+
+const CATEGORY_ORDER = ["home", "sell", "buy", "products", "money", "people"];
+
 function useNavigationSections() {
   const modules = useVisibleModules();
   return modules.map((mod) => ({
     to: mod.path,
-    label: mod.label,
+    label: mod.sidebarLabel || mod.label,
     icon: ICON_MAP[mod.icon] || Package,
+    category: mod.category,
     activeRoutes: getActiveRoutes(mod.key),
   }));
 }
@@ -173,26 +185,60 @@ export function AppShell() {
         </button>
       )}
 
-      {/* Navigation — filter out admin/settings (rendered in bottom section) */}
+      {/* Navigation — grouped by business area with section headers */}
       <nav className={`mt-3 flex-1 space-y-0.5 overflow-y-auto scrollbar-thin ${asDrawer ? "" : sidebarCollapsed ? "flex flex-col items-center" : ""}`}>
-        {sections.filter((s) => s.to !== "/admin" && s.to !== "/settings").map((section) => {
-          const active = isSectionActive(section);
-          return (
-            <Link
-              key={section.to}
-              to={section.to}
-              className={`group flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-150 ${
-                active
-                  ? "bg-blue-50 text-blue-700 shadow-sm shadow-blue-100"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              } ${!asDrawer && sidebarCollapsed ? "w-10 justify-center px-0" : ""}`}
-              title={sidebarCollapsed && !asDrawer ? section.label : undefined}
-            >
-              <section.icon size={17} className={`shrink-0 transition-transform duration-150 ${active ? "" : "group-hover:scale-110"}`} />
-              {(!sidebarCollapsed || asDrawer) && <span className="truncate">{section.label}</span>}
-            </Link>
-          );
-        })}
+        {sidebarCollapsed && !asDrawer
+          ? /* Collapsed: flat icon-only list (no category labels) */
+            sections.filter((s) => s.to !== "/admin" && s.to !== "/settings").map((section) => {
+              const active = isSectionActive(section);
+              return (
+                <Link
+                  key={section.to}
+                  to={section.to}
+                  className={`group flex min-h-[40px] w-10 items-center justify-center rounded-lg px-0 text-[13px] font-medium transition-all duration-150 ${
+                    active
+                      ? "bg-blue-50 text-blue-700 shadow-sm shadow-blue-100"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                  title={section.label}
+                >
+                  <section.icon size={17} className={`shrink-0 transition-transform duration-150 ${active ? "" : "group-hover:scale-110"}`} />
+                </Link>
+              );
+            })
+          : /* Expanded/drawer: grouped with category headers */
+            CATEGORY_ORDER.filter((cat) => {
+              const mods = sections.filter((s) => s.category === cat && s.to !== "/admin" && s.to !== "/settings");
+              return mods.length > 0;
+            }).map((cat) => {
+              const mods = sections.filter((s) => s.category === cat && s.to !== "/admin" && s.to !== "/settings");
+              const catLabel = CATEGORY_LABELS[cat];
+              return (
+                <div key={cat} className="mt-1 first:mt-0">
+                  {catLabel && (
+                    <p className="mb-1 px-3 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{catLabel}</p>
+                  )}
+                  {mods.map((section) => {
+                    const active = isSectionActive(section);
+                    return (
+                      <Link
+                        key={section.to}
+                        to={section.to}
+                        className={`group flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-all duration-150 ${
+                          active
+                            ? "bg-blue-50 text-blue-700 shadow-sm shadow-blue-100"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                      >
+                        <section.icon size={17} className={`shrink-0 transition-transform duration-150 ${active ? "" : "group-hover:scale-110"}`} />
+                        <span className="truncate">{section.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            })
+        }
       </nav>
 
       {/* Bottom section */}

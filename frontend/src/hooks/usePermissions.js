@@ -155,19 +155,19 @@ export function useVisibleModules() {
   // each module. Keeping them in sync here means the sidebar shows exactly what
   // the API will allow — no "ghost" modules that 403 on navigation.
   const ALL_MODULES = [
-    { key: "dashboard", permissionKey: "dashboard:view", path: "/", label: "Dashboard", icon: "LayoutDashboard" },
-    { key: "sales", permissionKey: "sales:view", path: "/sales", label: "Sales", icon: "ShoppingCart" },
-    { key: "purchase", permissionKey: "purchase:view", path: "/purchase", label: "Procurement", icon: "Package" },
-    { key: "inventory", permissionKey: "inventory:view", path: "/inventory", label: "Inventory", icon: "Warehouse" },
-    { key: "manufacturing", permissionKey: "manufacturing:view", path: "/manufacturing", label: "Manufacturing", icon: "Factory" },
-    { key: "accounts", permissionKey: "accounts:view", path: "/accounts", label: "Finance", icon: "DollarSign" },
-    { key: "crm", permissionKey: "crm:view", path: "/crm", label: "CRM", icon: "Users" },
-    { key: "hrms", permissionKey: "hr:view", path: "/hrms", label: "HR", icon: "UserCheck" },
-    { key: "eam", permissionKey: "eam:view", path: "/eam", label: "Assets", icon: "Tool" },
-    { key: "reports", permissionKey: "reports:view", path: "/executive", label: "Reports", icon: "BarChart" },
-    { key: "audit", permissionKey: "audit:view", path: "/activity", label: "Audit", icon: "ClipboardCheck" },
-    { key: "settings", permissionKey: "settings:view", path: "/settings", label: "Settings", icon: "Settings" },
-    { key: "admin", permissionKey: "admin:view", path: "/admin", label: "Administration", icon: "Shield" },
+    { key: "dashboard", permissionKey: "dashboard:view", path: "/", label: "Dashboard", sidebarLabel: "Home", icon: "LayoutDashboard", category: "home" },
+    { key: "sales", permissionKey: "sales:view", path: "/sales", label: "Sales", sidebarLabel: "Sales", icon: "ShoppingCart", category: "sell" },
+    { key: "crm", permissionKey: "crm:view", path: "/crm", label: "CRM", sidebarLabel: "Customers", icon: "Users", category: "sell" },
+    { key: "purchase", permissionKey: "purchase:view", path: "/purchase", label: "Procurement", sidebarLabel: "Purchasing", icon: "Package", category: "buy" },
+    { key: "inventory", permissionKey: "inventory:view", path: "/inventory", label: "Inventory", sidebarLabel: "Inventory", icon: "Warehouse", category: "products" },
+    { key: "manufacturing", permissionKey: "manufacturing:view", path: "/manufacturing", label: "Manufacturing", sidebarLabel: "Manufacturing", icon: "Factory", category: "products" },
+    { key: "accounts", permissionKey: "accounts:view", path: "/accounts", label: "Finance", sidebarLabel: "Finance", icon: "DollarSign", category: "money" },
+    { key: "hrms", permissionKey: "hr:view", path: "/hrms", label: "HR", sidebarLabel: "People", icon: "UserCheck", category: "people" },
+    { key: "eam", permissionKey: "eam:view", path: "/eam", label: "Assets", sidebarLabel: "Assets", icon: "Tool", category: "company" },
+    { key: "reports", permissionKey: "reports:view", path: "/executive", label: "Reports", sidebarLabel: "Reports", icon: "BarChart", category: "company" },
+    { key: "audit", permissionKey: "audit:view", path: "/activity", label: "Audit", sidebarLabel: "Audit", icon: "ClipboardCheck", category: "company" },
+    { key: "settings", permissionKey: "settings:view", path: "/settings", label: "Settings", sidebarLabel: "Settings", icon: "Settings", category: "settings" },
+    { key: "admin", permissionKey: "admin:view", path: "/admin", label: "Administration", sidebarLabel: "Administration", icon: "Shield", category: "settings" },
   ];
 
   if (isSuperAdmin) return ALL_MODULES;
