@@ -122,7 +122,9 @@ export function SalesPage() {
     const ts = Date.now();
     if (tab === "Leads") return navigate(stayPath(), { state: { openLeadForm: true, ts } });
     if (tab === "Receipts") return navigate(stayPath(), { state: { openReceiptForm: true, ts } });
-    return navigate(stayPath(), { state: { openDocForm: true, docType: tab.toUpperCase(), ts } });
+    // Map tab names to the Prisma DocumentType enums that DocumentsTab expects.
+    const DOC_TYPE_MAP = { Quotations: "QUOTATION", Orders: "SALES_ORDER", Delivery: "DELIVERY_NOTE", Invoices: "INVOICE" };
+    return navigate(stayPath(), { state: { openDocForm: true, docType: DOC_TYPE_MAP[tab] || tab.toUpperCase(), ts } });
   };
 
   return (

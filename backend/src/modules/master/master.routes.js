@@ -119,12 +119,14 @@ router.get("/:resource", requirePermission(PERMISSIONS.MASTER_READ), validate(li
 router.post("/:resource", requirePermission(PERMISSIONS.MASTER_CREATE), validate(writeSchema), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
+  let data = { ...req.validated.body };
   if (["customers", "vendors"].includes(req.validated.params.resource)) {
-    customerVendorSchema.parse({ body: req.validated.body });
+    const parsed = customerVendorSchema.parse({ body: data });
+    data = parsed.body;
   }
   const row = await prisma[model].create({
     data: {
-      ...req.validated.body,
+      ...data,
       tenantId: req.tenantId,
       companyId: req.companyId,
       branchId: req.branchId,
@@ -152,8 +154,13 @@ router.get("/:resource/:id", requirePermission(PERMISSIONS.MASTER_READ), validat
 router.patch("/:resource/:id", requirePermission(PERMISSIONS.MASTER_UPDATE), validate(z.object({ params: idSchema.shape.params, body: z.record(z.string(), z.unknown()) })), asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const model = modelFor(req.validated.params.resource);
+  let body = { ...req.validated.body };
+  if (["customers", "vendors"].includes(req.validated.params.resource)) {
+    const parsed = customerVendorSchema.parse({ body });
+    body = parsed.body;
+  }
   const row = await updateTenantRecord(prisma, model, req, req.validated.params.id,
-    { ...req.validated.body, updatedBy: req.user.sub });
+    { ...body, updatedBy: req.user.sub });
   return ok(res, row, "Record updated");
 }));
 
