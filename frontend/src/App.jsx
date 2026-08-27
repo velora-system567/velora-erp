@@ -8,6 +8,8 @@ import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import GoogleCallback from "./pages/auth/GoogleCallback";
+import TwoFactorVerify from "./pages/auth/TwoFactorVerify";
 import { AuditLogPage } from "./pages/core/AuditLogPage";
 import { CompanyPage } from "./pages/core/CompanyPage";
 import { CorePage } from "./pages/core/CorePage";
@@ -30,6 +32,7 @@ import { HrmsPage } from "./pages/hrms/HrmsPage";
 import { SupplierPortalPage } from "./pages/supplier-portal/SupplierPortalPage";
 import { EamPage } from "./pages/eam/EamPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import SecuritySettingsPage from "./pages/settings/SecuritySettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,9 +55,12 @@ export default function App() {
         <KeyboardShortcutProvider>
           <Routes>
           <Route path="/login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
+          <Route path="/auth/google/callback" element={<RouteErrorBoundary><GoogleCallback /></RouteErrorBoundary>} />
+          <Route path="/verify-2fa" element={<RouteErrorBoundary><TwoFactorVerify /></RouteErrorBoundary>} />
           <Route path="/register" element={<RouteErrorBoundary><Register /></RouteErrorBoundary>} />
           <Route path="/forgot-password" element={<RouteErrorBoundary><ForgotPassword /></RouteErrorBoundary>} />
           <Route path="/reset-password" element={<RouteErrorBoundary><ResetPassword /></RouteErrorBoundary>} />
+
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
               {/* Every module route is wrapped in a PermissionGuard that mirrors the
@@ -118,6 +124,7 @@ export default function App() {
               </Route>
               <Route element={<PermissionGuard module="settings" requiredPermission="settings:view" />}>
                 <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
+                <Route path="/settings/security" element={<RouteErrorBoundary><SecuritySettingsPage /></RouteErrorBoundary>} />
               </Route>
               <Route element={<PermissionGuard module="admin" requiredPermission="admin:view" />}>
                 <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />

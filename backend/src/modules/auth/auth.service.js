@@ -34,15 +34,46 @@ function signAccessToken(user) {
   );
 }
 
-function signRefreshToken(user) {
-  return jwt.sign(
-    { sub: user.id, tenantId: user.tenantId, companyId: user.companyId, email: user.email },
-    env.JWT_REFRESH_SECRET,
-    { expiresIn: env.REFRESH_TOKEN_EXPIRES_IN },
-  );
+/**
+ * Resolve the refresh token lifetime + session type for a login.
+ * - rememberMe=true  → "persistent" session, PERSISTENT_REFRESH_TOKEN_EXPIRES_IN (15d)
+ * - rememberMe=false → "session" session, REFRESH_TOKEN_EXPIRES_IN (7d)
+ */
+function refreshLifetime(options = {}) {
+  const persistent = Boolean(options.rememberMe) || options.sessionType === "persistent";
+  if (persistent) return { sessionType: "persistent", expiresIn: env.PERSISTENT_REFRESH_TOKEN_EXPIRES_IN };
+  return { sessionType: "session", expiresIn: env.REFRESH_TOKEN_EXPIRES_IN };
 }
 
-async function storeRefreshToken(prisma, { userId, tenantId, token, deviceInfo, ipAddress }) {
+function signRefreshToken(user, options = {}) {
+  const { sessionType, expiresIn } = refreshLifetime(options);
+  const payload = {
+    sub: user.id,
+    tenantId: user.tenantId,
+    companyId: user.companyId,
+    email: user.email,
+    sessionType,
+  };
+  let signOpts = { expiresIn };
+  // Cap at an absolute expiry (prevents silent indefinite extension on rotation).
+  if (options.expiresAt) {
+    signOpts = { expiresIn: Math.max(0, Math.floor((options.expiresAt.getTime() - Date.now()) / 1000)) };
+    if (signOpts.expiresIn <= 0) {
+      const err = new Error("Session expired");
+      err.statusCode = 401;
+      throw err;
+    }
+  }
+  const token = jwt.sign(payload, env.JWT_REFRESH_SECRET, signOpts);
+  const decoded = jwt.decode(token);
+  return {
+    token,
+    sessionType,
+    expiresAt: decoded?.exp ? new Date(decoded.exp * 1000) : null,
+  };
+}
+
+async function storeRefreshToken(prisma, { userId, tenantId, token, sessionType, deviceInfo, ipAddress }) {
   const payload = jwt.decode(token);
   const expiresAt = new Date(payload.exp * 1000);
   await prisma.refreshToken.create({
@@ -52,6 +83,7 @@ async function storeRefreshToken(prisma, { userId, tenantId, token, deviceInfo, 
       tokenHash: hashToken(token),
       deviceInfo: deviceInfo || null,
       ipAddress: ipAddress || null,
+      sessionType: sessionType || "session",
       expiresAt,
     },
   });
@@ -120,12 +152,13 @@ export async function registerTenant(input, meta = {}) {
     });
 
     const accessToken = signAccessToken(userWithRoles);
-    const refreshToken = signRefreshToken(owner);
+    const { token: refreshToken, sessionType } = signRefreshToken(owner, { rememberMe: Boolean(meta.rememberMe) });
 
     await storeRefreshToken(tx, {
       userId: owner.id,
       tenantId: tenant.id,
       token: refreshToken,
+      sessionType,
       deviceInfo: meta.userAgent,
       ipAddress: meta.ipAddress,
     });
@@ -157,13 +190,7 @@ export async function loginWithPhone(phone, meta = {}, password = null) {
       error.statusCode = 401;
       throw error;
     }
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-    await storeRefreshToken(prisma, {
-      userId: user.id, tenantId: user.tenantId, token: refreshToken,
-      deviceInfo: meta.userAgent, ipAddress: meta.ipAddress,
-    });
-    return { user, accessToken, refreshToken };
+    return issueSession({ prisma, user, meta, rememberMe: meta.rememberMe });
   }
 
   // OTP login (no password) — find user by phone
@@ -178,16 +205,66 @@ export async function loginWithPhone(phone, meta = {}, password = null) {
     throw error;
   }
 
-  const accessToken = signAccessToken(user);
-  const refreshToken = signRefreshToken(user);
-  await storeRefreshToken(prisma, {
-    userId: user.id, tenantId: user.tenantId, token: refreshToken,
-    deviceInfo: meta.userAgent, ipAddress: meta.ipAddress,
-  });
-  return { user, accessToken, refreshToken };
+  return issueSession({ prisma, user, meta, rememberMe: meta.rememberMe });
 }
 
-export async function loginUser(email, password, meta = {}) {
+/**
+ * Build and persist a new authenticated session (access + refresh tokens).
+ * Used by password/phone/Google/2FA-complete login paths.
+ * Returns "requiresTwoFactor" when the user has 2FA enabled (no tokens issued).
+ */
+async function issueSession({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
+  if (user.twoFactorEnabled) {
+    const { signTwoFactorChallenge } = await import("./two-factor.service.js");
+    return {
+      requiresTwoFactor: true,
+      challengeToken: signTwoFactorChallenge(user),
+      user: publicUserShape(user),
+    };
+  }
+  return issueTokens({ prisma, user, meta, rememberMe, googleLinked });
+}
+
+async function issueTokens({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
+  const accessToken = signAccessToken(user);
+  const { token: refreshToken, sessionType, expiresAt } = signRefreshToken(user, { rememberMe });
+
+  await storeRefreshToken(prisma, {
+    userId: user.id,
+    tenantId: user.tenantId,
+    token: refreshToken,
+    sessionType,
+    deviceInfo: meta.userAgent,
+    ipAddress: meta.ipAddress,
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    sessionType,
+    sessionExpiresAt: expiresAt ? expiresAt.toISOString() : null,
+    user: publicUserShape(user),
+  };
+}
+
+function publicUserShape(user) {
+  return {
+    id: user.id,
+    tenantId: user.tenantId,
+    companyId: user.companyId,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatarUrl: user.avatarUrl,
+    emailVerifiedAt: user.emailVerifiedAt,
+  };
+}
+
+export function userIsTwoFactorEnabled(user) {
+  return Boolean(user && user.twoFactorEnabled);
+}
+
+export async function loginUser(email, password, meta = {}, rememberMe = false) {
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({
     where: { email: email.toLowerCase(), isDeleted: false, isActive: true },
@@ -200,18 +277,7 @@ export async function loginUser(email, password, meta = {}) {
     throw error;
   }
 
-  const accessToken = signAccessToken(user);
-  const refreshToken = signRefreshToken(user);
-
-  await storeRefreshToken(prisma, {
-    userId: user.id,
-    tenantId: user.tenantId,
-    token: refreshToken,
-    deviceInfo: meta.userAgent,
-    ipAddress: meta.ipAddress,
-  });
-
-  return { user, accessToken, refreshToken };
+  return issueSession({ prisma, user, meta, rememberMe });
 }
 
 export async function refreshAccessToken(refreshToken, meta = {}) {
@@ -270,17 +336,23 @@ export async function refreshAccessToken(refreshToken, meta = {}) {
     throw error;
   }
 
-  // Rotate: revoke old token, issue new one
+  // Rotate: revoke old token, issue new one. Preserve the session type and cap
+  // the new token at the ORIGINAL session expiry so the 15-day trusted window is
+  // never silently extended by repeated refreshes.
   await prisma.refreshToken.update({
     where: { id: tokenRecord.id },
     data: { revokedAt: new Date() },
   });
-
-  const newRefreshToken = signRefreshToken(user);
+  const preservingSessionType = tokenRecord.sessionType === "persistent" ? { rememberMe: true } : {};
+  const { token: newRefreshToken, sessionType: newSessionType, expiresAt: newExpiresAt } = signRefreshToken(user, {
+    ...preservingSessionType,
+    expiresAt: tokenRecord.expiresAt,
+  });
   await storeRefreshToken(prisma, {
     userId: user.id,
     tenantId: user.tenantId,
     token: newRefreshToken,
+    sessionType: newSessionType,
     deviceInfo: meta.userAgent,
     ipAddress: meta.ipAddress,
   });
@@ -288,6 +360,8 @@ export async function refreshAccessToken(refreshToken, meta = {}) {
   return {
     accessToken: signAccessToken(user),
     refreshToken: newRefreshToken,
+    sessionType: newSessionType,
+    sessionExpiresAt: newExpiresAt ? newExpiresAt.toISOString() : null,
     user: {
       id: user.id,
       tenantId: user.tenantId,
@@ -349,6 +423,7 @@ export async function getActiveSessions(userId) {
       id: true,
       deviceInfo: true,
       ipAddress: true,
+      sessionType: true,
       createdAt: true,
       expiresAt: true,
     },
@@ -389,3 +464,82 @@ export async function resetPassword(email, otp, newPassword) {
   // Revoke all sessions on password reset
   await logoutAllDevices(user.id);
 }
+
+/**
+ * Complete the second-factor (TOTP or recovery code) verification and issue the
+ * real authenticated session. The challenge token ties this to the login that
+ * already passed the first factor.
+ */
+export async function completeTwoFactor({ challengeToken, code, meta = {}, rememberMe = false }) {
+  const { verifyTwoFactorChallenge, verifyTotp, consumeRecoveryCode } = await import("./two-factor.service.js");
+  const payload = verifyTwoFactorChallenge(challengeToken);
+
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: payload.sub, tenantId: payload.tenantId, isDeleted: false, isActive: true },
+    include: { userRoles: { include: { role: true } } },
+  });
+
+  if (!user || !user.twoFactorEnabled) {
+    const err = new Error("User not found or 2FA is not enabled");
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const totpOk = verifyTotp(code, user.totpSecret);
+
+  if (!totpOk) {
+    const rec = consumeRecoveryCode(user.recoveryCodesHash, code);
+    if (rec.ok) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { recoveryCodesHash: rec.remainingHashes ? JSON.stringify(rec.remainingHashes) : null },
+      });
+    } else {
+      const err = new Error("Incorrect verification code. Please try again.");
+      err.statusCode = 401;
+      throw err;
+    }
+  }
+
+  return issueTokens({ prisma, user, meta, rememberMe });
+}
+
+/**
+ * Get the authenticated user's security profile (2FA status, recovery codes
+ * remaining, google connection, session info). Used by the Security settings page.
+ */
+export async function getSecurityProfile(userId) {
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      twoFactorEnabled: true,
+      twoFactorMethod: true,
+      recoveryCodesHash: true,
+      googleId: true,
+    },
+  });
+  if (!user) {
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
+  let recoveryCodesRemaining = 0;
+  if (user.recoveryCodesHash) {
+    try { recoveryCodesRemaining = JSON.parse(user.recoveryCodesHash).length; } catch {}
+  }
+  return {
+    twoFactorEnabled: user.twoFactorEnabled,
+    twoFactorMethod: user.twoFactorMethod,
+    recoveryCodesRemaining,
+    googleConnected: Boolean(user.googleId),
+    hasPassword: true,
+    email: user.email,
+    name: user.name,
+  };
+}
+

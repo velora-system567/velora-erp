@@ -79,32 +79,25 @@ export const requestOtp = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, phone, password, otp } = req.validated.body;
+  const { email, phone, password, otp, rememberMe } = req.validated.body;
+  const meta = { ...requestMeta(req), rememberMe };
 
   // Phone + OTP login
   if (phone && otp) {
     const { verifyOtp } = await import("./otp.service.js");
     await verifyOtp({ target: phone, code: otp });
-    const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, requestMeta(req)));
+    const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, meta));
     await recordLoginAttempt(phone, true);
-    return ok(res, {
-      user: publicUser(result.user),
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    }, "Phone login successful");
+    return ok(res, result, result.requiresTwoFactor ? "2FA required" : "Phone login successful");
   }
 
   // Phone + Password login
   if (phone && password) {
     await checkLoginRateLimit(phone);
     try {
-      const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, requestMeta(req), password));
+      const result = await import("./auth.service.js").then((m) => m.loginWithPhone(phone, meta, password));
       await recordLoginAttempt(phone, true);
-      return ok(res, {
-        user: publicUser(result.user),
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      }, "Login successful");
+      return ok(res, result, result.requiresTwoFactor ? "2FA required" : "Login successful");
     } catch (error) {
       await recordLoginAttempt(phone, false);
       throw error;
@@ -120,21 +113,18 @@ export const login = asyncHandler(async (req, res) => {
 
   await checkLoginRateLimit(email);
   try {
-    const result = await loginUser(email, password, requestMeta(req));
+    const { loginUser } = await import("./auth.service.js");
+    const result = await loginUser(email, password, meta, rememberMe);
     await recordLoginAttempt(email, true);
 
     await writeAudit(req, {
       tableName: "users",
-      recordId: result.user.id,
+      recordId: result.user?.id || email,
       action: "LOGIN_SUCCESS",
-      newValue: { method: `${phone ? "phone" : "email"}:${otp ? "otp" : "password"}`, ip: requestMeta(req).ipAddress },
+      newValue: { method: `${phone ? "phone" : "email"}:${otp ? "otp" : "password"}`, ip: meta.ipAddress },
     }).catch((err) => console.error("[auth] Audit log error:", err.message));
 
-    return ok(res, {
-      user: publicUser(result.user),
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    }, "Login successful");
+    return ok(res, result, result.requiresTwoFactor ? "2FA required" : "Login successful");
   } catch (error) {
     await recordLoginAttempt(email, false);
     throw error;
@@ -210,4 +200,81 @@ export const resendVerificationHandler = asyncHandler(async (req, res) => {
     await resendVerification(userId);
   }
   return ok(res, {}, "Verification email sent");
+});
+
+// ─── Two-Factor Authentication Handlers ─────────────────────────────
+
+export const setupTwoFactor = asyncHandler(async (req, res) => {
+  const { createTotpSetup } = await import("./two-factor.service.js");
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: req.user.sub, isDeleted: false },
+    select: { id: true, email: true, twoFactorEnabled: true },
+  });
+  if (!user) { const e = new Error("User not found"); e.statusCode = 404; throw e; }
+  if (user.twoFactorEnabled) { const e = new Error("2FA is already enabled. Disable it first to reconfigure."); e.statusCode = 400; throw e; }
+  const setup = createTotpSetup(user);
+  return ok(res, { secret: setup.secret, otpauth: setup.otpauth }, "Scan the QR code with your authenticator app");
+});
+
+export const enableTwoFactor = asyncHandler(async (req, res) => {
+  const { verifyTotp, generateRecoveryCodes } = await import("./two-factor.service.js");
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: req.user.sub, isDeleted: false },
+    select: { id: true, totpSecret: true, twoFactorEnabled: true },
+  });
+  if (!user) { const e = new Error("User not found"); e.statusCode = 404; throw e; }
+  if (user.twoFactorEnabled) { const e = new Error("2FA is already enabled"); e.statusCode = 400; throw e; }
+  if (!user.totpSecret) { const e = new Error("Please run 2FA setup first"); e.statusCode = 400; throw e; }
+  const { code } = req.validated.body;
+  const ok_ = verifyTotp(code, user.totpSecret);
+  if (!ok_) { const e = new Error("Invalid verification code. Please try again."); e.statusCode = 401; throw e; }
+  const { codes, hashes } = generateRecoveryCodes();
+  await prisma.user.update({
+    where: { id: req.user.sub },
+    data: { twoFactorEnabled: true, twoFactorMethod: "totp", recoveryCodesHash: JSON.stringify(hashes) },
+  });
+  return ok(res, { recoveryCodes: codes }, "Two-factor authentication enabled. Save your recovery codes.");
+});
+
+export const disableTwoFactor = asyncHandler(async (req, res) => {
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: req.user.sub, isDeleted: false },
+    select: { id: true, twoFactorEnabled: true },
+  });
+  if (!user?.twoFactorEnabled) { const e = new Error("2FA is not enabled"); e.statusCode = 400; throw e; }
+  await prisma.user.update({
+    where: { id: req.user.sub },
+    data: { twoFactorEnabled: false, twoFactorMethod: null, totpSecret: null, recoveryCodesHash: null },
+  });
+  return ok(res, {}, "Two-factor authentication disabled");
+});
+
+export const regenerateRecoveryCodes = asyncHandler(async (req, res) => {
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({
+    where: { id: req.user.sub, isDeleted: false },
+    select: { id: true, twoFactorEnabled: true },
+  });
+  if (!user?.twoFactorEnabled) { const e = new Error("Enable 2FA first before generating recovery codes"); e.statusCode = 400; throw e; }
+  const { generateRecoveryCodes } = await import("./two-factor.service.js");
+  const { codes, hashes } = generateRecoveryCodes();
+  await prisma.user.update({ where: { id: req.user.sub }, data: { recoveryCodesHash: JSON.stringify(hashes) } });
+  return ok(res, { recoveryCodes: codes }, "New recovery codes generated. Previous codes are no longer valid.");
+});
+
+export const verifyTwoFactor = asyncHandler(async (req, res) => {
+  const { completeTwoFactor } = await import("./auth.service.js");
+  const { challengeToken, code, rememberMe } = req.validated.body;
+  const meta = { ...requestMeta(req), rememberMe };
+  const result = await completeTwoFactor({ challengeToken, code, meta, rememberMe: Boolean(rememberMe) });
+  return ok(res, result, "2FA verification successful");
+});
+
+export const securityProfile = asyncHandler(async (req, res) => {
+  const { getSecurityProfile } = await import("./auth.service.js");
+  const profile = await getSecurityProfile(req.user.sub);
+  return ok(res, profile, "Security profile loaded");
 });

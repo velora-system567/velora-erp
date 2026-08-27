@@ -38,6 +38,7 @@ export const loginSchema = z.object({
     phone: z.string().optional(),
     password: z.string().min(1, "Password is required"),
     otp: z.string().length(6).optional(),
+    rememberMe: z.boolean().optional().default(false),
   }),
 });
 
@@ -75,5 +76,19 @@ export const verifyEmailSchema = z.object({
 export const resendVerificationSchema = z.object({
   body: z.object({
     email: z.string().email().optional(),
+  }),
+});
+
+export const enableTwoFactorSchema = z.object({
+  body: z.object({
+    code: z.string().length(6, "Code must be 6 digits"),
+  }),
+});
+
+export const verifyTwoFactorSchema = z.object({
+  body: z.object({
+    challengeToken: z.string().min(1, "Challenge token is required"),
+    code: z.string().min(1, "Code is required"),
+    rememberMe: z.boolean().optional().default(false),
   }),
 });

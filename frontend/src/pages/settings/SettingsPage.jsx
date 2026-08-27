@@ -10,6 +10,7 @@ const cards = [
   { to: "/hrms", label: "People & HR", description: "Employees, departments, attendance, and payroll records.", icon: Users, color: "amber" },
   { to: "/activity", label: "Audit Log", description: "Track every create, update, delete, and approval action.", icon: Activity, color: "slate" },
   { to: "/wms", label: "Warehouses", description: "Manage warehouse locations, bins, and stock movements.", icon: Warehouse, color: "indigo" },
+  { to: "/settings/security", label: "Security & Sign-in", description: "Two-factor authentication, Google sign-in, sessions, and security settings.", icon: Shield, color: "rose" },
 ];
 
 const COLORS = {
@@ -19,6 +20,7 @@ const COLORS = {
   amber: "border-amber-200/80 hover:border-amber-300 hover:bg-amber-50/40",
   slate: "border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/40",
   indigo: "border-indigo-200/80 hover:border-indigo-300 hover:bg-indigo-50/40",
+  rose: "border-rose-200/80 hover:border-rose-300 hover:bg-rose-50/40",
 };
 
 const ICON_COLORS = {
@@ -28,6 +30,7 @@ const ICON_COLORS = {
   amber: "text-amber-600 bg-amber-100",
   slate: "text-slate-600 bg-slate-100",
   indigo: "text-indigo-600 bg-indigo-100",
+  rose: "text-rose-600 bg-rose-100",
 };
 
 function SettingsCard({ to, label, description, icon: Icon, color }) {

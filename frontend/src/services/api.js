@@ -66,10 +66,22 @@ function clearStoredSession() {
 }
 
 function storeRefreshedSession(payload) {
+  if (!payload.accessToken || !payload.refreshToken) return;
+  // Route through the auth store so token, user AND session meta
+  // (sessionType, sessionExpiresAt) stay consistent everywhere.
+  try {
+    useAuthStore.getState().setSession({
+      user: payload.user || JSON.parse(localStorage.getItem("velora_user") || "null"),
+      accessToken: payload.accessToken,
+      refreshToken: payload.refreshToken,
+      sessionType: payload.sessionType,
+      sessionExpiresAt: payload.sessionExpiresAt,
+    });
+    return;
+  } catch { /* fall through to manual write */ }
   if (payload.accessToken) localStorage.setItem("velora_access_token", payload.accessToken);
   if (payload.refreshToken) localStorage.setItem("velora_refresh_token", payload.refreshToken);
   if (payload.user) localStorage.setItem("velora_user", JSON.stringify(payload.user));
-  // Sync Zustand store — prevents stale user object after silent token refresh
   try { useAuthStore.getState().syncFromStorage(); } catch { /* store not initialized */ }
 }
 
@@ -212,7 +224,7 @@ export const authApi = {
 
   // Google OAuth
   googleUrl: () => apiRequest("/auth/google/url"),
-  googleLogin: (code) => apiRequest("/auth/google", { method: "POST", body: JSON.stringify({ code }) }),
+  googleLogin: (code, state) => apiRequest("/auth/google", { method: "POST", body: JSON.stringify({ code, state }) }),
 
   // Device Management
   devices: () => apiRequest("/auth/devices"),
@@ -228,7 +240,16 @@ export const authApi = {
   qrApprove: (qrToken) => apiRequest("/auth/qr/approve", { method: "POST", body: JSON.stringify({ qrToken }) }),
   qrReject: (qrToken) => apiRequest("/auth/qr/reject", { method: "POST", body: JSON.stringify({ qrToken }) }),
 
-  // Security
+  // Security profile + Two-Factor Authentication
+  securityProfile: () => apiRequest("/auth/security/profile"),
+  setup2FA: () => apiRequest("/auth/2fa/setup"),
+  enable2FA: (code) => apiRequest("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+  disable2FA: () => apiRequest("/auth/2fa/disable", { method: "POST" }),
+  regenerateRecoveryCodes: () => apiRequest("/auth/2fa/regenerate-recovery-codes", { method: "POST" }),
+  verify2FA: (challengeToken, code, rememberMe = false) =>
+    apiRequest("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ challengeToken, code, rememberMe }) }),
+
+  // Security events
   securitySummary: () => apiRequest("/auth/security/summary"),
   securityEvents: (params = {}) => {
     const qs = buildQs(params);

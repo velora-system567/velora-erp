@@ -20,6 +20,12 @@ import {
   sessions,
   verifyEmailHandler,
   resendVerificationHandler,
+  setupTwoFactor,
+  enableTwoFactor,
+  disableTwoFactor,
+  regenerateRecoveryCodes,
+  verifyTwoFactor,
+  securityProfile,
 } from "./auth.controller.js";
 import {
   forgotPasswordSchema,
@@ -30,6 +36,8 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   resendVerificationSchema,
+  enableTwoFactorSchema,
+  verifyTwoFactorSchema,
 } from "./auth.schemas.js";
 import { handleGoogleAuth, getGoogleLoginUrl, isGoogleConfigured } from "./google.service.js";
 import {
@@ -65,11 +73,12 @@ router.get("/google/url", (req, res) => {
   if (!isGoogleConfigured()) {
     return ok(res, { configured: false }, "Google OAuth not configured");
   }
-  return ok(res, { configured: true, url: getGoogleLoginUrl() }, "Google auth URL");
+  const rememberMe = req.query.rememberMe === "true" || req.query.rememberMe === "1";
+  return ok(res, { configured: true, url: getGoogleLoginUrl({ rememberMe }) }, "Google auth URL");
 });
 
 router.post("/google", asyncHandler(async (req, res) => {
-  const { code } = req.body;
+  const { code, state } = req.body;
   if (!code) {
     const err = new Error("Authorization code is required");
     err.statusCode = 400;
@@ -80,18 +89,47 @@ router.post("/google", asyncHandler(async (req, res) => {
   const result = await handleGoogleAuth(code, {
     userAgent: req.headers["user-agent"],
     ipAddress: Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(",")[0]?.trim() || req.ip,
+    state,
   });
 
-  await logSecurityEvent({
-    action: SECURITY_ACTIONS.GOOGLE_LOGIN,
-    userId: result.user.id,
-    tenantId: result.user.tenantId,
-    companyId: result.user.companyId,
-    ipAddress: req.headers["x-forwarded-for"] || req.ip,
-    userAgent: req.headers["user-agent"],
-  });
+  if (result?.user?.id) {
+    await logSecurityEvent({
+      action: SECURITY_ACTIONS.GOOGLE_LOGIN,
+      userId: result.user.id,
+      tenantId: result.user.tenantId,
+      companyId: result.user.companyId,
+      ipAddress: req.headers["x-forwarded-for"] || req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+  }
 
   return ok(res, result, "Google login successful");
+}));
+
+// ─── Two-Factor Authentication (TOTP) ─────────────────────────────
+router.get("/security/profile", requireAuth, asyncHandler(async (req, res) => {
+  const profile = await securityProfile(req, res);
+  return profile;
+}));
+router.get("/2fa/setup", requireAuth, asyncHandler(async (req, res) => {
+  const setup = await setupTwoFactor(req, res);
+  return setup;
+}));
+router.post("/2fa/enable", requireAuth, validate(enableTwoFactorSchema), asyncHandler(async (req, res) => {
+  const result = await enableTwoFactor(req, res);
+  return result;
+}));
+router.post("/2fa/disable", requireAuth, asyncHandler(async (req, res) => {
+  const result = await disableTwoFactor(req, res);
+  return result;
+}));
+router.post("/2fa/regenerate-recovery-codes", requireAuth, asyncHandler(async (req, res) => {
+  const result = await regenerateRecoveryCodes(req, res);
+  return result;
+}));
+router.post("/2fa/verify", validate(verifyTwoFactorSchema), asyncHandler(async (req, res) => {
+  const result = await verifyTwoFactor(req, res);
+  return result;
 }));
 
 // ─── Device Management ─────────────────────────────────────────────

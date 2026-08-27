@@ -13,11 +13,10 @@
  */
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import { getPrisma } from "../../config/db.js";
 import { env } from "../../config/env.js";
-import { ROLE_PERMISSIONS } from "../../utils/permissions.js";
 import { writeAudit } from "../../utils/audit.js";
+import { issueSession, issueTokens } from "./auth.service.js";
 
 // ─── Google OAuth Config ────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
@@ -25,52 +24,6 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${env.FRONTEND_URL}/auth/google/callback`;
 
 // ─── Helpers ────────────────────────────────────────────────────────
-
-function permissionsFor(user) {
-  const names = user.userRoles?.map((ur) => ur.role?.name).filter(Boolean) || ["OWNER"];
-  return [...new Set(names.flatMap((name) => ROLE_PERMISSIONS[name] || []))];
-}
-
-function signAccessToken(user) {
-  return jwt.sign(
-    {
-      sub: user.id,
-      tenantId: user.tenantId,
-      companyId: user.companyId,
-      email: user.email,
-      permissions: permissionsFor(user),
-    },
-    env.JWT_ACCESS_SECRET,
-    { expiresIn: env.ACCESS_TOKEN_EXPIRES_IN },
-  );
-}
-
-function signRefreshToken(user) {
-  return jwt.sign(
-    { sub: user.id, tenantId: user.tenantId, companyId: user.companyId, email: user.email },
-    env.JWT_REFRESH_SECRET,
-    { expiresIn: env.REFRESH_TOKEN_EXPIRES_IN },
-  );
-}
-
-function hashToken(token) {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-async function storeRefreshToken(prisma, { userId, tenantId, token, deviceInfo, ipAddress }) {
-  const payload = jwt.decode(token);
-  const expiresAt = new Date(payload.exp * 1000);
-  await prisma.refreshToken.create({
-    data: {
-      userId,
-      tenantId,
-      tokenHash: hashToken(token),
-      deviceInfo: deviceInfo || null,
-      ipAddress: ipAddress || null,
-      expiresAt,
-    },
-  });
-}
 
 function parseDeviceInfo(userAgent) {
   if (!userAgent) return { browser: "Unknown", os: "Unknown", device: "Desktop" };
@@ -169,6 +122,17 @@ async function exchangeCode(code) {
 export async function handleGoogleAuth(code, meta = {}) {
   const googleUser = await exchangeCode(code);
 
+  // Decode the OAuth state (carried rememberMe preference) if present.
+  let rememberMe = Boolean(meta.rememberMe);
+  if (meta.state && typeof meta.state === "string") {
+    try {
+      rememberMe = Boolean(JSON.parse(meta.state).rememberMe);
+    } catch {
+      rememberMe = Boolean(meta.rememberMe);
+    }
+  }
+  meta = { ...meta, rememberMe };
+
   if (!googleUser.email) {
     const err = new Error("Google account does not have an email address");
     err.statusCode = 400;
@@ -244,17 +208,6 @@ export async function handleGoogleAuth(code, meta = {}) {
 async function loginGoogleUser(user, meta) {
   const prisma = getPrisma();
 
-  const accessToken = signAccessToken(user);
-  const refreshToken = signRefreshToken(user);
-
-  await storeRefreshToken(prisma, {
-    userId: user.id,
-    tenantId: user.tenantId,
-    token: refreshToken,
-    deviceInfo: meta.userAgent,
-    ipAddress: meta.ipAddress,
-  });
-
   // Update last login
   await prisma.user.update({
     where: { id: user.id },
@@ -266,20 +219,7 @@ async function loginGoogleUser(user, meta) {
     },
   });
 
-  return {
-    user: {
-      id: user.id,
-      tenantId: user.tenantId,
-      companyId: user.companyId,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      avatarUrl: user.avatarUrl,
-      emailVerifiedAt: user.emailVerifiedAt,
-    },
-    accessToken,
-    refreshToken,
-  };
+  return issueSession({ prisma, user, meta, rememberMe: Boolean(meta.rememberMe), googleLinked: true });
 }
 
 async function createGoogleUser(googleUser, meta) {
@@ -360,38 +300,24 @@ async function createGoogleUser(googleUser, meta) {
       include: { userRoles: { include: { role: true } } },
     });
 
-    const accessToken = signAccessToken(userWithRoles);
-    const refreshToken = signRefreshToken(user);
-
-    await storeRefreshToken(tx, {
-      userId: user.id,
-      tenantId: tenant.id,
-      token: refreshToken,
-      deviceInfo: meta.userAgent,
-      ipAddress: meta.ipAddress,
+    return issueTokens({
+      prisma: tx,
+      user: userWithRoles,
+      meta,
+      rememberMe: Boolean(meta.rememberMe),
+      googleLinked: true,
     });
-
-    return {
-      user: {
-        id: user.id,
-        tenantId: tenant.id,
-        companyId: company.id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        emailVerifiedAt: user.emailVerifiedAt,
-      },
-      accessToken,
-      refreshToken,
-    };
   });
 }
 
 /**
- * Get Google auth URL (for frontend to redirect)
+ * Get Google auth URL (for frontend to redirect).
+ * `rememberMe` (when true) is encoded into the OAuth state so the 15-day
+ * persistent session preference survives the round-trip through Google.
  */
-export function getGoogleLoginUrl() {
-  return getGoogleAuthUrl();
+export function getGoogleLoginUrl({ rememberMe = false } = {}) {
+  const state = JSON.stringify({ rememberMe: Boolean(rememberMe) });
+  return getGoogleAuthUrl(state);
 }
 
 /**
