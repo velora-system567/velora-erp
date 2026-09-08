@@ -79,6 +79,12 @@ export const resendVerificationSchema = z.object({
   }),
 });
 
+export const disableTwoFactorSchema = z.object({
+  body: z.object({
+    password: z.string().min(1, "Password is required to disable 2FA"),
+  }),
+});
+
 export const enableTwoFactorSchema = z.object({
   body: z.object({
     code: z.string().length(6, "Code must be 6 digits"),

@@ -9,7 +9,11 @@
  * - Creates default role after first login
  * - No duplicate users — email match triggers account linking
  *
- * Future-ready for: Microsoft, Apple, GitHub, Azure AD, SAML, LDAP
+ * Security:
+ * - HMAC-signed state parameter prevents CSRF / login-CSRF attacks
+ * - State includes nonce + timestamp; rejects if >10 min old
+ * - verified_email required from Google userinfo endpoint
+ * - Google API access/refresh tokens are NOT persisted (unnecessary attack surface)
  */
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -22,6 +26,13 @@ import { issueSession, issueTokens } from "./auth.service.js";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${env.FRONTEND_URL}/auth/google/callback`;
+
+// HMAC signing key derived from the refresh secret (domain-isolated, random)
+function stateSigningKey() {
+  return crypto.createHash("sha256").update(env.JWT_REFRESH_SECRET + "google-oauth-state").digest();
+}
+
+const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -48,10 +59,68 @@ function parseDeviceInfo(userAgent) {
   return { browser, os, device };
 }
 
+// ─── HMAC-signed state helpers ─────────────────────────────────────
+
+/**
+ * Sign an OAuth state value with HMAC-SHA256 so it can't be forged.
+ * payload = { nonce, rememberMe, ts }
+ * signed  = base64url(payload) + "." + hex-hmac
+ */
+function signState(payload) {
+  const nonce = crypto.randomBytes(16).toString("hex");
+  const data = JSON.stringify({ ...payload, nonce, ts: Date.now() });
+  const dataB64 = Buffer.from(data).toString("base64url");
+  const sig = crypto.createHmac("sha256", stateSigningKey()).update(dataB64).digest("hex");
+  return `${dataB64}.${sig}`;
+}
+
+/**
+ * Validate a signed OAuth state.  Returns the parsed payload or throws.
+ */
+function verifyState(stateString) {
+  if (!stateString || typeof stateString !== "string") {
+    const err = new Error("Missing OAuth state parameter");
+    err.statusCode = 400;
+    throw err;
+  }
+  const dotIdx = stateString.lastIndexOf(".");
+  if (dotIdx === -1) {
+    const err = new Error("Invalid OAuth state format");
+    err.statusCode = 400;
+    throw err;
+  }
+  const dataB64 = stateString.slice(0, dotIdx);
+  const sig = stateString.slice(dotIdx + 1);
+  const expectedSig = crypto.createHmac("sha256", stateSigningKey()).update(dataB64).digest("hex");
+
+  if (!crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expectedSig, "hex"))) {
+    const err = new Error("Invalid OAuth state signature (CSRF detected)");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(dataB64, "base64url").toString());
+  } catch {
+    const err = new Error("Malformed OAuth state");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!payload.ts || (Date.now() - payload.ts) > STATE_MAX_AGE_MS) {
+    const err = new Error("OAuth state has expired. Please try again.");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return payload;
+}
+
 // ─── Google OAuth URL ───────────────────────────────────────────────
 
 /**
- * Generate the Google OAuth authorization URL.
+ * Generate the Google OAuth authorization URL with a signed state parameter.
  */
 export function getGoogleAuthUrl(state) {
   const params = new URLSearchParams({
@@ -59,8 +128,6 @@ export function getGoogleAuthUrl(state) {
     redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: "code",
     scope: "openid email profile",
-    access_type: "offline",
-    prompt: "consent",
     state: state || crypto.randomBytes(16).toString("hex"),
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -113,28 +180,34 @@ async function exchangeCode(code) {
  * Handle Google OAuth login/signup.
  *
  * Flow:
- * 1. Exchange code for Google user info
- * 2. Check if Google account already linked → login
- * 3. Check if email exists → offer account linking (auto-link if same tenant)
- * 4. Create new user + tenant (if auto-create allowed)
- * 5. Return JWT tokens
+ * 1. Validate the HMAC-signed state (CSRF + freshness)
+ * 2. Exchange code for Google user info
+ * 3. Verify the email is verified by Google
+ * 4. Check if Google account already linked → login
+ * 5. Check if email exists → link account
+ * 6. Create new user + tenant (if auto-create allowed)
+ * 7. Return JWT tokens
  */
 export async function handleGoogleAuth(code, meta = {}) {
-  const googleUser = await exchangeCode(code);
-
-  // Decode the OAuth state (carried rememberMe preference) if present.
+  // 1. Validate the signed state (prevents CSRF / login-CSRF attacks)
   let rememberMe = Boolean(meta.rememberMe);
   if (meta.state && typeof meta.state === "string") {
-    try {
-      rememberMe = Boolean(JSON.parse(meta.state).rememberMe);
-    } catch {
-      rememberMe = Boolean(meta.rememberMe);
-    }
+    const statePayload = verifyState(meta.state);
+    rememberMe = Boolean(statePayload.rememberMe);
   }
   meta = { ...meta, rememberMe };
 
+  // 2. Exchange authorization code for tokens + user info
+  const googleUser = await exchangeCode(code);
+
+  // 3. Require a verified email address from Google
   if (!googleUser.email) {
     const err = new Error("Google account does not have an email address");
+    err.statusCode = 400;
+    throw err;
+  }
+  if (googleUser.verified_email !== true && googleUser.email_verified !== true) {
+    const err = new Error("Google account has an unverified email address");
     err.statusCode = 400;
     throw err;
   }
@@ -149,12 +222,10 @@ export async function handleGoogleAuth(code, meta = {}) {
   });
 
   if (existingGoogle) {
-    // Update tokens and profile
+    // Update profile info (NOT Google API tokens — unnecessary attack surface)
     await prisma.googleAccount.update({
       where: { id: existingGoogle.id },
       data: {
-        accessToken: googleUser.accessToken,
-        refreshToken: googleUser.refreshToken,
         name: googleUser.name,
         avatarUrl: googleUser.picture,
       },
@@ -170,7 +241,7 @@ export async function handleGoogleAuth(code, meta = {}) {
   });
 
   if (existingUser) {
-    // Auto-link Google account to existing user
+    // Auto-link Google account to existing user (no Google API tokens stored)
     await prisma.googleAccount.create({
       data: {
         userId: existingUser.id,
@@ -178,8 +249,6 @@ export async function handleGoogleAuth(code, meta = {}) {
         email,
         name: googleUser.name,
         avatarUrl: googleUser.picture,
-        accessToken: googleUser.accessToken,
-        refreshToken: googleUser.refreshToken,
       },
     });
 
@@ -282,7 +351,7 @@ async function createGoogleUser(googleUser, meta) {
       },
     });
 
-    // Link Google account
+    // Link Google account (no Google API tokens stored — unnecessary attack surface)
     await tx.googleAccount.create({
       data: {
         userId: user.id,
@@ -290,8 +359,6 @@ async function createGoogleUser(googleUser, meta) {
         email,
         name,
         avatarUrl: googleUser.picture,
-        accessToken: googleUser.accessToken,
-        refreshToken: googleUser.refreshToken,
       },
     });
 
@@ -312,11 +379,11 @@ async function createGoogleUser(googleUser, meta) {
 
 /**
  * Get Google auth URL (for frontend to redirect).
- * `rememberMe` (when true) is encoded into the OAuth state so the 15-day
- * persistent session preference survives the round-trip through Google.
+ * `rememberMe` preference is encoded in an HMAC-signed state parameter
+ * so it survives the round-trip through Google and can't be tampered with.
  */
 export function getGoogleLoginUrl({ rememberMe = false } = {}) {
-  const state = JSON.stringify({ rememberMe: Boolean(rememberMe) });
+  const state = signState({ rememberMe: Boolean(rememberMe) });
   return getGoogleAuthUrl(state);
 }
 

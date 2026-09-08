@@ -109,14 +109,19 @@ function errorFromPayload(payload, fallback = "Request failed") {
 }
 
 // ─── Singleton token refresh ─────────────────────────────────────────────────
-// Prevents multiple concurrent API calls from all racing to refresh the token.
-// When the first 401 arrives, we refresh once; subsequent 401s wait for the
-// same in-flight refresh instead of each firing their own request.
+// Prevents multiple concurrent API calls (and the initial session hydration)
+// from all racing to refresh the token with the same refresh token.  When
+// the first 401 arrives, we refresh once; subsequent 401s wait for the same
+// in-flight refresh instead of each firing their own request.
+//
+// CRITICAL: This is the SINGLE source of truth for token refresh across the
+// entire frontend.  ensureAuthenticated (app startup) and apiRequest (runtime
+// 401) both delegate here so two concurrent refresh calls never race and
+// revoke the same refresh token twice.
 
 let _refreshPromise = null;
 
 async function doTokenRefresh() {
-  // If a refresh is already in-flight, wait for it
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
@@ -141,6 +146,15 @@ async function doTokenRefresh() {
 
   return _refreshPromise;
 }
+
+/**
+ * Attempt a silent token refresh (exported for use by ensureAuthenticated on
+ * app startup).  Shares the same in-flight promise as the 401 interceptor
+ * so two concurrent refreshes are impossible.
+ *
+ * Returns the new access token on success, or null on failure.
+ */
+export { doTokenRefresh as silentTokenRefresh };
 
 // ─── Session expiration signal ───────────────────────────────────────────────
 // Instead of hard-navigating with window.location.href (which tears down
@@ -244,7 +258,7 @@ export const authApi = {
   securityProfile: () => apiRequest("/auth/security/profile"),
   setup2FA: () => apiRequest("/auth/2fa/setup"),
   enable2FA: (code) => apiRequest("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
-  disable2FA: () => apiRequest("/auth/2fa/disable", { method: "POST" }),
+  disable2FA: (password) => apiRequest("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
   regenerateRecoveryCodes: () => apiRequest("/auth/2fa/regenerate-recovery-codes", { method: "POST" }),
   verify2FA: (challengeToken, code, rememberMe = false) =>
     apiRequest("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ challengeToken, code, rememberMe }) }),

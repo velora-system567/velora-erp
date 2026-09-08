@@ -116,7 +116,7 @@ function generateOtp() {
  *
  * @param {string} target - Email address or phone number (starting with +)
  * @param {string} purpose - "verification" | "password-reset" | "phone-login"
- * @returns {{ expiresInSeconds: number, resendAfterSeconds: number }}
+ * @returns {{ expiresInSeconds: number, resendAfterSeconds: number, delivered: boolean }}
  */
 export async function requestOtp({ target, purpose = "verification" }) {
   const isPhone = typeof target === "string" && target.startsWith("+");
@@ -150,27 +150,30 @@ export async function requestOtp({ target, purpose = "verification" }) {
     }
 
     const code = generateOtp();
+    let delivered = false;
 
     if (isPhone) {
       // Phone OTP — log to console; ready for SMS provider integration
-      console.log(`[otp] 💡 OTP for phone ${identifier}: ${code}`);
-      // Future: integrate Twilio, AWS SNS, or MSG91 here
-      // const { sendSms } = await import("../../utils/sms.js");
-      // await sendSms({ to: identifier, code, purpose });
+      console.log(`[otp] OTP for phone ${identifier}: ${code}`);
     } else {
       // Email OTP — send via Resend
       const { sendOtpEmail, checkConfig } = await import("../../utils/email.js");
       const missing = checkConfig();
       if (missing.length > 0) {
-        console.warn(`[otp] ⚠️ Email delivery not configured. Missing: ${missing.join(", ")}`);
-        console.warn(`[otp] 💡 OTP for ${identifier}: ${code}`);
-        console.warn(`[otp] 📧 To enable email delivery, set ${missing.join(" and ")} in your environment.`);
+        // Dev fallback: log OTP to console; no email provider configured
+        console.warn(`[otp] Email delivery not configured. Missing: ${missing.join(", ")}`);
+        console.warn(`[otp] OTP for ${identifier}: ${code}`);
+        console.warn(`[otp] To enable email delivery, set ${missing.join(" and ")} in your environment.`);
       } else {
         try {
           const result = await sendOtpEmail({ to: identifier, code, purpose });
-          console.log(`[otp] ✅ Email sent to ${identifier} via Resend:`, result?.id || "unknown");
+          console.log(`[otp] Email sent to ${identifier} via Resend:`, result?.id || "unknown");
+          delivered = true;
         } catch (err) {
-          console.error(`[otp] ❌ Failed to send email to ${identifier}:`, err.message);
+          console.error(`[otp] Failed to send email to ${identifier}:`, err.message);
+          const sendErr = new Error("Unable to send verification code right now. Please try again.");
+          sendErr.statusCode = 502;
+          throw sendErr;
         }
       }
     }
@@ -183,7 +186,7 @@ export async function requestOtp({ target, purpose = "verification" }) {
       .del(sendLockKey(identifier))
       .exec();
 
-    return { expiresInSeconds: OTP_TTL_SECONDS, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };
+    return { expiresInSeconds: OTP_TTL_SECONDS, resendAfterSeconds: RESEND_COOLDOWN_SECONDS, delivered };
   } catch (error) {
     await redis.del(sendLockKey(identifier));
     throw error;

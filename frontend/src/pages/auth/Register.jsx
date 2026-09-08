@@ -80,12 +80,26 @@ export function Register() {
           if (delivered) {
             setSuccessMessage("Verification code sent to your email.");
           } else {
-            setSuccessMessage("OTP generated but email delivery requires RESEND_API_KEY. Check server console for the code.");
+            setSuccessMessage("Code generated. Check server console for the code (email delivery not configured).");
           }
           setSendingOtp(false);
         },
-        onError: () => {
+        onError: (error) => {
           setSendingOtp(false);
+          const msg = error?.message || "";
+          if (msg.includes("60 seconds") || msg.includes("wait")) {
+            setValidationError("Please wait before requesting another code.");
+          } else if (msg.includes("Too many")) {
+            setValidationError("Too many requests. Please try again later.");
+          } else if (msg.includes("Unable to send")) {
+            setValidationError("Unable to send verification code right now. Please try again.");
+          } else if (msg.includes("already in progress")) {
+            setValidationError("A verification request is already in progress. Please wait.");
+          } else if (msg.includes("valid email")) {
+            setValidationError("Please enter a valid email address.");
+          } else {
+            setValidationError("Something went wrong while sending the verification code. Please try again.");
+          }
         },
       },
     );
@@ -177,11 +191,6 @@ export function Register() {
           {/* Messages */}
           {validationError && (
             <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{validationError}</p>
-          )}
-          {otpMutation.error && (
-            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-              {otpMutation.error.message || "Failed to send OTP. Please try again."}
-            </p>
           )}
           {successMessage && (
             <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{successMessage}</p>

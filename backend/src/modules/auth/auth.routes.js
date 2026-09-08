@@ -38,6 +38,7 @@ import {
   resendVerificationSchema,
   enableTwoFactorSchema,
   verifyTwoFactorSchema,
+  disableTwoFactorSchema,
 } from "./auth.schemas.js";
 import { handleGoogleAuth, getGoogleLoginUrl, isGoogleConfigured } from "./google.service.js";
 import {
@@ -119,7 +120,7 @@ router.post("/2fa/enable", requireAuth, validate(enableTwoFactorSchema), asyncHa
   const result = await enableTwoFactor(req, res);
   return result;
 }));
-router.post("/2fa/disable", requireAuth, asyncHandler(async (req, res) => {
+router.post("/2fa/disable", requireAuth, validate(disableTwoFactorSchema), asyncHandler(async (req, res) => {
   const result = await disableTwoFactor(req, res);
   return result;
 }));

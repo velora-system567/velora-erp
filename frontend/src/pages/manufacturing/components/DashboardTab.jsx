@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Activity, BarChart3, Building2, Calendar, ClipboardList, Clock, DollarSign, ShieldAlert, Sparkles, TrendingUp, Users, CheckCircle, AlertTriangle } from "lucide-react";
 import { useManufacturingStore } from "../hooks/useManufacturingStore";
+import { useManufacturingDashboard } from "../hooks/useManufacturingApi";
 import { SectionCard } from "./SectionCard";
 import { ProgressRing } from "./ProgressRing";
 import { PlannedVsActualChart, OeeTrendChart } from "./Charts";
@@ -8,6 +9,9 @@ import { formatNumber, formatPercent } from "./format";
 import { TonedDot } from "./TonedDot";
 
 export function DashboardTab({ onJump }) {
+  const dashboardQuery = useManufacturingDashboard();
+  const hasBackendData = Boolean(dashboardQuery.data?.data);
+
   const {
     factory,
     plantHealth,
@@ -19,6 +23,35 @@ export function DashboardTab({ onJump }) {
     logs,
     maintenance
   } = useManufacturingStore();
+
+  if (!dashboardQuery.isLoading && hasBackendData) {
+    const activeOrders = dashboardQuery.data.data.activeOrders ?? 0;
+    const delayed = dashboardQuery.data.data.delayedOrders ?? 0;
+    const delivered = dashboardQuery.data.data.todayOutput ?? 0;
+    const planned = dashboardQuery.data.data.todayPlanned ?? 0;
+    const haveAny = activeOrders > 0 || delayed > 0 || delivered > 0 || planned > 0;
+    if (!haveAny) {
+      return (
+        <div className="mx-auto max-w-[1500px] space-y-6 px-4 py-10">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+            <p className="text-lg font-semibold text-slate-950">No manufacturing data yet</p>
+            <p className="mt-2 text-sm text-slate-600">Create your first Production Order to start tracking manufacturing KPIs.</p>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  if (!dashboardQuery.isLoading && dashboardQuery.error && !hasBackendData) {
+    return (
+      <div className="mx-auto max-w-[1500px] space-y-6 px-4 py-10">
+        <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center">
+          <p className="text-lg font-semibold text-rose-700">Unable to load manufacturing dashboard</p>
+          <p className="mt-2 text-sm text-slate-600">Please try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
 

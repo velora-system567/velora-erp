@@ -1,7 +1,13 @@
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const backendRoot = resolve(__dirname, "../..");
+
+dotenv.config({ path: resolve(backendRoot, ".env") });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -20,6 +26,13 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(24, "JWT_REFRESH_SECRET must be at least 24 characters"),
   ACCESS_TOKEN_EXPIRES_IN: z.string().default("8h"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
+  // "Keep me signed in" persistent logins (default 15 days). The refresh token
+  // is issued with this lifetime and automatically expires after it, forcing
+  // re-authentication. This is the trusted long-lived session window.
+  PERSISTENT_REFRESH_TOKEN_EXPIRES_IN: z.string().default("15d"),
+  // Short-lived token used to hold a login between password/Google auth and the
+  // second factor (TOTP) verification step.
+  TWO_FACTOR_CHALLENGE_EXPIRES_IN: z.string().default("5m"),
 
   // Frontend
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),

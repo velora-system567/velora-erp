@@ -213,7 +213,7 @@ export async function loginWithPhone(phone, meta = {}, password = null) {
  * Used by password/phone/Google/2FA-complete login paths.
  * Returns "requiresTwoFactor" when the user has 2FA enabled (no tokens issued).
  */
-async function issueSession({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
+export async function issueSession({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
   if (user.twoFactorEnabled) {
     const { signTwoFactorChallenge } = await import("./two-factor.service.js");
     return {
@@ -225,7 +225,7 @@ async function issueSession({ prisma, user, meta = {}, rememberMe = false, googl
   return issueTokens({ prisma, user, meta, rememberMe, googleLinked });
 }
 
-async function issueTokens({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
+export async function issueTokens({ prisma, user, meta = {}, rememberMe = false, googleLinked = false }) {
   const accessToken = signAccessToken(user);
   const { token: refreshToken, sessionType, expiresAt } = signRefreshToken(user, { rememberMe });
 

@@ -15,7 +15,6 @@ import { requestOtp as requestOtpCode, verifyOtp, checkLoginRateLimit, recordLog
 import { sendEmailVerification, verifyEmail, resendVerification } from "./verification.service.js";
 import { env } from "../../config/env.js";
 import { getPrisma } from "../../config/db.js";
-import { checkConfig } from "../../utils/email.js";
 
 function publicUser(user) {
   return {
@@ -65,17 +64,13 @@ export const register = asyncHandler(async (req, res) => {
 
 export const requestOtp = asyncHandler(async (req, res) => {
   const result = await requestOtpCode(req.validated.body);
-
-  const missing = checkConfig();
-  const configured = missing.length === 0;
-
   const fromEmail = env.OTP_FROM_EMAIL || "onboarding@resend.dev";
 
-  const message = configured
-    ? `Verification code sent to your email (from: ${fromEmail}).`
-    : `OTP generated (set RESEND_API_KEY to enable email delivery). Check the server console for the code in development.`;
+  const message = result.delivered
+    ? `Verification code sent to your email.`
+    : `OTP generated (email delivery not configured). Check the server console for the code.`;
 
-  return ok(res, { ...result, delivered: configured, sender: fromEmail }, message);
+  return ok(res, { ...result, delivered: result.delivered, sender: fromEmail }, message);
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -214,6 +209,11 @@ export const setupTwoFactor = asyncHandler(async (req, res) => {
   if (!user) { const e = new Error("User not found"); e.statusCode = 404; throw e; }
   if (user.twoFactorEnabled) { const e = new Error("2FA is already enabled. Disable it first to reconfigure."); e.statusCode = 400; throw e; }
   const setup = createTotpSetup(user);
+  // Persist the secret so enableTwoFactor can verify the first TOTP code.
+  await prisma.user.update({
+    where: { id: req.user.sub },
+    data: { totpSecret: setup.secret },
+  });
   return ok(res, { secret: setup.secret, otpauth: setup.otpauth }, "Scan the QR code with your authenticator app");
 });
 
@@ -242,9 +242,17 @@ export const disableTwoFactor = asyncHandler(async (req, res) => {
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({
     where: { id: req.user.sub, isDeleted: false },
-    select: { id: true, twoFactorEnabled: true },
+    select: { id: true, twoFactorEnabled: true, passwordHash: true },
   });
   if (!user?.twoFactorEnabled) { const e = new Error("2FA is not enabled"); e.statusCode = 400; throw e; }
+  // Require password to disable 2FA — prevents token-only attacks
+  const bcrypt = (await import("bcryptjs")).default;
+  const { password } = req.validated.body;
+  if (!password || !(await bcrypt.compare(password, user.passwordHash))) {
+    const e = new Error("Incorrect password. Enter your password to disable 2FA.");
+    e.statusCode = 401;
+    throw e;
+  }
   await prisma.user.update({
     where: { id: req.user.sub },
     data: { twoFactorEnabled: false, twoFactorMethod: null, totpSecret: null, recoveryCodesHash: null },

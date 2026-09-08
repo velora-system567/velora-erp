@@ -71,6 +71,10 @@ export const useAuthStore = create((set) => ({
 //
 // Now we NEVER treat "access token expired on first render" as logged-out.
 // We first try a silent refresh. Only when the refresh fails do we clear.
+//
+// IMPORTANT: We use the shared silentTokenRefresh() from api.js (not our own
+// fetch) so that app-startup hydration and runtime 401-retry never race
+// against each other with two concurrent POST /auth/refresh-token calls.
 
 let _initPromise = null;
 
@@ -115,19 +119,20 @@ export async function ensureAuthenticated({ forceRefresh = false } = {}) {
   // Guard against duplicate concurrent init calls.
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
-    const { apiRequest } = await import("../services/api.js");
     try {
       const refreshToken = localStorage.getItem("velora_refresh_token");
       if (!refreshToken) {
         useAuthStore.getState().clearSession();
         return false;
       }
-      const payload = await fetchRefresh(refreshToken);
-      if (!payload?.accessToken) {
+      // Use the SHARED refresh from api.js — same promise as the 401
+      // interceptor, so two concurrent refreshes are impossible.
+      const { silentTokenRefresh } = await import("../services/api.js");
+      const newAccessToken = await silentTokenRefresh();
+      if (!newAccessToken) {
         useAuthStore.getState().clearSession();
         return false;
       }
-      storeRefreshedSessionLocal(payload);
       useAuthStore.getState().markReady();
       return true;
     } catch {
@@ -138,31 +143,4 @@ export async function ensureAuthenticated({ forceRefresh = false } = {}) {
     }
   })();
   return _initPromise;
-}
-
-async function fetchRefresh(refreshToken) {
-  const { API_BASE_URL } = await import("../services/api.js");
-  const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  let payload = {};
-  try {
-    payload = await response.json();
-  } catch { /* ignore */ }
-  if (!response.ok || !payload.success) return null;
-  return payload.data;
-}
-
-function storeRefreshedSessionLocal(payload) {
-  const store = useAuthStore.getState();
-  // Reuse setSession for a consistent single write path.
-  store.setSession({
-    user: payload.user,
-    accessToken: payload.accessToken,
-    refreshToken: payload.refreshToken,
-    sessionType: payload.sessionType,
-    sessionExpiresAt: payload.sessionExpiresAt,
-  });
 }

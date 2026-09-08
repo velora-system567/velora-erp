@@ -45,6 +45,8 @@ function TwoFactorCard({ profile }) {
   const [totpCode, setTotpCode] = useState("");
   const [newRecovery, setNewRecovery] = useState(null);
   const [openStep, setOpenStep] = useState("code"); // code | success
+  const [disablePassword, setDisablePassword] = useState("");
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
 
   const setupMutation = useMutation({
     mutationFn: () => authApi.setup2FA(),
@@ -67,10 +69,12 @@ function TwoFactorCard({ profile }) {
   });
 
   const disableMutation = useMutation({
-    mutationFn: () => authApi.disable2FA(),
+    mutationFn: () => authApi.disable2FA(disablePassword),
     onSuccess: () => {
       setShowSetup(false);
       setSetupData(null);
+      setShowDisableConfirm(false);
+      setDisablePassword("");
       qc.invalidateQueries({ queryKey: ["security-profile"] });
     },
   });
@@ -195,7 +199,7 @@ function TwoFactorCard({ profile }) {
                   Regenerate recovery codes
                 </button>
                 <button
-                  onClick={() => disableMutation.mutate()}
+                  onClick={() => setShowDisableConfirm(true)}
                   disabled={disableMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
                 >
@@ -205,6 +209,43 @@ function TwoFactorCard({ profile }) {
               </>
             )}
           </div>
+
+          {/* Disable 2FA password confirmation */}
+          {showDisableConfirm && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-rose-800">
+                Enter your password to disable two-factor authentication:
+              </p>
+              <input
+                type="password"
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                placeholder="Your password"
+                autoFocus
+                className="h-10 w-full rounded-lg border border-rose-200 bg-white px-3 text-sm outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+                onKeyDown={(e) => { if (e.key === "Enter" && disablePassword.length >= 1) disableMutation.mutate(); }}
+              />
+              {disableMutation.error && (
+                <p className="text-xs text-rose-700">{disableMutation.error.message}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { disableMutation.mutate(); }}
+                  disabled={disablePassword.length < 1 || disableMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {disableMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <ShieldOff size={14} />}
+                  Confirm disable
+                </button>
+                <button
+                  onClick={() => { setShowDisableConfirm(false); setDisablePassword(""); }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {regenerateMutation.error && (
             <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
@@ -241,7 +282,7 @@ function SecuritySettingsPage() {
     mutationFn: () => authApi.logoutAll(),
     onSuccess: () => {
       clearSession();
-      window.location.href = "/login";
+      navigate("/login", { replace: true });
     },
   });
 
