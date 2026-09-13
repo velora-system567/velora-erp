@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useManufacturingStore } from "../hooks/useManufacturingStore";
+import { useMachines, useUpdateMachineStatus, useCreateMaintenance } from "../hooks/useManufacturingApi";
+import { useMfgListData } from "./useMfgListData";
+import { EmptyState } from "./EmptyState";
 import { Cpu, Power, Calendar, Wrench, ShieldAlert, TrendingUp, RefreshCw, Activity, ArrowRight, CheckCircle, X } from "lucide-react";
 import { TonedDot } from "./TonedDot";
 
@@ -27,18 +29,23 @@ const STATUS_THEMES = {
 };
 
 export function MachinesTab() {
-  const { machines, updateMachineStatus, addMaintenance } = useManufacturingStore();
+  const machinesQuery = useMachines();
+  const { list: machines, isEmpty: isMachinesEmpty } = useMfgListData(machinesQuery);
+
+  const updateMachineStatusMutation = useUpdateMachineStatus();
+  const createMaintenanceMutation = useCreateMaintenance();
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [showStatusPanel, setShowStatusPanel] = useState(false);
 
   const handleStateChange = (id, newStatus) => {
-    updateMachineStatus(id, newStatus);
+    updateMachineStatusMutation.mutate({ id, status: newStatus });
     setShowStatusPanel(false);
   };
 
   const handleTriggerMaintenance = (machine) => {
+    if (!machine) return;
     if (confirm(`Do you want to log immediate Corrective Maintenance for ${machine.name}?`)) {
-      addMaintenance({
+      createMaintenanceMutation.mutate({
         machineId: machine.id,
         machineName: machine.name,
         task: "Emergency technician inspection and diagnostic reset",
@@ -46,13 +53,19 @@ export function MachinesTab() {
         owner: "Siddharth Patil",
         scheduledDate: new Date().toISOString().split("T")[0],
         cost: 15000,
-        notes: "Tool flagged down. Calibration required."
+        notes: "Tool flagged down. Calibration required.",
       });
-      // Move status to Maintenance
-      updateMachineStatus(machine.id, "MAINTENANCE");
-      alert("Maintenance ticket generated. Tool state set to MAINTENANCE.");
+      updateMachineStatusMutation.mutate({ id: machine.id, status: "MAINTENANCE" });
     }
   };
+
+  if (isMachinesEmpty) {
+    return (
+      <div className="space-y-4">
+        <EmptyState title="No machines" subtitle="Machines list will appear once backend data is connected." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -66,10 +79,16 @@ export function MachinesTab() {
           <p className="text-xs text-slate-500">Track physical shop floor lines, tooling programs, health degradation parameters, and operating hours</p>
         </div>
         <div className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-          <span className="flex items-center gap-1"><TonedDot tone="positive" /> 5 Running</span>
-          <span className="flex items-center gap-1"><TonedDot tone="info" /> 1 Idle</span>
-          <span className="flex items-center gap-1"><TonedDot tone="warning" /> 1 Maintenance</span>
-          <span className="flex items-center gap-1"><TonedDot tone="negative" /> 1 Down</span>
+          {["RUNNING", "IDLE", "MAINTENANCE", "BREAKDOWN"].map((status) => {
+            const count = machines.filter((m) => m.status === status).length;
+            if (count === 0) return null;
+            const tone = status === "RUNNING" ? "positive" : status === "MAINTENANCE" ? "warning" : status === "BREAKDOWN" ? "negative" : "info";
+            return (
+              <span key={status} className="flex items-center gap-1">
+                <TonedDot tone={tone} /> {count} {status.charAt(0) + status.slice(1).toLowerCase()}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -85,7 +104,7 @@ export function MachinesTab() {
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{m.id} · {m.type}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{m.machineCode} · {m.type}</span>
                     <h4 className="mt-1 text-sm font-bold text-slate-950 truncate leading-tight">{m.name}</h4>
                   </div>
                   <button
@@ -103,26 +122,26 @@ export function MachinesTab() {
                 <div className="mt-3.5 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Active Program:</span>
-                    <span className="font-semibold text-slate-800 truncate max-w-[130px]" title={m.program}>
-                      {m.program}
+                    <span className="font-semibold text-slate-800 truncate max-w-[130px]" title={m.currentProgram}>
+                      {m.currentProgram || "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Operating Hours:</span>
-                    <span className="font-bold text-slate-900 tabular-nums">{m.operatingHours.toLocaleString()} hrs</span>
+                    <span className="font-bold text-slate-900 tabular-nums">{Number(m.operatingHours || 0).toLocaleString()} hrs</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Health Indicator:</span>
                     <span className={`font-bold tabular-nums ${
-                      m.healthIndicator >= 90 ? "text-emerald-600" :
-                      m.healthIndicator >= 75 ? "text-amber-600" : "text-rose-600"
+                      (m.healthScore ?? 100) >= 90 ? "text-emerald-600" :
+                      (m.healthScore ?? 100) >= 75 ? "text-amber-600" : "text-rose-600"
                     }`}>
-                      {m.healthIndicator}%
+                      {m.healthScore ?? 100}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">Maintenance Due:</span>
-                    <span className="font-semibold text-slate-600 tabular-nums">{m.maintenanceDue}</span>
+                    <span className="font-semibold text-slate-600 tabular-nums">{m.maintenanceDue ? new Date(m.maintenanceDue).toISOString().split("T")[0] : "—"}</span>
                   </div>
                 </div>
               </div>
@@ -132,7 +151,7 @@ export function MachinesTab() {
                 <div>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
                     <span>Tool Utilization</span>
-                    <span className="text-slate-700">{m.utilization}%</span>
+                    <span className="text-slate-700">{m.utilizationPct ?? 0}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                     <div
@@ -141,7 +160,7 @@ export function MachinesTab() {
                         m.status === "MAINTENANCE" ? "bg-amber-500" :
                         m.status === "BREAKDOWN" ? "bg-rose-500" : "bg-slate-400"
                       }`}
-                      style={{ width: `${m.utilization}%` }}
+                      style={{ width: `${m.utilizationPct ?? 0}%` }}
                     />
                   </div>
                 </div>

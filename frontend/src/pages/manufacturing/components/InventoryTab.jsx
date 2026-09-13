@@ -1,22 +1,18 @@
 import { useMemo } from "react";
-import { useManufacturingStore } from "../hooks/useManufacturingStore";
+import { EmptyState } from "./EmptyState";
 import { PackageOpen, AlertTriangle, ShieldCheck, TrendingUp, ShoppingCart, RefreshCcw, BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 export function InventoryTab() {
-  const { inventoryConsumption } = useManufacturingStore();
+  // Inventory consumption for the Manufacturing module is not implemented
+  // in backend yet, so we intentionally show the real empty state.
+  const inventoryConsumption = [];
+  const hasData = false; // placeholder until backend wiring exists
 
   // Create chart data for compound material usage trend
-  const chartData = useMemo(() => {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"];
-    return days.map((day, idx) => {
-      const dataPoint = { name: day };
-      inventoryConsumption.forEach((item) => {
-        dataPoint[item.sku] = item.usage[idx] || 0;
-      });
-      return dataPoint;
-    });
-  }, [inventoryConsumption]);
+  // Inventory consumption is not yet wired to backend list APIs in useManufacturingApi.js.
+  // Until implemented, render an empty state so new workspaces show 0 by default.
+  const chartData = useMemo(() => [], []);
 
   // Compute severity statistics
   const criticalAlerts = useMemo(() => {
@@ -27,9 +23,17 @@ export function InventoryTab() {
     alert(`Reorder purchase request raised successfully for ${item.name} (${item.sku}). Ordered quantity: ${item.requiredStock * 2} ${item.unit}.`);
   };
 
+  if (!hasData) {
+    return (
+      <div className="space-y-6">
+        <EmptyState title="No inventory consumption" subtitle="Production consumption isn't available yet for this workspace." />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      
+
       {/* Critical Warnings */}
       {criticalAlerts.length > 0 && (
         <div className="rounded-3xl border border-rose-200 bg-rose-50/50 p-5 shadow-sm space-y-3">

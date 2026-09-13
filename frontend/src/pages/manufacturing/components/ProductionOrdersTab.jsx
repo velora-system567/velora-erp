@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { useManufacturingStore } from "../hooks/useManufacturingStore";
-import { Search, Filter, Plus, ChevronDown, Check, Columns, Trash2, Edit2, Zap, CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, X, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { useProductionOrders, useUpdateProductionOrderStatus, useCreateProductionOrder, useManufacturingItems } from "../hooks/useManufacturingApi";
+import { useMfgListData } from "./useMfgListData";
+import { EmptyState } from "./EmptyState";
+import { Search, Filter, Plus, ChevronDown, Columns, Trash2, Edit2, Zap, CheckCircle2, FileSpreadsheet, RefreshCw, X, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const STATUS_BADGES = {
@@ -8,6 +10,7 @@ const STATUS_BADGES = {
   PLANNING: "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
   IN_PROGRESS: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100",
   COMPLETED: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  CANCELLED: "bg-slate-100 text-slate-500 ring-1 ring-slate-200",
   DELAYED: "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
 };
 
@@ -19,7 +22,13 @@ const PRIORITY_COLORS = {
 };
 
 export function ProductionOrdersTab() {
-  const { productionOrders, addProductionOrder, deleteProductionOrder, updateProductionOrder } = useManufacturingStore();
+  const productionOrdersQuery = useProductionOrders();
+  const { list: productionOrders, isEmpty: isOrdersEmpty } = useMfgListData(productionOrdersQuery);
+  const itemsQuery = useManufacturingItems();
+  const items = itemsQuery.data?.data || [];
+
+  const createOrderMutation = useCreateProductionOrder();
+  const updateStatusMutation = useUpdateProductionOrderStatus();
 
   // Search & Filtering State
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,7 +42,7 @@ export function ProductionOrdersTab() {
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [columns, setColumns] = useState({
     id: { label: "Order ID", visible: true },
-    product: { label: "Product Name", visible: true },
+    product: { label: "Product / Item", visible: true },
     quantity: { label: "Quantity", visible: true },
     deadline: { label: "Deadline", visible: true },
     status: { label: "Status", visible: true },
@@ -45,22 +54,18 @@ export function ProductionOrdersTab() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Dialog State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newOrder, setNewOrder] = useState({
-    product: "MEMS Pressure Sensor - 1.2 bar",
-    code: "MEMS-PRESS-V3",
-    quantity: 1000,
+    itemId: "",
+    quantity: 100,
     priority: "MEDIUM",
-    deadline: "2026-07-25",
-    assignedWorker: "Rahul Kulkarni",
+    plannedEnd: "",
+    assignedTo: "",
     notes: "",
   });
-
-  // Import Ref
-  const [importStatus, setImportStatus] = useState(null);
 
   // Computed orders list
   const filteredOrders = useMemo(() => {
@@ -69,12 +74,12 @@ export function ProductionOrdersTab() {
     // Search query filter
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (o) =>
-          o.id.toLowerCase().includes(q) ||
-          o.product.toLowerCase().includes(q) ||
-          o.assignedWorker.toLowerCase().includes(q)
-      );
+      result = result.filter((o) => {
+        const orderId = (o.poNumber || o.id || "").toLowerCase();
+        const prod = (o.product || o.item?.name || o.itemId || "").toLowerCase();
+        const assigned = (o.assignedTo || o.assignedWorker || "").toLowerCase();
+        return orderId.includes(q) || prod.includes(q) || assigned.includes(q);
+      });
     }
 
     // Status filter
@@ -89,12 +94,12 @@ export function ProductionOrdersTab() {
 
     // Sorting
     result.sort((a, b) => {
-      let aVal = a[sortBy];
-      let bVal = b[sortBy];
+      let aVal = a[sortBy] ?? a.poNumber ?? a.id;
+      let bVal = b[sortBy] ?? b.poNumber ?? b.id;
 
       if (typeof aVal === "string") {
         aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
+        bVal = (bVal || "").toLowerCase();
       }
 
       if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
@@ -140,30 +145,29 @@ export function ProductionOrdersTab() {
 
   // Bulk Actions
   const handleBulkDelete = () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} orders?`)) {
-      selectedIds.forEach((id) => deleteProductionOrder(id));
+    if (window.confirm(`Are you sure you want to cancel ${selectedIds.length} orders?`)) {
+      selectedIds.forEach((id) => updateStatusMutation.mutate({ id, status: "CANCELLED" }));
       setSelectedIds([]);
     }
   };
 
   const handleBulkStatusChange = (status) => {
-    selectedIds.forEach((id) => updateProductionOrder(id, { status }));
+    selectedIds.forEach((id) => updateStatusMutation.mutate({ id, status }));
     setSelectedIds([]);
   };
 
   // Export to Excel File using SheetJS
   const handleExport = () => {
     const dataToExport = filteredOrders.map((o) => ({
-      "Order ID": o.id,
-      "Product": o.product,
-      "Code": o.code,
-      "Quantity": o.quantity,
-      "Deadline": o.deadline,
+      "Order ID": o.poNumber || o.id,
+      "Item": o.product || o.item?.name || o.itemId,
+      "Quantity": Number(o.quantity || 0),
+      "Deadline": o.plannedEnd ? new Date(o.plannedEnd).toISOString().split("T")[0] : (o.deadline || "—"),
       "Status": o.status,
       "Priority": o.priority,
-      "Progress %": o.progress,
-      "Assigned Operator": o.assignedWorker,
-      "Created Date": o.createdAt,
+      "Progress %": o.progress || 0,
+      "Assigned To": o.assignedTo || o.assignedWorker || "—",
+      "Created Date": o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "—",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -172,50 +176,70 @@ export function ProductionOrdersTab() {
     XLSX.writeFile(workbook, `Velora_Production_Orders_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
-  // Import Mock Action (JSON/CSV simulation)
-  const handleImportClick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csv,.xlsx,.xls";
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        setImportStatus("reading");
-        setTimeout(() => {
-          // Simulate adding imported rows
-          addProductionOrder({
-            product: "MEMS Microphone - Analog",
-            code: "MEMS-MIC-AN",
-            quantity: 3500,
-            priority: "MEDIUM",
-            deadline: "2026-07-28",
-            assignedWorker: "Madhuri Joshi",
-            notes: "Imported run lot calibration completed.",
-          });
-          setImportStatus("success");
-          setTimeout(() => setImportStatus(null), 3000);
-        }, 1200);
-      }
-    };
-    input.click();
-  };
-
   // Create Order Submit
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    addProductionOrder(newOrder);
-    setShowCreateModal(false);
-    // Reset form
-    setNewOrder({
-      product: "MEMS Pressure Sensor - 1.2 bar",
-      code: "MEMS-PRESS-V3",
-      quantity: 1000,
-      priority: "MEDIUM",
-      deadline: "2026-07-25",
-      assignedWorker: "Rahul Kulkarni",
-      notes: "",
+    if (!newOrder.itemId) {
+      alert("Please select or enter an Item ID");
+      return;
+    }
+    createOrderMutation.mutate({
+      itemId: newOrder.itemId,
+      quantity: Number(newOrder.quantity) || 1,
+      priority: newOrder.priority,
+      plannedEnd: newOrder.plannedEnd || undefined,
+      assignedTo: newOrder.assignedTo || undefined,
+      notes: newOrder.notes || undefined,
+    }, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setNewOrder({
+          itemId: "",
+          quantity: 100,
+          priority: "MEDIUM",
+          plannedEnd: "",
+          assignedTo: "",
+          notes: "",
+        });
+      },
+      onError: (err) => {
+        alert(err.message || "Failed to create production order");
+      },
     });
   };
+
+  if (isOrdersEmpty) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">Production Orders</h3>
+            <p className="text-xs text-slate-500">Track and manage shop floor production lots and orders</p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-slate-900 shadow-sm"
+          >
+            <Plus size={14} />
+            Create Order
+          </button>
+        </div>
+        <EmptyState title="No production orders" subtitle="Create an order to begin manufacturing tracking." />
+
+        {/* CREATE MODAL WHEN EMPTY */}
+        {showCreateModal && (
+          <CreateOrderModal
+            items={items}
+            newOrder={newOrder}
+            setNewOrder={setNewOrder}
+            onSubmit={handleCreateSubmit}
+            onClose={() => setShowCreateModal(false)}
+            isPending={createOrderMutation.isPending}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -224,7 +248,7 @@ export function ProductionOrdersTab() {
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
-            placeholder="Search by Order ID, Product, or Assigned Worker..."
+            placeholder="Search by Order ID, Item, or Assigned To..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -249,10 +273,10 @@ export function ProductionOrdersTab() {
             >
               <option value="ALL">All Statuses</option>
               <option value="DRAFT">Draft</option>
-              <option value="PLANNING">Planning</option>
+              <option value="PLANNED">Planned</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="COMPLETED">Completed</option>
-              <option value="DELAYED">Delayed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
 
@@ -312,22 +336,13 @@ export function ProductionOrdersTab() {
             )}
           </div>
 
-          {/* Excel Export & Import */}
+          {/* Excel Export */}
           <button
             onClick={handleExport}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
           >
             <FileSpreadsheet size={14} className="text-emerald-600" />
             Export
-          </button>
-
-          <button
-            onClick={handleImportClick}
-            disabled={importStatus === "reading"}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={`text-blue-600 ${importStatus === "reading" ? "animate-spin" : ""}`} />
-            {importStatus === "reading" ? "Importing..." : importStatus === "success" ? "Success!" : "Import"}
           </button>
 
           {/* Create Button */}
@@ -341,7 +356,7 @@ export function ProductionOrdersTab() {
         </div>
       </div>
 
-      {/* Bulk Action Panel (Active when rows are selected) */}
+      {/* Bulk Action Panel */}
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between rounded-xl bg-slate-900 px-4 py-2.5 text-white animate-fade-in shadow-lg">
           <div className="flex items-center gap-3">
@@ -354,7 +369,7 @@ export function ProductionOrdersTab() {
               className="inline-flex items-center gap-1 text-xs text-indigo-400 font-semibold hover:text-indigo-300"
             >
               <Zap size={13} />
-              Run Lots
+              Start Lots
             </button>
             <button
               onClick={() => handleBulkStatusChange("COMPLETED")}
@@ -369,7 +384,7 @@ export function ProductionOrdersTab() {
             className="inline-flex items-center gap-1 text-xs text-rose-400 font-semibold hover:text-rose-300"
           >
             <Trash2 size={13} />
-            Delete Selected
+            Cancel Selected
           </button>
         </div>
       )}
@@ -398,7 +413,7 @@ export function ProductionOrdersTab() {
                 )}
                 {columns.product.visible && (
                   <th className="px-4 py-3.5 cursor-pointer hover:bg-slate-100" onClick={() => requestSort("product")}>
-                    Product {sortBy === "product" && (sortOrder === "asc" ? "▲" : "▼")}
+                    Item / Product {sortBy === "product" && (sortOrder === "asc" ? "▲" : "▼")}
                   </th>
                 )}
                 {columns.quantity.visible && (
@@ -421,7 +436,7 @@ export function ProductionOrdersTab() {
                 )}
                 {columns.assignedWorker.visible && (
                   <th className="px-4 py-3.5 cursor-pointer hover:bg-slate-100" onClick={() => requestSort("assignedWorker")}>
-                    Assigned Worker {sortBy === "assignedWorker" && (sortOrder === "asc" ? "▲" : "▼")}
+                    Assigned To {sortBy === "assignedWorker" && (sortOrder === "asc" ? "▲" : "▼")}
                   </th>
                 )}
                 {columns.deadline.visible && (
@@ -436,132 +451,123 @@ export function ProductionOrdersTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {paginatedOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
-                    No production orders found matching the filters.
-                  </td>
-                </tr>
-              ) : (
-                paginatedOrders.map((o) => {
-                  const isSelected = selectedIds.includes(o.id);
-                  return (
-                    <tr
-                      key={o.id}
-                      className={`hover:bg-slate-50 transition ${
-                        isSelected ? "bg-slate-50/70" : ""
-                      }`}
-                    >
-                      <td className="px-4 py-3.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(o.id)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
-                        />
+              {paginatedOrders.map((o) => {
+                const isSelected = selectedIds.includes(o.id);
+                const itemName = o.product || o.item?.name || items.find((i) => i.id === o.itemId)?.name || o.itemId;
+                const itemCode = o.code || o.item?.itemCode || items.find((i) => i.id === o.itemId)?.itemCode || "";
+                return (
+                  <tr
+                    key={o.id}
+                    className={`hover:bg-slate-50 transition ${
+                      isSelected ? "bg-slate-50/70" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleSelectRow(o.id)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                      />
+                    </td>
+                    {columns.id.visible && (
+                      <td className="px-4 py-3.5 font-bold text-slate-900 tabular-nums">
+                        {o.poNumber || o.id}
                       </td>
-                      {columns.id.visible && (
-                        <td className="px-4 py-3.5 font-bold text-slate-900 tabular-nums">
-                          {o.id}
-                        </td>
-                      )}
-                      {columns.product.visible && (
-                        <td className="px-4 py-3.5 font-medium text-slate-800">
-                          <div>
-                            <p>{o.product}</p>
-                            <p className="text-[10px] text-slate-400">{o.code}</p>
-                          </div>
-                        </td>
-                      )}
-                      {columns.quantity.visible && (
-                        <td className="px-4 py-3.5 font-semibold text-slate-900 text-right tabular-nums">
-                          {o.quantity.toLocaleString()}
-                        </td>
-                      )}
-                      {columns.progress.visible && (
-                        <td className="px-4 py-3.5 min-w-[120px]">
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden flex-1">
-                              <div
-                                className={`h-full ${
-                                  o.status === "COMPLETED"
-                                    ? "bg-emerald-500"
-                                    : o.status === "DELAYED"
-                                    ? "bg-rose-500"
-                                    : "bg-indigo-500"
-                                }`}
-                                style={{ width: `${o.progress}%` }}
-                              />
-                            </div>
-                            <span className="font-semibold text-slate-900 tabular-nums">
-                              {o.progress}%
-                            </span>
-                          </div>
-                        </td>
-                      )}
-                      {columns.status.visible && (
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                              STATUS_BADGES[o.status]
-                            }`}
-                          >
-                            {o.status.replace("_", " ")}
-                          </span>
-                        </td>
-                      )}
-                      {columns.priority.visible && (
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${
-                              PRIORITY_COLORS[o.priority]
-                            }`}
-                          >
-                            {o.priority}
-                          </span>
-                        </td>
-                      )}
-                      {columns.assignedWorker.visible && (
-                        <td className="px-4 py-3.5 font-medium text-slate-700">
-                          {o.assignedWorker}
-                        </td>
-                      )}
-                      {columns.deadline.visible && (
-                        <td className="px-4 py-3.5 font-medium text-slate-600 tabular-nums">
-                          {o.deadline}
-                        </td>
-                      )}
-                      {columns.createdAt.visible && (
-                        <td className="px-4 py-3.5 font-medium text-slate-400 tabular-nums">
-                          {o.createdAt}
-                        </td>
-                      )}
-                      <td className="px-4 py-3.5 text-center">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            onClick={() => {
-                              const newProg = prompt("Enter progress percent (0-100):", o.progress);
-                              if (newProg !== null) {
-                                const progNum = parseInt(newProg);
-                                if (!isNaN(progNum) && progNum >= 0 && progNum <= 100) {
-                                  updateProductionOrder(o.id, {
-                                    progress: progNum,
-                                    status: progNum === 100 ? "COMPLETED" : o.status,
-                                  });
-                                }
-                              }
-                            }}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition"
-                            title="Edit"
-                          >
-                            <Edit2 size={14} />
-                          </button>
+                    )}
+                    {columns.product.visible && (
+                      <td className="px-4 py-3.5 font-medium text-slate-800">
+                        <div>
+                          <p>{itemName}</p>
+                          {itemCode && <p className="text-[10px] text-slate-400">{itemCode}</p>}
                         </div>
                       </td>
-                    </tr>
-                  );
-                })
-              )}
+                    )}
+                    {columns.quantity.visible && (
+                      <td className="px-4 py-3.5 font-semibold text-slate-900 text-right tabular-nums">
+                        {Number(o.quantity || 0).toLocaleString()}
+                      </td>
+                    )}
+                    {columns.progress.visible && (
+                      <td className="px-4 py-3.5 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden flex-1">
+                            <div
+                              className={`h-full ${
+                                o.status === "COMPLETED"
+                                  ? "bg-emerald-500"
+                                  : o.status === "CANCELLED"
+                                  ? "bg-slate-400"
+                                  : "bg-indigo-500"
+                              }`}
+                              style={{ width: `${o.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="font-semibold text-slate-900 tabular-nums">
+                            {o.progress || 0}%
+                          </span>
+                        </div>
+                      </td>
+                    )}
+                    {columns.status.visible && (
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            STATUS_BADGES[o.status] || "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {(o.status || "").replace("_", " ")}
+                        </span>
+                      </td>
+                    )}
+                    {columns.priority.visible && (
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                            PRIORITY_COLORS[o.priority] || "text-slate-500 bg-slate-50 border-slate-200"
+                          }`}
+                        >
+                          {o.priority}
+                        </span>
+                      </td>
+                    )}
+                    {columns.assignedWorker.visible && (
+                      <td className="px-4 py-3.5 font-medium text-slate-700">
+                        {o.assignedTo || o.assignedWorker || "—"}
+                      </td>
+                    )}
+                    {columns.deadline.visible && (
+                      <td className="px-4 py-3.5 font-medium text-slate-600 tabular-nums">
+                        {o.plannedEnd ? new Date(o.plannedEnd).toISOString().split("T")[0] : (o.deadline || "—")}
+                      </td>
+                    )}
+                    {columns.createdAt.visible && (
+                      <td className="px-4 py-3.5 font-medium text-slate-400 tabular-nums">
+                        {o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "—"}
+                      </td>
+                    )}
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            const newProg = prompt("Enter progress percent (0-100):", o.progress || 0);
+                            if (newProg !== null) {
+                              const progNum = parseInt(newProg);
+                              if (!isNaN(progNum) && progNum >= 0 && progNum <= 100) {
+                                updateStatusMutation.mutate({ id: o.id, progress: progNum, status: progNum === 100 ? "COMPLETED" : o.status });
+                              }
+                            }
+                          }}
+                          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition"
+                          title="Update Progress"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -581,6 +587,7 @@ export function ProductionOrdersTab() {
               <option value={5}>5 items</option>
               <option value={10}>10 items</option>
               <option value={20}>20 items</option>
+              <option value={50}>50 items</option>
             </select>
             <span>of {filteredOrders.length} orders</span>
           </div>
@@ -609,131 +616,143 @@ export function ProductionOrdersTab() {
 
       {/* CREATE ORDER MODAL DIALOG */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-950">Create Production Order</h3>
-                <p className="text-xs text-slate-500">Initiate a new production wafer lot line</p>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X size={18} />
-              </button>
-            </div>
+        <CreateOrderModal
+          items={items}
+          newOrder={newOrder}
+          setNewOrder={setNewOrder}
+          onSubmit={handleCreateSubmit}
+          onClose={() => setShowCreateModal(false)}
+          isPending={createOrderMutation.isPending}
+        />
+      )}
+    </div>
+  );
+}
 
-            <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Product</label>
-                  <select
-                    value={newOrder.product}
-                    onChange={(e) => {
-                      const prods = {
-                        "MEMS Pressure Sensor - 1.2 bar": "MEMS-PRESS-V3",
-                        "MEMS Accelerometer - 3-axis": "MEMS-ACCEL-A2",
-                        "MEMS Microphone - Analog": "MEMS-MIC-AN",
-                        "MEMS Gyroscope - Industrial": "MEMS-GYRO-IND"
-                      };
-                      setNewOrder({
-                        ...newOrder,
-                        product: e.target.value,
-                        code: prods[e.target.value],
-                      });
-                    }}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
-                  >
-                    <option value="MEMS Pressure Sensor - 1.2 bar">MEMS Pressure Sensor - 1.2 bar</option>
-                    <option value="MEMS Accelerometer - 3-axis">MEMS Accelerometer - 3-axis</option>
-                    <option value="MEMS Microphone - Analog">MEMS Microphone - Analog</option>
-                    <option value="MEMS Gyroscope - Industrial">MEMS Gyroscope - Industrial</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Lot Volume (Qty)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={newOrder.quantity}
-                    onChange={(e) => setNewOrder({ ...newOrder, quantity: parseInt(e.target.value) || 0 })}
-                    placeholder="e.g. 5000"
-                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
+function CreateOrderModal({ items, newOrder, setNewOrder, onSubmit, onClose, isPending }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-up">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-950">Create Production Order</h3>
+            <p className="text-xs text-slate-500">Initiate a new production lot for an item</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Priority</label>
-                  <select
-                    value={newOrder.priority}
-                    onChange={(e) => setNewOrder({ ...newOrder, priority: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Target Deadline</label>
-                  <input
-                    type="date"
-                    required
-                    value={newOrder.deadline}
-                    onChange={(e) => setNewOrder({ ...newOrder, deadline: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Assigned Operator</label>
+        <form onSubmit={onSubmit} className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Item / Product</label>
+              {items.length > 0 ? (
                 <select
-                  value={newOrder.assignedWorker}
-                  onChange={(e) => setNewOrder({ ...newOrder, assignedWorker: e.target.value })}
+                  value={newOrder.itemId}
+                  required
+                  onChange={(e) => setNewOrder({ ...newOrder, itemId: e.target.value })}
                   className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
                 >
-                  <option value="Rahul Kulkarni">Rahul Kulkarni (Line A Stepper)</option>
-                  <option value="Siddharth Patil">Siddharth Patil (Line B DRIE)</option>
-                  <option value="Madhuri Joshi">Madhuri Joshi (Line C Bonder)</option>
-                  <option value="Anil Sharma">Anil Sharma (Line D Test)</option>
+                  <option value="">Select item...</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ({item.itemCode})
+                    </option>
+                  ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Process Notes / Specs</label>
-                <textarea
-                  value={newOrder.notes}
-                  onChange={(e) => setNewOrder({ ...newOrder, notes: e.target.value })}
-                  placeholder="Silicon substrate orientation specifications, sputter thickness details, target yield ratios..."
-                  className="w-full min-h-[70px] rounded-xl border border-slate-200 p-3 text-xs outline-none focus:border-blue-500"
+              ) : (
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Item UUID"
+                  value={newOrder.itemId}
+                  onChange={(e) => setNewOrder({ ...newOrder, itemId: e.target.value })}
+                  className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
                 />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="h-10 rounded-xl bg-slate-950 px-5 text-xs font-semibold text-white hover:bg-slate-900"
-                >
-                  Create Lot
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Lot Volume (Qty)</label>
+              <input
+                type="number"
+                required
+                min={1}
+                value={newOrder.quantity}
+                onChange={(e) => setNewOrder({ ...newOrder, quantity: parseInt(e.target.value) || 1 })}
+                placeholder="e.g. 100"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Priority</label>
+              <select
+                value={newOrder.priority}
+                onChange={(e) => setNewOrder({ ...newOrder, priority: e.target.value })}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Target Deadline</label>
+              <input
+                type="date"
+                value={newOrder.plannedEnd}
+                onChange={(e) => setNewOrder({ ...newOrder, plannedEnd: e.target.value })}
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Assigned Operator / Tech</label>
+            <input
+              type="text"
+              value={newOrder.assignedTo}
+              onChange={(e) => setNewOrder({ ...newOrder, assignedTo: e.target.value })}
+              placeholder="e.g. Shift Lead / Operator name"
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Process Notes / Specs</label>
+            <textarea
+              value={newOrder.notes}
+              onChange={(e) => setNewOrder({ ...newOrder, notes: e.target.value })}
+              placeholder="Production specifications, special handling instructions..."
+              className="w-full min-h-[70px] rounded-xl border border-slate-200 p-3 text-xs outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="h-10 rounded-xl bg-slate-950 px-5 text-xs font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
+            >
+              {isPending ? "Creating..." : "Create Order"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

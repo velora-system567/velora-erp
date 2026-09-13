@@ -1,20 +1,28 @@
 import { useState, useMemo } from "react";
-import { useManufacturingStore } from "../hooks/useManufacturingStore";
+import { useMaintenance, useCreateMaintenance, useCompleteMaintenance, useMachines } from "../hooks/useManufacturingApi";
+import { useMfgListData } from "./useMfgListData";
+import { EmptyState } from "./EmptyState";
 import { Wrench, Calendar, Clock, DollarSign, Plus, X, Check, Clipboard, Settings } from "lucide-react";
 
 export function MaintenanceTab() {
-  const { maintenance, addMaintenance, completeMaintenance, machines } = useManufacturingStore();
+  const maintenanceQuery = useMaintenance();
+  const machinesQuery = useMachines();
+  const createMaintenanceMutation = useCreateMaintenance();
+  const completeMaintenanceMutation = useCompleteMaintenance();
+
+  const { list: maintenance, isEmpty: isMaintenanceEmpty } = useMfgListData(maintenanceQuery);
+  const { list: machines } = useMfgListData(machinesQuery);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // New Maintenance State
   const [newMaint, setNewMaint] = useState({
-    machineId: "LITH-01",
-    machineName: "Photolithography - DUV Stepper",
-    task: "Optical calibration and laser gas seasoning",
+    machineId: "",
+    task: "",
     type: "PREVENTIVE",
-    scheduledDate: "2026-07-16",
-    owner: "Rahul Kulkarni",
-    cost: 18000,
+    scheduledDate: new Date().toISOString().split("T")[0],
+    owner: "",
+    cost: 0,
     notes: "",
   });
 
@@ -29,7 +37,7 @@ export function MaintenanceTab() {
 
   // Aggregate expenditure
   const stats = useMemo(() => {
-    const totalCost = maintenance.reduce((sum, m) => sum + m.cost, 0);
+    const totalCost = maintenance.reduce((sum, m) => sum + (m.costPaise ? m.costPaise / 100 : (m.cost || 0)), 0);
     const pendingCount = upcomingMaintenance.length;
     const completedCount = completedMaintenance.length;
     return {
@@ -41,24 +49,55 @@ export function MaintenanceTab() {
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    addMaintenance(newMaint);
-    setShowCreateModal(false);
-    // Reset state
-    setNewMaint({
-      machineId: "LITH-01",
-      machineName: "Photolithography - DUV Stepper",
-      task: "Optical calibration and laser gas seasoning",
-      type: "PREVENTIVE",
-      scheduledDate: "2026-07-16",
-      owner: "Rahul Kulkarni",
-      cost: 18000,
-      notes: "",
+    if (!newMaint.machineId) {
+      alert("Please select a machine");
+      return;
+    }
+    createMaintenanceMutation.mutate({
+      machineId: newMaint.machineId,
+      taskType: newMaint.type,
+      description: newMaint.task,
+      scheduledDate: newMaint.scheduledDate,
+      assignedTo: newMaint.owner,
+      costEstimate: Number(newMaint.cost || 0),
+      notes: newMaint.notes,
+    }, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setNewMaint({
+          machineId: "",
+          task: "",
+          type: "PREVENTIVE",
+          scheduledDate: new Date().toISOString().split("T")[0],
+          owner: "",
+          cost: 0,
+          notes: "",
+        });
+      }
     });
   };
 
+  const handleComplete = (id) => {
+    const actualCost = prompt("Enter settled cost (INR):", "0");
+    if (actualCost !== null) {
+      completeMaintenanceMutation.mutate({
+        id,
+        actualCost: Number(actualCost) || 0,
+      });
+    }
+  };
+
+  if (isMaintenanceEmpty) {
+    return (
+      <div className="space-y-4">
+        <EmptyState title="No maintenance tasks" subtitle="Schedule maintenance tasks for machines to track upkeep and repairs." />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      
+
       {/* Stat Cards */}
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -74,13 +113,13 @@ export function MaintenanceTab() {
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Maintenance Spend (WIP)</p>
           <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{stats.totalCost}</p>
-          <p className="mt-1 text-xs text-slate-500">Spare parts & ASML engineer SLAs</p>
+          <p className="mt-1 text-xs text-slate-500">Spare parts & technician costs</p>
         </div>
       </section>
 
       {/* Main Layout: Upcoming Tasks + Visual Calendar */}
       <div className="grid gap-5 lg:grid-cols-3">
-        
+
         {/* Upcoming Maintenance Table */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2 flex flex-col justify-between">
           <div>
@@ -124,26 +163,26 @@ export function MaintenanceTab() {
                   ) : (
                     upcomingMaintenance.map((m) => (
                       <tr key={m.id} className="hover:bg-slate-50/50">
-                        <td className="px-3 py-3 font-bold text-slate-900">{m.machineId}</td>
+                        <td className="px-3 py-3 font-bold text-slate-900">{m.machine?.machineCode || m.machineId}</td>
                         <td className="px-3 py-3 font-semibold text-slate-800">
                           <div>
-                            <p>{m.task}</p>
+                            <p>{m.description || m.task}</p>
                             {m.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{m.notes}</p>}
                           </div>
                         </td>
                         <td className="px-3 py-3 font-bold">
                           <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] ${
-                            m.type === "PREVENTIVE" ? "bg-blue-50 text-blue-700" : "bg-rose-50 text-rose-700"
+                            (m.taskType || m.type) === "PREVENTIVE" ? "bg-blue-50 text-blue-700" : "bg-rose-50 text-rose-700"
                           }`}>
-                            {m.type}
+                            {m.taskType || m.type}
                           </span>
                         </td>
-                        <td className="px-3 py-3 font-semibold text-slate-600 tabular-nums">{m.scheduledDate}</td>
-                        <td className="px-3 py-3 font-medium">{m.owner}</td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">₹{m.cost.toLocaleString()}</td>
+                        <td className="px-3 py-3 font-semibold text-slate-600 tabular-nums">{m.scheduledDate ? new Date(m.scheduledDate).toISOString().split("T")[0] : "—"}</td>
+                        <td className="px-3 py-3 font-medium">{m.assignedTo || m.owner || "—"}</td>
+                        <td className="px-3 py-3 text-right font-bold text-slate-900 tabular-nums">₹{((m.costPaise ? m.costPaise / 100 : m.cost) || 0).toLocaleString()}</td>
                         <td className="px-3 py-3 text-center">
                           <button
-                            onClick={() => completeMaintenance(m.id)}
+                            onClick={() => handleComplete(m.id)}
                             className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-lg text-[9px] font-bold hover:bg-emerald-100 transition"
                           >
                             <Check size={11} />
@@ -166,22 +205,21 @@ export function MaintenanceTab() {
               <Calendar size={18} className="text-blue-600" />
               PM Calendar
             </h3>
-            <p className="text-xs text-slate-500">Weekly allocation schedule slots</p>
+            <p className="text-xs text-slate-500">Upcoming tasks schedule</p>
 
             <div className="mt-4 space-y-2.5">
-              {[
-                { day: "Mon 12", label: "CMP Polisher slurry line flush", done: true },
-                { day: "Tue 13", label: "ASML DUV stepper optical inspection", done: true },
-                { day: "Wed 14", label: "DRIE chamber cleaning & seasoning", done: false },
-                { day: "Thu 15", label: "Wafer Prober card contact replacement", done: false },
-                { day: "Fri 16", label: "Anodic stack alignment validation", done: false },
-              ].map((slot, idx) => (
-                <div key={idx} className="flex gap-3 items-center text-xs p-2 rounded-xl border border-slate-100 bg-slate-50/50">
-                  <span className="font-bold text-slate-400 w-12 shrink-0">{slot.day}</span>
-                  <p className="flex-1 truncate font-semibold text-slate-700">{slot.label}</p>
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${slot.done ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+              {upcomingMaintenance.slice(0, 5).map((m, idx) => (
+                <div key={m.id || idx} className="flex gap-3 items-center text-xs p-2 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <span className="font-bold text-slate-400 w-16 shrink-0">{m.scheduledDate ? new Date(m.scheduledDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "—"}</span>
+                  <p className="flex-1 truncate font-semibold text-slate-700">{m.description || m.task}</p>
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${m.status === "COMPLETED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
                 </div>
               ))}
+              {upcomingMaintenance.length === 0 && (
+                <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                  No maintenance scheduled
+                </div>
+              )}
             </div>
           </div>
           <p className="text-[10px] text-slate-400 leading-normal mt-4">
@@ -203,8 +241,8 @@ export function MaintenanceTab() {
               <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="px-3 py-2">Record ID</th>
                 <th className="px-3 py-2">Tool Name</th>
-                <th className="px-3 py-2">Calibration Task Performed</th>
-                <th className="px-3 py-2">Audit Type</th>
+                <th className="px-3 py-2">Task Performed</th>
+                <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Tech Owner</th>
                 <th className="px-3 py-2 text-right">Settled Cost</th>
                 <th className="px-3 py-2">Completion Date</th>
@@ -212,26 +250,34 @@ export function MaintenanceTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
-              {completedMaintenance.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-50/50">
-                  <td className="px-3 py-3.5 font-bold text-slate-900">{m.id}</td>
-                  <td className="px-3 py-3.5 font-semibold text-slate-800">{m.machineName}</td>
-                  <td className="px-3 py-3.5 font-semibold">{m.task}</td>
-                  <td className="px-3 py-3.5 font-bold">
-                    <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px]">
-                      {m.type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3.5 font-medium">{m.owner}</td>
-                  <td className="px-3 py-3.5 text-right font-bold text-slate-900 tabular-nums">₹{m.cost.toLocaleString()}</td>
-                  <td className="px-3 py-3.5 text-slate-500 font-semibold tabular-nums">{m.completedDate}</td>
-                  <td className="px-3 py-3.5 text-center">
-                    <span className="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">
-                      COMPLETED
-                    </span>
+              {completedMaintenance.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-6 text-center text-slate-400">
+                    No completed maintenance tasks recorded.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                completedMaintenance.map((m) => (
+                  <tr key={m.id} className="hover:bg-slate-50/50">
+                    <td className="px-3 py-3.5 font-bold text-slate-900">{m.taskNumber || m.id}</td>
+                    <td className="px-3 py-3.5 font-semibold text-slate-800">{m.machine?.name || m.machineName || m.machineId}</td>
+                    <td className="px-3 py-3.5 font-semibold">{m.description || m.task}</td>
+                    <td className="px-3 py-3.5 font-bold">
+                      <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px]">
+                        {m.taskType || m.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3.5 font-medium">{m.assignedTo || m.owner || "—"}</td>
+                    <td className="px-3 py-3.5 text-right font-bold text-slate-900 tabular-nums">₹{((m.costPaise ? m.costPaise / 100 : m.cost) || 0).toLocaleString()}</td>
+                    <td className="px-3 py-3.5 text-slate-500 font-semibold tabular-nums">{m.completedDate ? new Date(m.completedDate).toISOString().split("T")[0] : "—"}</td>
+                    <td className="px-3 py-3.5 text-center">
+                      <span className="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">
+                        COMPLETED
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -260,18 +306,13 @@ export function MaintenanceTab() {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Machine Tool</label>
                   <select
                     value={newMaint.machineId}
-                    onChange={(e) => {
-                      const selected = machines.find((mac) => mac.id === e.target.value);
-                      setNewMaint({
-                        ...newMaint,
-                        machineId: e.target.value,
-                        machineName: selected ? selected.name : "Tool Tooling",
-                      });
-                    }}
+                    required
+                    onChange={(e) => setNewMaint({ ...newMaint, machineId: e.target.value })}
                     className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
                   >
+                    <option value="">Select machine...</option>
                     {machines.map((mac) => (
-                      <option key={mac.id} value={mac.id}>{mac.id} · {mac.name}</option>
+                      <option key={mac.id} value={mac.id}>{mac.machineCode || mac.id} · {mac.name}</option>
                     ))}
                   </select>
                 </div>
@@ -284,6 +325,7 @@ export function MaintenanceTab() {
                   >
                     <option value="PREVENTIVE">PREVENTIVE (Routine check)</option>
                     <option value="CORRECTIVE">CORRECTIVE (Breakdown repair)</option>
+                    <option value="PREDICTIVE">PREDICTIVE (Condition-based)</option>
                   </select>
                 </div>
               </div>
@@ -295,7 +337,7 @@ export function MaintenanceTab() {
                   required
                   value={newMaint.task}
                   onChange={(e) => setNewMaint({ ...newMaint, task: e.target.value })}
-                  placeholder="e.g. Flurry feed replacement or pump oil flush"
+                  placeholder="e.g. Slurry feed replacement or pump oil flush"
                   className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
                 />
               </div>
@@ -315,9 +357,9 @@ export function MaintenanceTab() {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Technician Release</label>
                   <input
                     type="text"
-                    required
                     value={newMaint.owner}
                     onChange={(e) => setNewMaint({ ...newMaint, owner: e.target.value })}
+                    placeholder="Assigned tech name"
                     className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
@@ -325,7 +367,7 @@ export function MaintenanceTab() {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Budget Cost (₹)</label>
                   <input
                     type="number"
-                    required
+                    min={0}
                     value={newMaint.cost}
                     onChange={(e) => setNewMaint({ ...newMaint, cost: parseInt(e.target.value) || 0 })}
                     className="h-10 w-full rounded-xl border border-slate-200 px-3 text-xs outline-none focus:border-blue-500"
@@ -338,7 +380,7 @@ export function MaintenanceTab() {
                 <textarea
                   value={newMaint.notes}
                   onChange={(e) => setNewMaint({ ...newMaint, notes: e.target.value })}
-                  placeholder="Record gas line leaks, pressure fluctuations, or ASML diagnostic warning codes..."
+                  placeholder="Record gas line leaks, pressure fluctuations, or calibration parameters..."
                   className="w-full min-h-[70px] rounded-xl border border-slate-200 p-3 text-xs outline-none focus:border-blue-500"
                 />
               </div>
@@ -353,15 +395,17 @@ export function MaintenanceTab() {
                 </button>
                 <button
                   type="submit"
-                  className="h-10 rounded-xl bg-slate-950 px-5 text-xs font-semibold text-white hover:bg-slate-900"
+                  disabled={createMaintenanceMutation.isPending}
+                  className="h-10 rounded-xl bg-slate-950 px-5 text-xs font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
                 >
-                  Release Task
+                  {createMaintenanceMutation.isPending ? "Scheduling..." : "Schedule Task"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

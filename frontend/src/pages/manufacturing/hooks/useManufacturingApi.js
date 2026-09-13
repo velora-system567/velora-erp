@@ -1,10 +1,9 @@
 /**
  * React-Query hooks for Manufacturing API integration.
- * Used by Manufacturing tab components to load live data
- * alongside the Zustand local store for offline/optimistic UX.
+ * Used by Manufacturing tab components to load live data directly from backend.
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { manufacturingApi } from "../../../services/api";
+import { manufacturingApi, masterApi } from "../../../services/api";
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export function useManufacturingDashboard() {
@@ -38,31 +37,78 @@ export function useProductionOrders(params = {}) {
   });
 }
 
+export function useCreateProductionOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: manufacturingApi.createProductionOrder,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-production-orders"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
+  });
+}
+
 export function useUpdateProductionOrderStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => manufacturingApi.updateProductionOrderStatus(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["mfg-production-orders"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-production-orders"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
   });
 }
 
 // ─── BOMs ─────────────────────────────────────────────────────────────────────
-export function useBoms() {
+export function useBoms(params = {}) {
   return useQuery({
-    queryKey: ["mfg-boms"],
-    queryFn: () => manufacturingApi.boms(),
+    queryKey: ["mfg-boms", params],
+    queryFn: () => manufacturingApi.boms(params),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 }
 
+export function useCreateBom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: manufacturingApi.createBom,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-boms"] });
+    },
+  });
+}
+
+export function useDeleteBom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => manufacturingApi.deleteBom(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-boms"] });
+    },
+  });
+}
+
 // ─── Machines ─────────────────────────────────────────────────────────────────
-export function useMachines() {
+export function useMachines(params = {}) {
   return useQuery({
-    queryKey: ["mfg-machines"],
-    queryFn: () => manufacturingApi.machines(),
+    queryKey: ["mfg-machines", params],
+    queryFn: () => manufacturingApi.machines(params),
     staleTime: 30 * 1000,
     retry: 1,
+  });
+}
+
+export function useCreateMachine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: manufacturingApi.createMachine,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-machines"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+    },
   });
 }
 
@@ -70,7 +116,10 @@ export function useUpdateMachineStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }) => manufacturingApi.updateMachineStatus(id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["mfg-machines"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-machines"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+    },
   });
 }
 
@@ -88,7 +137,11 @@ export function useCreateMaintenance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: manufacturingApi.createMaintenance,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["mfg-maintenance"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-maintenance"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
   });
 }
 
@@ -96,15 +149,19 @@ export function useCompleteMaintenance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => manufacturingApi.completeMaintenance(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["mfg-maintenance"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-maintenance"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
   });
 }
 
 // ─── Quality Checks ───────────────────────────────────────────────────────────
-export function useQualityChecks() {
+export function useQualityChecks(params = {}) {
   return useQuery({
-    queryKey: ["mfg-quality"],
-    queryFn: () => manufacturingApi.qualityChecks(),
+    queryKey: ["mfg-quality", params],
+    queryFn: () => manufacturingApi.qualityChecks(params),
     staleTime: 60 * 1000,
     retry: 1,
   });
@@ -114,7 +171,11 @@ export function useCreateQualityCheck() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: manufacturingApi.createQualityCheck,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["mfg-quality"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-quality"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
   });
 }
 
@@ -124,6 +185,40 @@ export function useWorkOrders(params = {}) {
     queryKey: ["mfg-work-orders", params],
     queryFn: () => manufacturingApi.workOrders(params),
     staleTime: 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useCreateWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: manufacturingApi.createWorkOrder,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-work-orders"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
+  });
+}
+
+export function useCompleteWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => manufacturingApi.completeWorkOrder(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["mfg-work-orders"] });
+      qc.invalidateQueries({ queryKey: ["mfg-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["mfg-analytics"] });
+    },
+  });
+}
+
+// ─── Items (Master Data) ──────────────────────────────────────────────────────
+export function useManufacturingItems() {
+  return useQuery({
+    queryKey: ["master-items"],
+    queryFn: () => masterApi.list("items", { limit: 100 }),
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 }

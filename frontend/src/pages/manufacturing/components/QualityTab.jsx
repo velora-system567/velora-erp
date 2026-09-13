@@ -1,23 +1,30 @@
 import { useState, useMemo } from "react";
-import { useManufacturingStore } from "../hooks/useManufacturingStore";
+import { useQualityChecks, useCreateQualityCheck, useWorkOrders } from "../hooks/useManufacturingApi";
+import { useMfgListData } from "./useMfgListData";
+import { EmptyState } from "./EmptyState";
 import { CheckCircle, AlertTriangle, ShieldAlert, Sparkles, Plus, X, BarChart3, TrendingUp, HelpCircle } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 
 export function QualityTab() {
-  const { qualityRecords, addQualityRecord } = useManufacturingStore();
+  const qualityQuery = useQualityChecks();
+  const { list: qualityRecords, isEmpty: isQualityEmpty } = useMfgListData(qualityQuery);
+  const workOrdersQuery = useWorkOrders();
+  const { list: workOrders } = useMfgListData(workOrdersQuery);
+
+  const createQualityCheckMutation = useCreateQualityCheck();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Create Inspection Form State
   const [newRecord, setNewRecord] = useState({
-    workOrderId: "WO-2026-1042",
-    inspectedQty: 1000,
-    passedQty: 980,
-    failedQty: 20,
-    reworkQty: 15,
+    workOrderId: "",
+    inspectedQty: 100,
+    passedQty: 95,
+    failedQty: 5,
+    reworkQty: 0,
     notes: "",
   });
 
-  // Calculate statistics
+  // Calculate statistics from real data
   const stats = useMemo(() => {
     let totalInspected = 0;
     let totalPassed = 0;
@@ -25,13 +32,13 @@ export function QualityTab() {
     let totalRework = 0;
 
     qualityRecords.forEach((r) => {
-      totalInspected += r.inspectedQty;
-      totalPassed += r.passedQty;
-      totalFailed += r.failedQty;
-      totalRework += r.reworkQty;
+      totalInspected += Number(r.inspectedQty || 0);
+      totalPassed += Number(r.passedQty || 0);
+      totalFailed += Number(r.failedQty || 0);
+      totalRework += Number(r.reworkQty || 0);
     });
 
-    const compositePassRate = totalInspected > 0 ? (totalPassed / totalInspected) * 100 : 96.9;
+    const compositePassRate = totalInspected > 0 ? (totalPassed / totalInspected) * 100 : 0;
 
     return {
       totalInspected,
@@ -42,41 +49,66 @@ export function QualityTab() {
     };
   }, [qualityRecords]);
 
-  // Recharts quality trend data
+  // Quality trend data from real records (no hardcoded values)
   const trendData = useMemo(() => {
-    return [
-      { day: "Mon", pass: 96.1, scrap: 3.9 },
-      { day: "Tue", pass: 96.4, scrap: 3.6 },
-      { day: "Wed", pass: 95.8, scrap: 4.2 },
-      { day: "Thu", pass: 97.0, scrap: 3.0 },
-      { day: "Fri", pass: 96.6, scrap: 3.4 },
-      { day: "Sat", pass: 97.2, scrap: 2.8 },
-      { day: "Today", pass: parseFloat(stats.compositePassRate) || 96.9, scrap: (100 - (parseFloat(stats.compositePassRate) || 96.9)) },
-    ];
-  }, [stats]);
+    if (qualityRecords.length === 0) return [];
+    const rate = parseFloat(stats.compositePassRate) || 0;
+    return [{ day: "Current", pass: rate, scrap: (100 - rate) }];
+  }, [stats, qualityRecords]);
 
-  // Top defects distribution (derived or standard)
-  const topDefects = [
-    { code: "DF-12", label: "Bond alignment drift", count: 84 },
-    { code: "DF-04", label: "Etch depth variance", count: 62 },
-    { code: "DF-21", label: "Contamination particles", count: 48 },
-    { code: "DF-09", label: "Dicing chip-out", count: 39 },
-  ];
+  // Top defects distribution — derived from real quality check defect data
+  const topDefects = useMemo(() => {
+    const defectMap = {};
+    qualityRecords.forEach((r) => {
+      if (Array.isArray(r.defects)) {
+        r.defects.forEach((d) => {
+          const key = d.code || d.label || "UNKNOWN";
+          if (!defectMap[key]) defectMap[key] = { code: d.code || key, label: d.label || key, count: 0 };
+          defectMap[key].count += d.count || 1;
+        });
+      }
+    });
+    return Object.values(defectMap).sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [qualityRecords]);
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    addQualityRecord(newRecord);
-    setShowCreateModal(false);
-    // Reset form
-    setNewRecord({
-      workOrderId: "WO-2026-1042",
-      inspectedQty: 1000,
-      passedQty: 980,
-      failedQty: 20,
-      reworkQty: 15,
-      notes: "",
+    if (!newRecord.workOrderId) {
+      alert("Please select a Work Order");
+      return;
+    }
+    createQualityCheckMutation.mutate({
+      workOrderId: newRecord.workOrderId,
+      inspectedQty: Number(newRecord.inspectedQty) || 1,
+      passedQty: Number(newRecord.passedQty) || 0,
+      failedQty: Number(newRecord.failedQty) || 0,
+      reworkQty: Number(newRecord.reworkQty) || 0,
+      notes: newRecord.notes || undefined,
+    }, {
+      onSuccess: () => {
+        setShowCreateModal(false);
+        setNewRecord({
+          workOrderId: "",
+          inspectedQty: 100,
+          passedQty: 95,
+          failedQty: 5,
+          reworkQty: 0,
+          notes: "",
+        });
+      },
+      onError: (err) => {
+        alert(err.message || "Failed to create quality check");
+      },
     });
   };
+
+  if (isQualityEmpty) {
+    return (
+      <div className="space-y-6">
+        <EmptyState title="No quality checks" subtitle="Once inspections are logged in the backend, records will appear here." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
