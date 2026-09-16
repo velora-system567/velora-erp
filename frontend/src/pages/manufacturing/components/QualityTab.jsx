@@ -110,6 +110,7 @@ export function QualityTab() {
     );
   }
 
+
   return (
     <div className="space-y-6">
       
@@ -280,16 +281,24 @@ export function QualityTab() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Work Order ID</label>
-                  <select
-                    value={newRecord.workOrderId}
-                    onChange={(e) => setNewRecord({ ...newRecord, workOrderId: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
-                  >
-                    <option value="WO-2026-1042">WO-2026-1042 (Test stage)</option>
-                    <option value="WO-2026-1041">WO-2026-1041 (Packaging stage)</option>
-                    <option value="WO-2026-1040">WO-2026-1040 (Bonding stage)</option>
-                    <option value="WO-2026-1039">WO-2026-1039 (Etch stage)</option>
-                  </select>
+                   <select
+                     value={newRecord.workOrderId}
+                     onChange={(e) => setNewRecord({ ...newRecord, workOrderId: e.target.value })}
+                     className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-blue-500"
+                     disabled={workOrders.length === 0}
+                   >
+                     {workOrders.length === 0 ? (
+                       <option value="" disabled>
+                         No work orders available
+                       </option>
+                     ) : (
+                       workOrders.map((wo) => (
+                         <option key={wo.id} value={wo.id}>
+                           {wo.workOrderNumber || wo.id}
+                         </option>
+                       ))
+                     )}
+                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Inspected Dies Volume</label>

@@ -5,7 +5,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../middleware/auth.js";
-import { requireTenant } from "../../middleware/tenant.js";
+import { requireTenant, requireTenantMembership } from "../../middleware/tenant.js";
 import { validate } from "../../middleware/validate.js";
 import { uuid as _uuid, optionalUuid as _optUuid } from "../../utils/zod-uuid.js";
 import { ok, created } from "../../utils/api-response.js";
@@ -18,7 +18,7 @@ import { rupeesToPaise } from "../../utils/money.js";
 import { updateTenantRecord } from "../../utils/tenant-record.js";
 
 const router = Router();
-router.use(requireAuth, requireTenant);
+router.use(requireAuth, requireTenant, requireTenantMembership());
 const uuid = _uuid;
 const optionalUuid = _optUuid;
 

@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "../../components/EmptyState";
 import { operationsApi } from "../../services/api";
+import { tenantKey } from "../../utils/reactQueryTenant";
 import { formatRupees } from "../../utils/money";
 
 const labels = {
@@ -31,18 +32,18 @@ export function OperationsPage({ resource, embedded = false }) {
   const config = labels[resource];
   const queryClient = useQueryClient();
   const [form, setForm] = useState(blank);
-  const query = useQuery({ queryKey: [resource, "records"], queryFn: () => operationsApi.list(resource) });
+  const query = useQuery({ queryKey: tenantKey([resource, "records"]), queryFn: () => operationsApi.list(resource) });
   const rows = query.data?.data || [];
   const saveMutation = useMutation({
     mutationFn: () => operationsApi.create(resource, form),
     onSuccess: () => {
       setForm(blank);
-      queryClient.invalidateQueries({ queryKey: [resource, "records"] });
+      queryClient.invalidateQueries({ queryKey: tenantKey([resource, "records"]) });
     },
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => operationsApi.remove(resource, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [resource, "records"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tenantKey([resource, "records"]) }),
   });
   const importMutation = useMutation({
     mutationFn: async (records) => {
@@ -50,7 +51,7 @@ export function OperationsPage({ resource, embedded = false }) {
         await operationsApi.create(resource, { ...blank, ...record, amount: Number(record.amount || record.Amount || 0), partyName: record.partyName || record.Party || record.Name || "" });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [resource, "records"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tenantKey([resource, "records"]) }),
   });
 
   return (

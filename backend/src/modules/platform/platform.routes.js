@@ -55,7 +55,7 @@ router.delete("/platform/api-keys/:id", requirePermission(PERMISSIONS.ADMIN_VIEW
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
-    try { await prisma.apiKey.update({ where: { id: req.params.id }, data: { isDeleted: true, updatedBy: req.user.sub } }); } catch { /* ignore */ }
+    try { await prisma.apiKey.update({ where: { id: req.params.id, tenantId: req.tenantId, companyId: req.companyId }, data: { isDeleted: true, updatedBy: req.user.sub } }); } catch { /* ignore */ }
     return ok(res, {}, "API key revoked");
   }));
 
@@ -88,7 +88,7 @@ router.delete("/platform/webhooks/:id", requirePermission(PERMISSIONS.ADMIN_VIEW
   validate(z.object({ params: z.object({ id: uuid() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
-    try { await prisma.webhook.update({ where: { id: req.params.id }, data: { isActive: false, updatedBy: req.user.sub } }); } catch { /* ignore */ }
+    try { await prisma.webhook.update({ where: { id: req.params.id, tenantId: req.tenantId, companyId: req.companyId }, data: { isActive: false, updatedBy: req.user.sub } }); } catch { /* ignore */ }
     return ok(res, {}, "Webhook deleted");
   }));
 

@@ -32,6 +32,7 @@ export const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: "5mb" }));
+
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Health — includes database connectivity check

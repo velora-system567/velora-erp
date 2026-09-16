@@ -9,6 +9,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { SkeletonTable } from "../../components/Skeleton";
 import { formatRupees } from "../../utils/money";
 import FinanceDashboard from "./FinanceDashboard";
+import { tenantKey } from "../../utils/reactQueryTenant";
 
 const TABS = ["Dashboard", "Trial Balance", "P&L", "Balance Sheet", "Journal Entries", "GSTR-3B", "Debtor Aging"];
 
@@ -27,11 +28,11 @@ function TabBar({ active, onChange }) {
 
 function TrialBalanceTab() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["trial-balance"], queryFn: accountsApi.trialBalance });
+  const query = useQuery({ queryKey: tenantKey(["trial-balance"]), queryFn: accountsApi.trialBalance });
   const data = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={8} cols={5} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["trial-balance"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["trial-balance"]) })} />;
 
   const rows = data?.rows || [];
 
@@ -79,11 +80,11 @@ function TrialBalanceTab() {
 function ProfitLossTab() {
   const qc = useQueryClient();
   // Wrap to prevent React Query's context object from being passed as params
-  const query = useQuery({ queryKey: ["profit-loss"], queryFn: () => accountsApi.profitLoss() });
+  const query = useQuery({ queryKey: tenantKey(["profit-loss"]), queryFn: () => accountsApi.profitLoss() });
   const pl = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={6} cols={3} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["profit-loss"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["profit-loss"]) })} />;
 
   if (!pl) return null;
 
@@ -123,11 +124,11 @@ function ProfitLossTab() {
 
 function BalanceSheetTab() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["balance-sheet"], queryFn: accountsApi.balanceSheet });
+  const query = useQuery({ queryKey: tenantKey(["balance-sheet"]), queryFn: accountsApi.balanceSheet });
   const bs = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={6} cols={2} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["balance-sheet"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["balance-sheet"]) })} />;
   if (!bs) return null;
 
   return (
@@ -160,14 +161,14 @@ function BalanceSheetTab() {
 function JournalEntriesTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const query = useQuery({ queryKey: ["journal-entries"], queryFn: () => accountsApi.journalEntries() });
+  const query = useQuery({ queryKey: tenantKey(["journal-entries"]), queryFn: () => accountsApi.journalEntries() });
   const allRows = query.data?.data || [];
   const rows = allRows.filter((e) =>
     `${e.entryNo || ""} ${e.narration || ""}`.toLowerCase().includes(search.toLowerCase())
   );
 
   if (query.isPending) return <SkeletonTable rows={6} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["journal-entries"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["journal-entries"]) })} />;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -208,11 +209,11 @@ function JournalEntriesTab() {
 
 function Gstr3bTab() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["gstr3b"], queryFn: accountsApi.gstr3b });
+  const query = useQuery({ queryKey: tenantKey(["gstr3b"]), queryFn: accountsApi.gstr3b });
   const data = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={3} cols={4} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["gstr3b"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["gstr3b"]) })} />;
   if (!data) return null;
 
   return (
@@ -243,11 +244,11 @@ function Gstr3bTab() {
 function DebtorAgingTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const query = useQuery({ queryKey: ["debtor-aging"], queryFn: accountsApi.debtorAging });
+  const query = useQuery({ queryKey: tenantKey(["debtor-aging"]), queryFn: accountsApi.debtorAging });
   const data = query.data?.data;
 
   if (query.isPending) return <SkeletonTable rows={5} cols={5} />;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["debtor-aging"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["debtor-aging"]) })} />;
   if (!data) return null;
 
   const buckets = data.buckets || {};

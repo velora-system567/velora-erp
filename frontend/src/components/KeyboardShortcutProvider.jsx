@@ -23,6 +23,7 @@ import {
   ShortcutContext,
 } from "../hooks/useShortcutManager";
 import KeyboardShortcutsDialog from "./KeyboardShortcutsDialog";
+import { tenantKey } from "../utils/reactQueryTenant";
 
 export function KeyboardShortcutProvider({ children }) {
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ export function KeyboardShortcutProvider({ children }) {
         // Invalidate all queries for the active module
         const activeMod = store.activeModule;
         if (activeMod) {
-          qc.invalidateQueries({ queryKey: [activeMod] });
+          qc.invalidateQueries({ queryKey: tenantKey([activeMod]) });
         } else {
           qc.invalidateQueries();
         }

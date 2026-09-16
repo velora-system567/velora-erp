@@ -5,6 +5,7 @@ import {
   BarChart3, X,
 } from "lucide-react";
 import { wmsApi } from "../../services/api";
+import { tenantKey } from "../../utils/reactQueryTenant";
 import { ErrorBanner, ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { AddButton, PageHeader, SecondaryButton } from "../../components/PageHeader";
@@ -23,21 +24,21 @@ export function WmsPage() {
   const switchTab = (t) => { setTab(t); localStorage.setItem("wms_tab", t); };
 
   const dashQuery = useQuery({
-    queryKey: ["wms-dashboard"],
+    queryKey: tenantKey(["wms-dashboard"]),
     queryFn: wmsApi.dashboard,
     staleTime: 60 * 1000,
     enabled: tab === "dashboard",
   });
 
   const locQuery = useQuery({
-    queryKey: ["wms-locations"],
+    queryKey: tenantKey(["wms-locations"]),
     queryFn: () => wmsApi.locations({}),
     staleTime: 30 * 1000,
     enabled: tab === "locations",
   });
 
   const movQuery = useQuery({
-    queryKey: ["wms-movements"],
+    queryKey: tenantKey(["wms-movements"]),
     queryFn: () => wmsApi.movements({ limit: 50 }),
     staleTime: 30 * 1000,
     enabled: tab === "movements",
@@ -47,7 +48,7 @@ export function WmsPage() {
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
       <PageHeader title="Warehouse Management System"
         description="Manage warehouses, bin locations, and stock movements."
-        actions={<SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: ["wms"] })} />} />
+        actions={<SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: tenantKey(["wms"]) })} />} />
 
       <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
         {TABS.map(([key, Icon, label]) => (
@@ -68,7 +69,7 @@ export function WmsPage() {
 function DashboardTab({ data: query }) {
   const qc = useQueryClient();
   if (query.isPending) return <div className="space-y-4"><SkeletonCards count={6} /><SkeletonTable rows={5} cols={4} /></div>;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["wms-dashboard"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["wms-dashboard"]) })} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No warehouse data" />;
   const k = d.kpis || {};
@@ -109,10 +110,10 @@ function LocationsTab({ query }) {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ warehouseId: "", code: "", name: "", zone: "", bin: "", capacity: "" });
 
-  const warehouses = qc.getQueryData(["wms-dashboard"])?.data?.warehouses || [];
+  const warehouses = qc.getQueryData(tenantKey(["wms-dashboard"]))?.data?.warehouses || [];
   const createMutation = useMutation({
     mutationFn: (data) => wmsApi.createLocation(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["wms-locations"] }); setShowCreate(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: tenantKey(["wms-locations"]) }); setShowCreate(false); },
   });
 
   if (query.isPending) return <SkeletonTable rows={6} cols={5} />;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Building2, RefreshCw, BarChart3, UserCheck } from "lucide-react";
 import { hrmsApi } from "../../services/api";
+import { tenantKey } from "../../utils/reactQueryTenant";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader, SecondaryButton } from "../../components/PageHeader";
@@ -20,21 +21,21 @@ export function HrmsPage() {
   const switchTab = (t) => { setTab(t); localStorage.setItem("hrms_tab", t); };
 
   const dashQuery = useQuery({
-    queryKey: ["hrms-dashboard"],
+    queryKey: tenantKey(["hrms-dashboard"]),
     queryFn: hrmsApi.dashboard,
     staleTime: 60 * 1000,
     enabled: tab === "dashboard",
   });
 
   const empQuery = useQuery({
-    queryKey: ["hrms-employees"],
+    queryKey: tenantKey(["hrms-employees"]),
     queryFn: () => hrmsApi.employees({}),
     staleTime: 30 * 1000,
     enabled: tab === "employees",
   });
 
   const rolesQuery = useQuery({
-    queryKey: ["hrms-roles"],
+    queryKey: tenantKey(["hrms-roles"]),
     queryFn: hrmsApi.roles,
     staleTime: 60 * 1000,
     enabled: tab === "departments",
@@ -43,7 +44,7 @@ export function HrmsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6 md:space-y-5 md:py-6 xl:p-8">
       <PageHeader title="HR & Payroll" description="Manage employees, departments, roles, and people operations."
-        actions={<SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: ["hrms"] })} />} />
+        actions={<SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: tenantKey(["hrms"]) })} />} />
 
       <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
         {TABS.map(([key, Icon, label]) => (
@@ -64,7 +65,7 @@ export function HrmsPage() {
 function DashboardTab({ data: query }) {
   const qc = useQueryClient();
   if (query.isPending) return <div className="space-y-4"><SkeletonCards count={4} /><SkeletonTable rows={5} cols={4} /></div>;
-  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: ["hrms-dashboard"] })} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["hrms-dashboard"]) })} />;
   const d = query.data?.data;
   if (!d) return <EmptyState title="No HR data" />;
   const k = d.kpis || {};

@@ -9,10 +9,9 @@ export function InventoryTab() {
   const inventoryConsumption = [];
   const hasData = false; // placeholder until backend wiring exists
 
-  // Create chart data for compound material usage trend
-  // Inventory consumption is not yet wired to backend list APIs in useManufacturingApi.js.
-  // Until implemented, render an empty state so new workspaces show 0 by default.
+  // Until backend wiring exists, render a true empty state.
   const chartData = useMemo(() => [], []);
+  const chartSeries = useMemo(() => [], []);
 
   // Compute severity statistics
   const criticalAlerts = useMemo(() => {
@@ -94,9 +93,9 @@ export function InventoryTab() {
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Bar dataKey="WFR-SOI-200" name="SOI Wafer (pcs)" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="PR-AZ-9260" name="Photoresist (L)" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="GAS-SF6" name="SF6 Gas (cyl)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  {chartData.map((s) => (
+                    <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.fill} radius={[4, 4, 0, 0]} />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>

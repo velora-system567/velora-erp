@@ -29,7 +29,10 @@ export function DashboardTab({ onJump }) {
   const hasError = dashboardQuery.error || productionOrdersQuery.error || workOrdersQuery.error || machinesQuery.error || maintenanceQuery.error;
   const hasAnyData = !isProductionOrdersEmpty || !isWorkOrdersEmpty || !isMachinesEmpty || !isMaintenanceEmpty;
 
+  
+
   if (!isLoading && !hasError && !hasAnyData) {
+    setHookGuard((v) => v);
     return (
       <div className="mx-auto max-w-[1500px] space-y-6 px-4 py-10">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
@@ -41,6 +44,7 @@ export function DashboardTab({ onJump }) {
   }
 
   if (!isLoading && hasError) {
+    setHookGuard((v) => v);
     return (
       <div className="mx-auto max-w-[1500px] space-y-6 px-4 py-10">
         <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center">
@@ -52,6 +56,7 @@ export function DashboardTab({ onJump }) {
   }
 
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
+  // eslint-disable-next-line no-unused-vars
 
   // Derive KPIs from real data
   const activeOrdersCount = useMemo(() => {

@@ -89,7 +89,7 @@ router.patch("/eam/assets/:id", requirePermission(PERMISSIONS.EAM_UPDATE),
   validate(z.object({ params: z.object({ id: uuid() }), body: z.object({ name: z.string().min(2).optional(), type: z.string().optional(), location: z.string().optional(), status: z.string().optional(), healthScore: z.coerce.number().min(0).max(100).optional(), utilizationPct: z.coerce.number().min(0).max(100).optional(), operatingHours: z.coerce.number().min(0).optional() }) })),
   asyncHandler(async (req, res) => {
     const prisma = getPrisma();
-    const asset = await prisma.machine.update({ where: { id: req.params.id }, data: { ...req.validated.body, updatedBy: req.user.sub } });
+    const asset = await prisma.machine.update({ where: { id: req.params.id, tenantId: req.tenantId, companyId: req.companyId, isDeleted: false }, data: { ...req.validated.body, updatedBy: req.user.sub } });
     await writeAudit(req, { tableName: "machines", recordId: asset.id, action: "ASSET_UPDATED", newValue: asset });
     return ok(res, asset, "Asset updated");
   }));

@@ -9,6 +9,7 @@ import LiveIndicator from "../../components/LiveIndicator";
 import { getDashboardKpis, getSalesChart, getTopItems, hasApiBaseUrl } from "../../services/api";
 import { formatRupeesCompact, formatRupees } from "../../utils/money";
 import { useAuthStore } from "../../store/auth";
+import { tenantKey } from "../../utils/reactQueryTenant";
 
 function KpiCard({ label, value, icon: Icon, color = "text-blue-600", formatter, to }) {
   const display = formatter ? formatter(value) : value;
@@ -49,7 +50,7 @@ export function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const firstName = (user?.name || "").split(" ")[0] || "there";
   const kpisQuery = useQuery({
-    queryKey: ["dashboard-kpis"],
+    queryKey: tenantKey(["dashboard-kpis"]),
     queryFn: getDashboardKpis,
     retry: 1,
     enabled: hasApiBaseUrl,
@@ -59,7 +60,7 @@ export function Dashboard() {
   });
 
   const chartQuery = useQuery({
-    queryKey: ["dashboard-sales-chart"],
+    queryKey: tenantKey(["dashboard-sales-chart"]),
     queryFn: getSalesChart,
     retry: 1,
     enabled: hasApiBaseUrl,
@@ -67,7 +68,7 @@ export function Dashboard() {
   });
 
   const topItemsQuery = useQuery({
-    queryKey: ["dashboard-top-items"],
+    queryKey: tenantKey(["dashboard-top-items"]),
     queryFn: getTopItems,
     retry: 1,
     enabled: hasApiBaseUrl,

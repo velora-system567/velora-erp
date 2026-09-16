@@ -13,6 +13,7 @@ import { SkeletonCards, SkeletonTable } from "../../components/Skeleton";
 import { ErrorState } from "../../components/ErrorState";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader, SecondaryButton } from "../../components/PageHeader";
+import { tenantKey } from "../../utils/reactQueryTenant";
 
 export default function ExecutiveDashboard() {
   const qc = useQueryClient();
@@ -25,7 +26,7 @@ export default function ExecutiveDashboard() {
   };
 
   const execQuery = useQuery({
-    queryKey: ["bi-executive"],
+    queryKey: tenantKey(["bi-executive"]),
     queryFn: () => biApi.executiveDashboard(),
     staleTime: 60 * 1000,
     refetchInterval: 30 * 1000,
@@ -33,19 +34,19 @@ export default function ExecutiveDashboard() {
   });
 
   const deptQuery = useQuery({
-    queryKey: ["bi-departments"],
+    queryKey: tenantKey(["bi-departments"]),
     queryFn: () => biApi.departments(),
     staleTime: 5 * 60 * 1000,
   });
 
   const insightsQuery = useQuery({
-    queryKey: ["bi-insights"],
+    queryKey: tenantKey(["bi-insights"]),
     queryFn: () => biApi.insights(),
     staleTime: 10 * 60 * 1000,
   });
 
   if (execQuery.isPending) return <div className="space-y-4 p-8"><SkeletonCards count={8} /></div>;
-  if (execQuery.isError) return <ErrorState error={execQuery.error} onRetry={() => qc.invalidateQueries({ queryKey: ["bi"] })} />;
+  if (execQuery.isError) return <ErrorState error={execQuery.error} onRetry={() => qc.invalidateQueries({ queryKey: tenantKey(["bi"]) })} />;
 
   const data = execQuery.data?.data;
   if (!data || !data.kpis) return <EmptyState title="No executive data" description="Connect your backend API to see business insights." />;
@@ -58,7 +59,7 @@ export default function ExecutiveDashboard() {
           <h1 className="text-2xl font-bold text-slate-950">Executive Command Center</h1>
           <p className="text-sm text-slate-500">Your business at a glance. Last updated {dateTime(data.timestamp)}.</p>
         </div>
-        <SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: ["bi"] })} />
+        <SecondaryButton label="Refresh" icon={RefreshCw} onClick={() => qc.invalidateQueries({ queryKey: tenantKey(["bi"]) })} />
       </div>
 
       {/* Business Health Score */}

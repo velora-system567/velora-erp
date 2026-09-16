@@ -122,10 +122,19 @@ export function AppShell() {
   // Register session expiration handler — redirects via React Router
   // instead of hard window.location.href navigation (which caused white screens)
   useEffect(() => {
-    onSessionExpired(() => {
-      clearSession();
-      navigate("/login", { replace: true });
-    });
+onSessionExpired(async () => {
+       clearSession();
+
+       try {
+         const { queryClient } = await import("../lib/queryClient.js");
+         queryClient.clear();
+         queryClient.invalidateQueries();
+       } catch {
+         /* ignore */
+       }
+
+       navigate("/login", { replace: true });
+     });
   }, [navigate, clearSession]);
 
   async function logout() {
@@ -134,6 +143,22 @@ export function AppShell() {
       if (refreshToken) await authApi.logout(refreshToken);
     } catch { /* silent */ }
     clearSession();
+
+    try {
+      const { queryClient } = await import("../lib/queryClient.js");
+      queryClient.clear();
+      queryClient.invalidateQueries();
+    } catch {
+      /* ignore */
+    }
+
+    // Clear persisted react-query caches (if any)
+    try {
+      localStorage.removeItem("velora_react_query_cache");
+    } catch {
+      /* ignore */
+    }
+
     navigate("/login");
   }
 

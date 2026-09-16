@@ -1,4 +1,4 @@
-﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+﻿import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { KeyboardShortcutProvider } from "./components/KeyboardShortcutProvider";
@@ -34,19 +34,7 @@ import { EamPage } from "./pages/eam/EamPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import SecuritySettingsPage from "./pages/settings/SecuritySettingsPage";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
-});
+import { queryClient } from "./lib/queryClient.js";
 
 export default function App() {
   return (
